@@ -8,7 +8,10 @@
     "dev:frontend": "vite --host 0.0.0.0 --port 5173",
     "dev:backend": "node server/index.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mobile:sync": "npx cap sync",
+    "mobile:ios:add": "npx cap add ios",
+    "mobile:ios:open": "npx cap open ios"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -23,7 +26,11 @@
     "stripe": "^16.8.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^7.0.2",
     "vite": "^5.4.2"
   }
 }

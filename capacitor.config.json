@@ -1,0 +1,15 @@
+{
+  "appId": "com.clearlogistics.freight",
+  "appName": "Clear Logistics",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#eff7f5"
+    }
+  }
+}

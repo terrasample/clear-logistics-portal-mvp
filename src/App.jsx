@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 
-const API_BASE = 'http://localhost:8787/api';
+const API_BASE = import.meta.env.VITE_API_BASE || `${window.location.origin}/api`;
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
