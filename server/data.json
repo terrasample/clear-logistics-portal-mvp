@@ -4,7 +4,7 @@
       "id": "test-user-001",
       "fullName": "Test Customer",
       "email": "test@example.com",
-      "passwordHash": "$2a$10$r.r2LZ9fVe9eU5HkAGfFie8hBCsIe9F9eMaW1H7v8kZ8KqP9v6K5O",
+      "passwordHash": "$2b$10$VnzjMCFtAKbn0p9VGeh/8uYokzpVYPt/nWskBzyAVhQEro6PjZuE.",
       "phone": "+1-555-0100",
       "address": "123 Test Street, New York, NY 10001",
       "createdAt": "2026-07-23T00:27:49.270Z"
