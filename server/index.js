@@ -22,8 +22,8 @@ const DEFAULT_MILESTONES = [
   { label: 'Delivered', done: false }
 ];
 
-const DRIVER_DEMO_EMAIL = 'driver.demo@clearlogistics.test';
-const DRIVER_DEMO_PASSWORD = 'Driver123!';
+const DRIVER_DEMO_EMAIL = String(process.env.DRIVER_DEMO_EMAIL || 'driver.demo@clearlogistics.test').trim().toLowerCase();
+const DRIVER_DEMO_PASSWORD = String(process.env.DRIVER_DEMO_PASSWORD || 'Driver123!');
 const DRIVER_DEMO_TOTAL_PICKUPS = 14;
 
 const QUOTE_NUDGE_DEFAULT_STEPS_MS = [
@@ -71,6 +71,9 @@ const scanAlertIntervalMs = Math.max(60 * 1000, Number(process.env.SCAN_ALERT_IN
 const scanRepeatWindowMs = Math.max(60 * 1000, Number(process.env.SCAN_REPEAT_WINDOW_MINUTES || 10) * 60 * 1000);
 const scanRepeatThreshold = Math.max(2, Number(process.env.SCAN_REPEAT_THRESHOLD || 3));
 const scanNoScanCutoffHour = Math.min(23, Math.max(0, Number(process.env.SCAN_NO_SCAN_CUTOFF_HOUR || 14)));
+const purgeDemoDataOnStart = String(
+  process.env.PURGE_DEMO_DATA_ON_START || (process.env.NODE_ENV === 'production' ? 'true' : 'false')
+).toLowerCase() === 'true';
 
 function getFrontendBaseUrl(req) {
   const configured = String(process.env.FRONTEND_URL || '').trim();
@@ -228,6 +231,76 @@ function requireAuth(req, res, next) {
 function normalizeNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+function containsDemoMarker(value) {
+  if (value == null) {
+    return false;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    if (
+      normalized === 'test@example.com' ||
+      normalized === DRIVER_DEMO_EMAIL ||
+      normalized === 'driver-demo-001' ||
+      normalized === 'test-user-001' ||
+      normalized === 'clf-10025'
+    ) {
+      return true;
+    }
+
+    return normalized.startsWith('clf-drv-') || normalized.startsWith('bkg-drv-');
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => containsDemoMarker(entry));
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).some((entry) => containsDemoMarker(entry));
+  }
+
+  return false;
+}
+
+async function purgeDemoDataIfNeeded() {
+  if (allowDemoSeed || !purgeDemoDataOnStart) {
+    return;
+  }
+
+  const data = await readData();
+  const arrayKeys = [
+    'accounts',
+    'drivers',
+    'quotes',
+    'bookings',
+    'purchaseRequests',
+    'supportTickets',
+    'scanEvents',
+    'routes',
+    'shipments',
+  ];
+
+  let removed = 0;
+  for (const key of arrayKeys) {
+    if (!Array.isArray(data[key])) {
+      continue;
+    }
+
+    const before = data[key].length;
+    data[key] = data[key].filter((entry) => !containsDemoMarker(entry));
+    removed += before - data[key].length;
+  }
+
+  if (removed > 0) {
+    await writeData(data);
+    console.log(`[startup] Purged ${removed} demo records from persisted data.`);
+  }
 }
 
 function estimateQuoteRange(payload) {
@@ -2501,6 +2574,7 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
 
 ensureDataFile()
   .then(async () => {
+    await purgeDemoDataIfNeeded();
     await seedDriverDemoData();
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
