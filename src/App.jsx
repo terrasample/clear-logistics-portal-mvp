@@ -2084,55 +2084,60 @@ function App() {
       </header>
 
       <nav className="portal-nav" aria-label="Primary portal navigation">
-        {NAV_ITEMS.map((item) => (
-          <button
-            type="button"
-            key={item.key}
-            className={
-              item.isPrimary
-                ? `nav-pill nav-pill--primary ${
-                    currentPath !== 'book-pickup' && currentPath !== 'booking' ? 'pulse' : ''
-                  }`
-                : item.key === currentPath || (item.key === 'home' && currentPath === '')
-                  ? 'nav-pill nav-pill--active'
-                  : 'nav-pill'
-            }
-            onClick={() => navigate(item.key === 'home' ? '/' : `/${item.key}`)}
-          >
-            {item.label}
-          </button>
-        ))}
-        {driverAuthToken ? (
-          <>
-            <button type="button" className={currentPath === 'driver/dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/dashboard')}>
-              🚗 Driver Dashboard
+        <div className="portal-nav__primary">
+          {NAV_ITEMS.map((item) => (
+            <button
+              type="button"
+              key={item.key}
+              className={
+                item.isPrimary
+                  ? `nav-pill nav-pill--primary ${
+                      currentPath !== 'book-pickup' && currentPath !== 'booking' ? 'pulse' : ''
+                    }`
+                  : item.key === currentPath || (item.key === 'home' && currentPath === '')
+                    ? 'nav-pill nav-pill--active'
+                    : 'nav-pill'
+              }
+              onClick={() => navigate(item.key === 'home' ? '/' : `/${item.key}`)}
+            >
+              {item.label}
             </button>
-            <button type="button" className="nav-pill" onClick={handleDriverLogout}>
-              Driver Logout
-            </button>
-          </>
-        ) : isAuthenticated ? (
-          <>
-            <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </button>
-            <button type="button" className="nav-pill" onClick={handleLogout}>
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" className={currentPath === 'login' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/login')}>
-              Login
-            </button>
-            <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
-              Create Account
-            </button>
-            <button type="button" className={currentPath === 'driver' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
-              🚗 Driver Login
-            </button>
-          </>
-        )}
+          ))}
+        </div>
+
+        <div className="portal-nav__auth">
+          {driverAuthToken ? (
+            <>
+              <button type="button" className={currentPath === 'driver/dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/dashboard')}>
+                🚗 Driver Dashboard
+              </button>
+              <button type="button" className="nav-pill" onClick={handleDriverLogout}>
+                Driver Logout
+              </button>
+            </>
+          ) : isAuthenticated ? (
+            <>
+              <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
+                Dashboard
+              </button>
+              <button type="button" className="nav-pill" onClick={handleLogout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className={currentPath === 'login' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/login')}>
+                Login
+              </button>
+              <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
+                Create Account
+              </button>
+              <button type="button" className={currentPath === 'driver' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
+                🚗 Driver Login
+              </button>
+            </>
+          )}
+        </div>
       </nav>
 
       <main className="layout">

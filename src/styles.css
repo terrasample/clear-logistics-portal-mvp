@@ -64,7 +64,24 @@ body {
   padding: 0 1.25rem 1.25rem;
   display: flex;
   flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.portal-nav__primary {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
+  flex: 1 1 640px;
+}
+
+.portal-nav__auth {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex: 0 1 auto;
 }
 
 .nav-pill {
@@ -764,6 +781,14 @@ body {
 @media (max-width: 900px) {
   .card--split {
     grid-template-columns: 1fr;
+  }
+
+  .portal-nav {
+    justify-content: flex-start;
+  }
+
+  .portal-nav__auth {
+    justify-content: flex-start;
   }
 }
 
