@@ -345,6 +345,7 @@ function buildPremiumQuoteAdminEmail(quote) {
     `Barrel Add-On: ${barrelQty > 0 ? `${barrelQty} requested` : 'No'}`,
     `Packing Supplies: ${wantsSupplies ? 'Yes' : 'No'}`,
     `VIP Concierge: ${wantsVipConcierge ? 'Yes (priority follow-up)' : 'No'}`,
+    'SLA Target: 10-minute response during business hours (otherwise tag as VIP Priority).',
   ].join('\n');
 
   const html = `
@@ -363,6 +364,7 @@ function buildPremiumQuoteAdminEmail(quote) {
           <p style="margin:0 0 12px 0;"><strong>Pricing:</strong> ${escapeHtml(pricingLabel)}</p>
           <p style="margin:0 0 12px 0;"><strong>Barrel Add-On:</strong> ${barrelQty > 0 ? `${barrelQty} requested` : 'No'} | <strong>Packing Supplies:</strong> ${wantsSupplies ? 'Yes' : 'No'}</p>
           <p style="margin:0 0 12px 0;"><strong>VIP Concierge:</strong> ${wantsVipConcierge ? 'Yes' : 'No'}</p>
+          <p style="margin:0 0 12px 0;"><strong>SLA Target:</strong> 10-minute response during business hours, else VIP Priority tag.</p>
           <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
             <strong>Action:</strong> Contact this customer quickly to lock booking before competitor churn.
           </div>
@@ -397,6 +399,7 @@ function buildPremiumQuoteCustomerEmail(quote) {
     `Barrel add-on request: ${barrelQty > 0 ? `${barrelQty} barrel(s)` : 'Not selected'}`,
     `Packing supplies: ${wantsSupplies ? 'Requested' : 'Not requested'}`,
     `VIP concierge: ${wantsVipConcierge ? 'Enabled' : 'Standard follow-up'}`,
+    'Guarantee: 10-minute response during business hours, or we auto-tag your request as VIP Priority.',
     '',
     'Thank you for choosing Clear Logistics & Freight Services.',
   ].join('\n');
@@ -416,6 +419,7 @@ function buildPremiumQuoteCustomerEmail(quote) {
             <p style="margin:0;"><strong>Pricing Mode:</strong> ${escapeHtml(pricingLabel)}</p>
           </div>
           <p style="margin:0 0 10px 0;"><strong>One-stop options selected:</strong> Barrel add-on ${barrelQty > 0 ? `${barrelQty}` : 'none'} • Packing supplies ${wantsSupplies ? 'yes' : 'no'} • VIP concierge ${wantsVipConcierge ? 'enabled' : 'standard'}</p>
+          <p style="margin:0 0 10px 0;"><strong>Service guarantee:</strong> We respond within 10 minutes during business hours, or your request is auto-tagged VIP Priority.</p>
           <p style="margin:0 0 6px 0;"><strong>Why this platform wins:</strong></p>
           <ul style="margin:0 0 12px 18px;padding:0;">
             <li>Pickup, freight, and Jamaica delivery in one place</li>

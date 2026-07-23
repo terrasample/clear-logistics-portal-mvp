@@ -126,6 +126,11 @@ const TRUST_INDICATORS = [
   'Professional Customer Support',
 ];
 
+const QUOTE_RESPONSE_GUARANTEE = {
+  title: '10-Minute Response Guarantee',
+  summary: 'A logistics specialist follows up within 10 minutes during business hours, or your quote is tagged VIP Priority at no extra cost.',
+};
+
 const DEMO_DASHBOARD_SHIPMENTS = [
   {
     shipmentId: 'CLF-10025',
@@ -2086,6 +2091,13 @@ function App() {
       <section className="card card--split">
         <div>
           <h2>Request a Shipping Quote</h2>
+          <div className="booking-summary" style={{ marginBottom: '0.85rem', border: '1px solid #cfe7dd', background: 'linear-gradient(135deg, #f3faf7 0%, #ffffff 100%)' }}>
+            <p style={{ marginBottom: '0.25rem' }}><strong>{QUOTE_RESPONSE_GUARANTEE.title}</strong></p>
+            <p className="section-intro" style={{ marginBottom: '0.35rem' }}>{QUOTE_RESPONSE_GUARANTEE.summary}</p>
+            <p style={{ marginBottom: 0, fontSize: '0.84rem', color: '#2f5a4c' }}>
+              This is how we keep your shipment moving faster than typical freight providers.
+            </p>
+          </div>
           <form className="form" onSubmit={handleQuoteSubmit}>
             <label htmlFor="quote-fullName">
               Full Name
@@ -2220,7 +2232,7 @@ function App() {
               </p>
             </div>
 
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Quote Request'}</button>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Premium Quote Request'}</button>
           </form>
         </div>
 
