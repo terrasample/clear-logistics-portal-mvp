@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_BASE
@@ -449,7 +449,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { stepKey } = useParams();
-  const currentPath = location.pathname.split('/')[1] || 'home';
+  const currentPath = location.pathname.replace(/^\/+/, '') || 'home';
 
   const [accountForm, setAccountForm] = useState({
     fullName: '',
@@ -559,6 +559,7 @@ function App() {
   const [trackingResult, setTrackingResult] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [authHydrated, setAuthHydrated] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState('');
@@ -578,6 +579,8 @@ function App() {
       text: 'Hi, I can help with booking, tracking, payment, FAQs, and demo shipment IDs.'
     }
   ]);
+  const chatMessageIdRef = useRef(0);
+  const chatMessagesRef = useRef(null);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -593,20 +596,77 @@ function App() {
   const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
 
+  function clearCustomerSessionState() {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setAuthToken('');
+    setAdminOverview(null);
+    setDispatcherData(null);
+    window.localStorage.removeItem('clf_auth_token');
+    window.localStorage.removeItem('clf_auth_user');
+  }
+
+  function clearDriverSessionState() {
+    localStorage.removeItem('driverAuthToken');
+    localStorage.removeItem('driverUser');
+    setDriverAuthToken(null);
+    setDriverUser(null);
+    setDriverPickups([]);
+    setDriverRoute([]);
+    setActiveDriverRoute(null);
+    setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
+    setDriverMode('login');
+  }
+
   useEffect(() => {
     const savedToken = window.localStorage.getItem('clf_auth_token');
     const savedUser = window.localStorage.getItem('clf_auth_user');
+    const savedDriverToken = window.localStorage.getItem('driverAuthToken');
+    const savedDriverUser = window.localStorage.getItem('driverUser');
+
+    let parsedUser = null;
+    let parsedDriverUser = null;
+
     if (savedToken && savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
+        parsedUser = JSON.parse(savedUser);
         setAuthToken(savedToken);
         setCurrentUser(parsedUser);
         setIsAuthenticated(true);
       } catch {
+        parsedUser = null;
         window.localStorage.removeItem('clf_auth_token');
         window.localStorage.removeItem('clf_auth_user');
       }
     }
+
+    if (savedDriverToken) {
+      try {
+        parsedDriverUser = savedDriverUser ? JSON.parse(savedDriverUser) : null;
+      } catch {
+        parsedDriverUser = null;
+      }
+      setDriverAuthToken(savedDriverToken);
+      setDriverUser(parsedDriverUser);
+    }
+
+    // Enforce one active session type at startup to prevent role/routing conflicts.
+    if (savedToken && parsedUser && savedDriverToken) {
+      if (location.pathname.startsWith('/driver')) {
+        window.localStorage.removeItem('clf_auth_token');
+        window.localStorage.removeItem('clf_auth_user');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setAuthToken('');
+      } else {
+        localStorage.removeItem('driverAuthToken');
+        localStorage.removeItem('driverUser');
+        setDriverAuthToken(null);
+        setDriverUser(null);
+      }
+    }
+
+    setAuthHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -614,6 +674,14 @@ function App() {
       setShopAccessMode('account');
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!chatOpen || !chatMessagesRef.current) {
+      return;
+    }
+
+    chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+  }, [chatMessages, chatOpen]);
 
   useEffect(() => {
     if (!driverAuthToken) {
@@ -625,6 +693,17 @@ function App() {
     fetchDriverPickups(driverAuthToken);
     fetchDriverActiveRoute(driverAuthToken);
   }, [driverAuthToken]);
+
+  useEffect(() => {
+    if (isAuthenticated && currentUser?.role === 'admin' && authToken && !adminOverview) {
+      fetchAdminOverview(authToken);
+    }
+
+    if (!isAuthenticated || currentUser?.role !== 'admin') {
+      setAdminOverview(null);
+      setDispatcherData(null);
+    }
+  }, [isAuthenticated, currentUser?.role, authToken]);
 
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
@@ -879,6 +958,11 @@ function App() {
     return uploadedRequiredDocs >= requiredDocCount;
   }, [docsRequired, uploadedRequiredDocs, requiredDocCount, shopDocs.declarationAccepted]);
 
+  function getNextChatMessageId(prefix) {
+    chatMessageIdRef.current += 1;
+    return `${prefix}-${Date.now()}-${chatMessageIdRef.current}`;
+  }
+
   function sendChatMessage(rawMessage) {
     const message = String(rawMessage || '').trim();
     if (!message) {
@@ -888,8 +972,8 @@ function App() {
     const response = getChatbotReply(message);
     setChatMessages((prev) => [
       ...prev,
-      { id: `${Date.now()}-user`, role: 'user', text: message },
-      { id: `${Date.now()}-assistant`, role: 'assistant', text: response },
+      { id: getNextChatMessageId('user'), role: 'user', text: message },
+      { id: getNextChatMessageId('assistant'), role: 'assistant', text: response },
     ]);
     setChatInput('');
     setChatOpen(true);
@@ -898,8 +982,8 @@ function App() {
   function sendSuggestedChatPrompt(prompt) {
     setChatMessages((prev) => [
       ...prev,
-      { id: `${Date.now()}-user`, role: 'user', text: prompt.label },
-      { id: `${Date.now()}-assistant`, role: 'assistant', text: prompt.answer },
+      { id: getNextChatMessageId('user'), role: 'user', text: prompt.label },
+      { id: getNextChatMessageId('assistant'), role: 'assistant', text: prompt.answer },
     ]);
     setChatInput('');
     setChatOpen(true);
@@ -1375,6 +1459,7 @@ function App() {
         const driverResult = await parseJsonResponse(driverFallbackResponse);
 
         if (driverFallbackResponse.ok && driverResult.token) {
+          clearCustomerSessionState();
           localStorage.setItem('driverAuthToken', driverResult.token);
           localStorage.setItem('driverUser', JSON.stringify(driverResult.user));
           setDriverAuthToken(driverResult.token);
@@ -1391,6 +1476,7 @@ function App() {
       }
 
       if (!result.token) throw new Error('Login succeeded but no session token was returned.');
+      clearDriverSessionState();
       setIsAuthenticated(true);
       setCurrentUser(result.user || null);
       setAuthToken(result.token);
@@ -1414,13 +1500,9 @@ function App() {
   }
 
   function handleLogout() {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setAuthToken('');
-    setAdminOverview(null);
+    clearCustomerSessionState();
+    clearDriverSessionState();
     setLoginForm({ email: '', password: '' });
-    window.localStorage.removeItem('clf_auth_token');
-    window.localStorage.removeItem('clf_auth_user');
     setStatusMessage('You have been logged out.');
     navigate('/');
   }
@@ -1438,7 +1520,8 @@ function App() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Login failed.');
-      
+
+      clearCustomerSessionState();
       localStorage.setItem('driverAuthToken', result.token);
       localStorage.setItem('driverUser', JSON.stringify(result.user));
       setDriverAuthToken(result.token);
@@ -1664,6 +1747,7 @@ function App() {
 
     const navigationUrl = buildNavigationLink(pickup);
     window.open(navigationUrl, '_blank', 'noopener,noreferrer');
+    setStatusMessage('Opening turn-by-turn navigation for this pickup.');
   }
 
   async function handlePickupConfirm(shipmentId) {
@@ -1700,16 +1784,12 @@ function App() {
   }
 
   function handleDriverLogout() {
-    localStorage.removeItem('driverAuthToken');
-    localStorage.removeItem('driverUser');
-    setDriverAuthToken(null);
-    setDriverUser(null);
-    setDriverPickups([]);
-    setDriverRoute([]);
-    setActiveDriverRoute(null);
-    setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
-    setDriverMode('login');
+    clearDriverSessionState();
     setStatusMessage('Driver logout successful.');
+    if (isAuthenticated) {
+      navigate(currentUser?.role === 'admin' ? '/admin' : '/dashboard');
+      return;
+    }
     navigate('/');
   }
 
@@ -4247,7 +4327,7 @@ function App() {
               </button>
             </div>
 
-            <div className="chat-panel__messages">
+            <div className="chat-panel__messages" ref={chatMessagesRef}>
               {chatMessages.map((message) => (
                 <div key={message.id} className={`chat-message chat-message--${message.role}`}>
                   {message.text}
@@ -4374,8 +4454,26 @@ function App() {
           <Route path="/shop" element={ShopPage()} />
           <Route path="/cart-estimator" element={CartEstimatorPage()} />
           <Route path="/tracking" element={TrackingPage()} />
-          <Route path="/dashboard" element={isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
-          <Route path="/admin" element={isAuthenticated && currentUser?.role === 'admin' ? AdminDashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
+          <Route
+            path="/dashboard"
+            element={
+              authHydrated
+                ? (isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />)
+                : <section className="card"><p className="section-intro">Restoring your session…</p></section>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              !authHydrated
+                ? <section className="card"><p className="section-intro">Restoring your session…</p></section>
+                : !isAuthenticated
+                  ? <Navigate to="/login" replace state={{ from: location.pathname }} />
+                  : currentUser?.role === 'admin'
+                    ? AdminDashboardPage()
+                    : <Navigate to="/dashboard" replace />
+            }
+          />
           <Route path="/business" element={BusinessPage()} />
           <Route path="/support" element={SupportPage()} />
           <Route path="/login" element={LoginPage()} />
@@ -4387,8 +4485,14 @@ function App() {
           <Route path="/terms" element={TermsPage()} />
           <Route path="/faq" element={FAQPage()} />
           {/* Phase 2: Driver Routes */}
-          {!driverAuthToken && <Route path="/driver/login" element={driverMode === 'register' ? DriverRegisterPage() : DriverLoginPage()} />}
-          {driverAuthToken && <Route path="/driver/dashboard" element={DriverDashboardPage()} />}
+          <Route
+            path="/driver/login"
+            element={driverAuthToken ? <Navigate to="/driver/dashboard" replace /> : (driverMode === 'register' ? DriverRegisterPage() : DriverLoginPage())}
+          />
+          <Route
+            path="/driver/dashboard"
+            element={driverAuthToken ? DriverDashboardPage() : <Navigate to="/driver/login" replace />}
+          />
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
