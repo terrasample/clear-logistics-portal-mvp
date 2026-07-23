@@ -28,6 +28,12 @@ const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
 let dataWriteQueue = Promise.resolve();
+const adminEmails = new Set(
+  String(process.env.ADMIN_EMAILS || 'business@example.com')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 app.use(cors({ origin: true }));
 app.use(express.json());
@@ -112,7 +118,23 @@ async function writeData(data) {
 
 function sanitizeAccount(account) {
   const { password, passwordHash, ...safeAccount } = account;
-  return safeAccount;
+  return {
+    ...safeAccount,
+    role: resolveAccountRole(account)
+  };
+}
+
+function resolveAccountRole(account) {
+  if (account?.role) {
+    return account.role;
+  }
+
+  const email = String(account?.email || '').trim().toLowerCase();
+  if (email && adminEmails.has(email)) {
+    return 'admin';
+  }
+
+  return 'customer';
 }
 
 function createAuthToken(account) {
@@ -120,7 +142,8 @@ function createAuthToken(account) {
     {
       sub: account.id,
       email: account.email,
-      fullName: account.fullName
+      fullName: account.fullName,
+      role: resolveAccountRole(account)
     },
     jwtSecret,
     { expiresIn: '12h' }
@@ -301,6 +324,36 @@ app.post('/api/login', async (req, res) => {
 
   const token = createAuthToken(account);
   res.json({ user: sanitizeAccount(account), token });
+});
+
+app.get('/api/admin/overview', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.quotes)) data.quotes = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
+  if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+
+  const sortByCreated = (items) => [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  res.json({
+    counts: {
+      rfqs: data.quotes.length,
+      bookings: data.bookings.length,
+      purchaseRequests: data.purchaseRequests.length,
+      supportTickets: data.supportTickets.length,
+      shipments: data.shipments.length,
+    },
+    rfqs: sortByCreated(data.quotes).slice(0, 12),
+    recentBookings: sortByCreated(data.bookings).slice(0, 12),
+    purchaseRequests: sortByCreated(data.purchaseRequests).slice(0, 12),
+    supportTickets: sortByCreated(data.supportTickets).slice(0, 12),
+    shipments: sortByCreated(data.shipments).slice(0, 12),
+  });
 });
 
 app.post('/api/quotes', async (req, res) => {

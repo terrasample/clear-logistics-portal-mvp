@@ -63,7 +63,10 @@
       "dimensionsWidth": "40",
       "dimensionsHeight": "60",
       "pricingMode": "estimated",
-      "estimatedRangeUsd": { "low": 392, "high": 525 },
+      "estimatedRangeUsd": {
+        "low": 392,
+        "high": 525
+      },
       "quotedPriceUsd": null,
       "createdAt": "2026-07-23T00:28:49.270Z"
     },
@@ -89,6 +92,29 @@
       "estimatedRangeUsd": null,
       "quotedPriceUsd": 4230,
       "createdAt": "2026-07-23T00:35:49.270Z"
+    },
+    {
+      "quoteId": "Q-1784776720099",
+      "fullName": "Test Sir",
+      "email": "terrasample@yahoo.com",
+      "phone": "3305062669",
+      "cargoType": "Box",
+      "serviceLevel": "Standard",
+      "itemCategory": "Clothing",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "St. Catherine",
+      "declaredValueUsd": "",
+      "weight": "85",
+      "dontKnowWeight": false,
+      "quantity": "1",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 123,
+      "createdAt": "2026-07-23T03:18:40.099Z"
     }
   ],
   "bookings": [
@@ -195,6 +221,186 @@
       "agreementAccepted": true,
       "paymentStatus": "paid",
       "createdAt": "2026-07-23T00:35:49.270Z"
+    },
+    {
+      "bookingId": "B-1784773326600",
+      "shipmentId": "CLF-10005",
+      "userId": "test-user-001",
+      "fullName": "Test",
+      "email": "test@gmail",
+      "phone": "9090001299",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "pickupDate": "2026-07-24",
+      "pickupAddress": "0000 Knudson Dr",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32221",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "45",
+      "notes": "",
+      "jamaicaRecipient": "Test Sir",
+      "jamaicaAddress": "000 NW 3RD AVE",
+      "jamaicaLocation": "Portmore",
+      "deliveryParish": "St. Catherine",
+      "serviceLevel": "Standard",
+      "estimatedValue": "250",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:22:06.600Z"
+    },
+    {
+      "bookingId": "B-1784774121267",
+      "shipmentId": "CLF-10006",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "pickupDate": "2026-07-25",
+      "pickupAddress": "123 Test Street",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32202",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "25",
+      "notes": "",
+      "jamaicaRecipient": "John Brown",
+      "jamaicaAddress": "12 Hope Road",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Standard",
+      "estimatedValue": "200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:35:21.267Z"
+    },
+    {
+      "bookingId": "B-1784774515018",
+      "shipmentId": "CLF-10007",
+      "userId": "test-user-001",
+      "fullName": "Test",
+      "email": "000@yhaoo.com",
+      "phone": "000-912-0000",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "pickupDate": "2026-07-24",
+      "pickupAddress": "0000 Knudson Dr",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32221",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "45",
+      "notes": "",
+      "jamaicaRecipient": "Test S",
+      "jamaicaAddress": "00 501 NW 3RD AVE",
+      "jamaicaLocation": "Portmore",
+      "deliveryParish": "St. Catherine",
+      "serviceLevel": "Standard",
+      "estimatedValue": "250",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:41:55.018Z"
+    },
+    {
+      "bookingId": "B-1784775224405",
+      "shipmentId": "CLF-10008",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "pickupDate": "2026-07-25",
+      "pickupAddress": "123 Test Street",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32202",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "25",
+      "notes": "",
+      "jamaicaRecipient": "John Brown",
+      "jamaicaAddress": "12 Hope Road",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Standard",
+      "estimatedValue": "200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:53:44.405Z"
+    },
+    {
+      "bookingId": "B-1784775276674",
+      "shipmentId": "CLF-10009",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "pickupDate": "2026-07-25",
+      "pickupAddress": "123 Test Street",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32202",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "25",
+      "notes": "",
+      "jamaicaRecipient": "John Brown",
+      "jamaicaAddress": "12 Hope Road",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Standard",
+      "estimatedValue": "200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:54:36.674Z"
+    },
+    {
+      "bookingId": "B-1784775513331",
+      "shipmentId": "CLF-10010",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "pickupDate": "2026-07-25",
+      "pickupAddress": "123 Test Street",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32202",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "weightPerUnit": "25",
+      "notes": "",
+      "jamaicaRecipient": "John Brown",
+      "jamaicaAddress": "12 Hope Road",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Standard",
+      "estimatedValue": "200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-23T02:58:33.331Z"
     }
   ],
   "purchaseRequests": [
@@ -204,7 +410,9 @@
       "email": "test@example.com",
       "phone": "+1-555-0100",
       "storeName": "Amazon",
-      "productLinks": ["https://www.amazon.com/dp/B000TEST1"],
+      "productLinks": [
+        "https://www.amazon.com/dp/B000TEST1"
+      ],
       "sizeColorSpecs": "Black / Medium",
       "budgetUsd": 180,
       "notes": "Demo purchase request for household items.",
@@ -217,7 +425,9 @@
       "email": "sarah.brown@example.com",
       "phone": "+1-305-555-0144",
       "storeName": "Walmart",
-      "productLinks": ["https://www.walmart.com/ip/000TEST2"],
+      "productLinks": [
+        "https://www.walmart.com/ip/000TEST2"
+      ],
       "sizeColorSpecs": "White / Large",
       "budgetUsd": 320,
       "notes": "Bulk school supplies and small appliance demo.",
@@ -230,7 +440,9 @@
       "email": "business@example.com",
       "phone": "+1-305-555-0199",
       "storeName": "Home Depot",
-      "productLinks": ["https://www.homedepot.com/p/TEST-STORE-FIXTURES"],
+      "productLinks": [
+        "https://www.homedepot.com/p/TEST-STORE-FIXTURES"
+      ],
       "sizeColorSpecs": "Commercial shelving, palletized",
       "budgetUsd": 2500,
       "notes": "Restock fixtures for Kingston retail demo.",
@@ -652,6 +864,264 @@
         {
           "label": "Out for Delivery",
           "done": true
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10005",
+      "fullName": "Test",
+      "status": "Payment Received",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10006",
+      "fullName": "Test Customer",
+      "status": "Payment Received",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10007",
+      "fullName": "Test",
+      "status": "Payment Received",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10008",
+      "fullName": "Test Customer",
+      "status": "Payment Received",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10009",
+      "fullName": "Test Customer",
+      "status": "Payment Received",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10010",
+      "fullName": "Test Customer",
+      "status": "Pickup Scheduled",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "paymentStatus": "pending",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
         },
         {
           "label": "Delivered",

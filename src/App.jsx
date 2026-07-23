@@ -423,6 +423,8 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState('');
+  const [adminOverview, setAdminOverview] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [shopAccessMode, setShopAccessMode] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -779,6 +781,26 @@ function App() {
     }
   }
 
+  async function fetchAdminOverview(token = authToken) {
+    if (!token) {
+      return;
+    }
+
+    setAdminLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/admin/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to load admin dashboard.');
+      setAdminOverview(result);
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
   async function handleLoginSubmit(event) {
     event.preventDefault();
     setIsLoading(true);
@@ -797,8 +819,15 @@ function App() {
       setAuthToken(result.token);
       window.localStorage.setItem('clf_auth_token', result.token);
       window.localStorage.setItem('clf_auth_user', JSON.stringify(result.user || null));
+      if (result.user?.role === 'admin') {
+        fetchAdminOverview(result.token);
+      }
       setStatusMessage(`Welcome back, ${result.user?.fullName || 'Customer'}.`);
-      const destination = location.state?.from && location.state.from !== '/login' ? location.state.from : '/dashboard';
+      const destination = location.state?.from && location.state.from !== '/login'
+        ? location.state.from
+        : result.user?.role === 'admin'
+          ? '/admin'
+          : '/dashboard';
       navigate(destination);
     } catch (error) {
       setStatusMessage(error.message);
@@ -811,6 +840,7 @@ function App() {
     setIsAuthenticated(false);
     setCurrentUser(null);
     setAuthToken('');
+    setAdminOverview(null);
     setLoginForm({ email: '', password: '' });
     window.localStorage.removeItem('clf_auth_token');
     window.localStorage.removeItem('clf_auth_user');
@@ -1855,6 +1885,106 @@ function App() {
     );
   }
 
+  function AdminDashboardPage() {
+    const counts = adminOverview?.counts;
+
+    return (
+      <>
+        <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2>Admin Dashboard</h2>
+              <p className="section-intro">Review RFQs, bookings, support, and purchase requests from one place.</p>
+            </div>
+            <button type="button" className="btn btn--ghost" onClick={() => fetchAdminOverview(authToken)} disabled={adminLoading}>
+              {adminLoading ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+          </div>
+        </section>
+
+        <section className="admin-metrics">
+          <article className="card admin-metric-card">
+            <strong>{counts?.rfqs || 0}</strong>
+            <span>RFQs</span>
+          </article>
+          <article className="card admin-metric-card">
+            <strong>{counts?.bookings || 0}</strong>
+            <span>Bookings</span>
+          </article>
+          <article className="card admin-metric-card">
+            <strong>{counts?.purchaseRequests || 0}</strong>
+            <span>Purchase Requests</span>
+          </article>
+          <article className="card admin-metric-card">
+            <strong>{counts?.supportTickets || 0}</strong>
+            <span>Support Tickets</span>
+          </article>
+        </section>
+
+        <section className="card card--split">
+          <div>
+            <h2>Recent RFQs</h2>
+            <div className="admin-list">
+              {(adminOverview?.rfqs || []).map((quote) => (
+                <div key={quote.quoteId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                  <p><strong>{quote.quoteId}</strong> - {quote.fullName}</p>
+                  <p><strong>Route:</strong> {quote.origin} to {quote.destination}</p>
+                  <p><strong>Type:</strong> {quote.cargoType} / {quote.serviceLevel}</p>
+                  <p><strong>Quote:</strong> {quote.quotedPriceUsd ? `$${quote.quotedPriceUsd}` : `${quote.estimatedRangeUsd?.low || '?'}-${quote.estimatedRangeUsd?.high || '?'}`}</p>
+                </div>
+              ))}
+              {!adminOverview?.rfqs?.length && <p className="section-intro">No RFQs yet.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h2>Recent Bookings</h2>
+            <div className="admin-list">
+              {(adminOverview?.recentBookings || []).map((booking) => (
+                <div key={booking.bookingId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                  <p><strong>{booking.shipmentId}</strong> - {booking.fullName}</p>
+                  <p><strong>Status:</strong> {booking.paymentStatus || 'pending'} / {booking.serviceLevel}</p>
+                  <p><strong>Pickup:</strong> {booking.pickupCity} on {booking.pickupDate}</p>
+                </div>
+              ))}
+              {!adminOverview?.recentBookings?.length && <p className="section-intro">No bookings yet.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section className="card card--split">
+          <div>
+            <h2>Purchase Requests</h2>
+            <div className="admin-list">
+              {(adminOverview?.purchaseRequests || []).map((request) => (
+                <div key={request.requestId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                  <p><strong>{request.requestId}</strong> - {request.fullName}</p>
+                  <p><strong>Store:</strong> {request.storeName}</p>
+                  <p><strong>Budget:</strong> ${request.budgetUsd || 'N/A'}</p>
+                </div>
+              ))}
+              {!adminOverview?.purchaseRequests?.length && <p className="section-intro">No purchase requests yet.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h2>Support Tickets</h2>
+            <div className="admin-list">
+              {(adminOverview?.supportTickets || []).map((ticket) => (
+                <div key={ticket.ticketId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                  <p><strong>{ticket.ticketId}</strong> - {ticket.fullName}</p>
+                  <p><strong>Email:</strong> {ticket.email}</p>
+                  <p><strong>Shipment:</strong> {ticket.shipmentId || 'N/A'}</p>
+                </div>
+              ))}
+              {!adminOverview?.supportTickets?.length && <p className="section-intro">No support tickets yet.</p>}
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
   function BusinessPage() {
     return (
       <section className="card card--split">
@@ -2459,6 +2589,11 @@ function App() {
               <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
                 Dashboard
               </button>
+              {currentUser?.role === 'admin' && (
+                <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>
+                  Admin
+                </button>
+              )}
               <button type="button" className="nav-pill" onClick={handleLogout}>
                 Logout
               </button>
@@ -2490,6 +2625,7 @@ function App() {
           <Route path="/shop" element={ShopPage()} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route path="/dashboard" element={isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
+          <Route path="/admin" element={isAuthenticated && currentUser?.role === 'admin' ? AdminDashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
           <Route path="/business" element={BusinessPage()} />
           <Route path="/support" element={SupportPage()} />
           <Route path="/login" element={LoginPage()} />

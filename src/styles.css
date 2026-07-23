@@ -660,6 +660,35 @@ body {
   font-size: 0.84rem;
 }
 
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-metric-card {
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+  background: linear-gradient(180deg, #f9fcfb 0%, #ffffff 100%);
+}
+
+.admin-metric-card strong {
+  font-size: 1.8rem;
+  color: var(--brand-dark);
+}
+
+.admin-metric-card span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.admin-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .card--wide .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
