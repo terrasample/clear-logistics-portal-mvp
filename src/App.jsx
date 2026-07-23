@@ -935,8 +935,11 @@ function App() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Payment setup failed.');
-      window.open(result.url, '_blank', 'noopener,noreferrer');
-      setStatusMessage(`Payment session started (${result.mode}).`);
+      if (!result.url) {
+        throw new Error('Payment setup failed. Missing checkout URL.');
+      }
+      window.location.assign(result.url);
+      setStatusMessage(`Taking you to payment checkout (${result.mode}).`);
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
