@@ -512,6 +512,16 @@ function App() {
     setChatOpen(true);
   }
 
+  function sendSuggestedChatPrompt(prompt) {
+    setChatMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: 'user', text: prompt.label },
+      { id: `${Date.now()}-assistant`, role: 'assistant', text: prompt.answer },
+    ]);
+    setChatInput('');
+    setChatOpen(true);
+  }
+
   function handleChatSubmit(event) {
     event.preventDefault();
     sendChatMessage(chatInput);
@@ -2216,7 +2226,7 @@ function App() {
 
             <div className="chat-panel__suggestions">
               {CHATBOT_PROMPTS.map((prompt) => (
-                <button key={prompt.label} type="button" className="chat-suggestion" onClick={() => sendChatMessage(prompt.label)}>
+                <button key={prompt.label} type="button" className="chat-suggestion" onClick={() => sendSuggestedChatPrompt(prompt)}>
                   {prompt.label}
                 </button>
               ))}
