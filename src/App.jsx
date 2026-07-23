@@ -7,12 +7,43 @@ const API_BASE = import.meta.env.VITE_API_BASE
     : `${window.location.origin}/api`);
 
 const NAV_ITEMS = [
-  { key: 'book-pickup', label: 'Services', isPrimary: true },
-  { key: 'quote', label: 'Pricing' },
-  { key: 'tracking', label: 'Track' },
-  { key: 'shop', label: 'Shop & Ship' },
-  { key: 'cart-estimator', label: 'AI Estimator' },
-  { key: 'support', label: 'Support' },
+  {
+    key: 'services',
+    label: 'Services',
+    isPrimary: true,
+    targetPath: '/book-pickup',
+    activePaths: ['book-pickup', 'booking'],
+  },
+  {
+    key: 'pricing',
+    label: 'Pricing',
+    targetPath: '/quote',
+    activePaths: ['quote'],
+  },
+  {
+    key: 'track',
+    label: 'Track',
+    targetPath: '/tracking',
+    activePaths: ['tracking'],
+  },
+  {
+    key: 'shop',
+    label: 'Shop & Ship',
+    targetPath: '/shop',
+    activePaths: ['shop'],
+  },
+  {
+    key: 'ai-estimator',
+    label: 'AI Estimator',
+    targetPath: '/cart-estimator',
+    activePaths: ['cart-estimator'],
+  },
+  {
+    key: 'support',
+    label: 'Support',
+    targetPath: '/support',
+    activePaths: ['support'],
+  },
 ];
 
 const JAMAICA_LOCATIONS_WITH_PARISHES = [
@@ -361,7 +392,6 @@ function App() {
   const location = useLocation();
   const { stepKey } = useParams();
   const currentPath = location.pathname.split('/')[1] || 'home';
-  const isServicesPath = currentPath === 'book-pickup' || currentPath === 'booking';
 
   const [accountForm, setAccountForm] = useState({
     fullName: '',
@@ -3666,8 +3696,8 @@ function App() {
       <nav className="portal-nav" aria-label="Primary portal navigation">
         <div className="portal-nav__primary">
           {NAV_ITEMS.map((item) => {
-            const targetPath = item.key === 'booking' ? '/book-pickup' : `/${item.key}`;
-            const isActive = item.isPrimary ? isServicesPath : item.key === currentPath;
+            const targetPath = item.targetPath;
+            const isActive = item.activePaths.includes(currentPath);
 
             return (
               <button
@@ -3680,7 +3710,11 @@ function App() {
                       ? 'nav-pill nav-pill--active'
                       : 'nav-pill'
                 }
-                onClick={() => navigate(targetPath)}
+                onClick={() => {
+                  if (location.pathname !== targetPath) {
+                    navigate(targetPath);
+                  }
+                }}
               >
                 {item.label}
               </button>
