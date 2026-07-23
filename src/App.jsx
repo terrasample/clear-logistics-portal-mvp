@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { key: 'book-pickup', label: 'Ship To Jamaica', isPrimary: true },
   { key: 'quote', label: 'Get a Quote' },
   { key: 'shop', label: 'Shop & Ship' },
+  { key: 'cart-estimator', label: 'AI Estimator' },
   { key: 'tracking', label: 'Track Shipment' },
   { key: 'support', label: 'Contact Support' },
 ];
@@ -703,7 +704,7 @@ function App() {
   function applyEstimatorToCart() {
     if (!estimatorResult?.estimatedItems?.length) {
       setStatusMessage('Run estimator first to create cart items.');
-      return;
+      return false;
     }
 
     const items = estimatorResult.estimatedItems.map((item) => ({
@@ -717,6 +718,7 @@ function App() {
       setPurchaseForm((prev) => ({ ...prev, storeName: estimatorResult.estimatedItems[0].store }));
     }
     setStatusMessage('Estimated cart imported. Review values before checkout.');
+    return true;
   }
 
   const normalizedShopItems = useMemo(() => (
@@ -1765,6 +1767,12 @@ function App() {
         <div>
           <h2>Purchase Assistance</h2>
           <p className="section-intro">Need us to purchase items on your behalf? Submit links and preferences below.</p>
+          <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
+            <p><strong>Want a fast landed-cost preview first?</strong> Use AI Estimator, then import the estimate into this cart.</p>
+            <button type="button" className="btn btn--ghost" onClick={() => navigate('/cart-estimator')}>
+              Open AI Estimator
+            </button>
+          </div>
           {!isAuthenticated && shopAccessMode !== 'guest' ? (
             <div className="guest-gate">
               <p className="section-intro">Choose how you want to proceed before sharing your product links.</p>
@@ -1798,45 +1806,6 @@ function App() {
                 <p className="section-intro">Signed in as {currentUser?.fullName || 'Customer'}. Your account can be used for follow-up and approvals.</p>
               )}
               <form className="form" onSubmit={handlePurchaseSubmit}>
-                <div className="shop-estimator card" style={{ marginBottom: '0.8rem' }}>
-                  <h3>AI Cart Link Estimator</h3>
-                  <p className="section-intro">Paste one or more cart/product links and we will estimate full landed shipping cost before checkout.</p>
-                  <label>
-                    Product/Cart Links (one per line)
-                    <textarea
-                      rows="4"
-                      value={estimatorLinks}
-                      onChange={(event) => setEstimatorLinks(event.target.value)}
-                      placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/..."
-                    />
-                  </label>
-                  <button type="button" className="btn btn--ghost" onClick={runLinkEstimator}>
-                    Estimate Full Shipping Cost
-                  </button>
-                  {estimatorResult && (
-                    <div className="booking-summary" style={{ marginTop: '0.65rem' }}>
-                      <p><strong>Confidence:</strong> {estimatorResult.confidenceLabel} ({estimatorResult.confidence}%)</p>
-                      <p><strong>Estimated Item Total:</strong> ${estimatorResult.subtotal.toFixed(2)}</p>
-                      <p><strong>Estimated Shipping:</strong> ${estimatorResult.shipping.toFixed(2)}</p>
-                      <p><strong>Estimated Duty:</strong> ${estimatorResult.customs.toFixed(2)}</p>
-                      <p><strong>Estimated Landed Total:</strong> ${estimatorResult.total.toFixed(2)}</p>
-                      {estimatorResult.missing.length > 0 && (
-                        <>
-                          <p><strong>Missing Info Prompts:</strong></p>
-                          <ul className="type-list">
-                            {estimatorResult.missing.map((msg) => (
-                              <li key={msg}>{msg}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                      <button type="button" className="btn btn--solid" onClick={applyEstimatorToCart}>
-                        Use Estimate in Cart
-                      </button>
-                    </div>
-                  )}
-                </div>
-
                 <label>
                   Full Name
                   <input name="fullName" value={purchaseForm.fullName} onChange={handlePurchaseChange} required />
@@ -1983,6 +1952,101 @@ function App() {
               </form>
             </>
           )}
+        </div>
+      </section>
+    );
+  }
+
+  function CartEstimatorPage() {
+    const handleImportAndGoToShop = () => {
+      const imported = applyEstimatorToCart();
+      if (imported) {
+        navigate('/shop');
+      }
+    };
+
+    const estimatorMetrics = estimatorResult
+      ? [
+          { label: 'Confidence', value: `${estimatorResult.confidenceLabel} (${estimatorResult.confidence}%)` },
+          { label: 'Items Total', value: `$${estimatorResult.subtotal.toFixed(2)}` },
+          { label: 'Shipping', value: `$${estimatorResult.shipping.toFixed(2)}` },
+          { label: 'Estimated Duty', value: `$${estimatorResult.customs.toFixed(2)}` },
+          { label: 'Landed Total', value: `$${estimatorResult.total.toFixed(2)}` },
+        ]
+      : [];
+
+    return (
+      <section className="card estimator-page">
+        <div className="estimator-page__lead">
+          <p className="estimator-page__eyebrow">Pre-checkout Intelligence</p>
+          <h2>AI Cart Link Estimator</h2>
+          <p className="section-intro">Paste product/cart links from US stores to get a quick landed-cost estimate before checkout.</p>
+
+          <div className="shop-estimator estimator-panel">
+            <label className="estimator-field">
+              Product/Cart Links (one per line)
+              <textarea
+                rows="6"
+                value={estimatorLinks}
+                onChange={(event) => setEstimatorLinks(event.target.value)}
+                placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/..."
+              />
+            </label>
+            <div className="estimator-panel__actions">
+              <button type="button" className="btn btn--ghost" onClick={runLinkEstimator}>
+                Estimate Full Shipping Cost
+              </button>
+            </div>
+
+            {estimatorResult && (
+              <div className="estimator-results">
+                <div className="estimator-metrics">
+                  {estimatorMetrics.map((metric) => (
+                    <article key={metric.label} className="estimator-metric">
+                      <span>{metric.label}</span>
+                      <strong>{metric.value}</strong>
+                    </article>
+                  ))}
+                </div>
+                {estimatorResult.missing.length > 0 && (
+                  <div className="estimator-notes">
+                    <p><strong>Improve Accuracy</strong></p>
+                    <ul className="type-list">
+                      {estimatorResult.missing.map((msg) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <button type="button" className="btn btn--solid" onClick={handleImportAndGoToShop}>
+                  Import Estimate to Shop & Ship Cart
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="estimator-page__guide">
+          <div className="estimator-guide-card">
+            <h3>How To Use</h3>
+            <ul className="type-list">
+              <li>Paste links from one or multiple stores.</li>
+              <li>Review confidence and estimated landed total.</li>
+              <li>Import to Shop & Ship and complete checkout.</li>
+            </ul>
+          </div>
+
+          <div className="estimator-guide-card estimator-guide-card--accent">
+            <h3>For Better Estimates</h3>
+            <ul className="type-list">
+              <li>Use exact product page URLs instead of generic store homepages.</li>
+              <li>Include multiple links when your cart has different item types.</li>
+              <li>Confirm final totals in Shop & Ship before payment.</li>
+            </ul>
+            <button type="button" className="btn btn--solid" onClick={() => navigate('/shop')}>
+              Go to Shop & Ship
+            </button>
+          </div>
         </div>
       </section>
     );
@@ -3131,6 +3195,7 @@ function App() {
           <Route path="/quote" element={QuotePage()} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
+          <Route path="/cart-estimator" element={CartEstimatorPage()} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route path="/dashboard" element={isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
           <Route path="/admin" element={isAuthenticated && currentUser?.role === 'admin' ? AdminDashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
