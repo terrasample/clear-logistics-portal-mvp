@@ -361,6 +361,7 @@ function App() {
   const location = useLocation();
   const { stepKey } = useParams();
   const currentPath = location.pathname.split('/')[1] || 'home';
+  const isServicesPath = currentPath === 'book-pickup' || currentPath === 'booking';
 
   const [accountForm, setAccountForm] = useState({
     fullName: '',
@@ -3663,24 +3664,27 @@ function App() {
 
       <nav className="portal-nav" aria-label="Primary portal navigation">
         <div className="portal-nav__primary">
-          {NAV_ITEMS.map((item) => (
-            <button
-              type="button"
-              key={item.key}
-              className={
-                item.isPrimary
-                  ? `nav-pill nav-pill--primary ${
-                      currentPath !== 'book-pickup' && currentPath !== 'booking' ? 'pulse' : ''
-                    }`
-                  : item.key === currentPath || (item.key === 'home' && currentPath === '')
-                    ? 'nav-pill nav-pill--active'
-                    : 'nav-pill'
-              }
-              onClick={() => navigate(item.key === 'home' ? '/' : `/${item.key}`)}
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const targetPath = item.key === 'booking' ? '/book-pickup' : `/${item.key}`;
+            const isActive = item.isPrimary ? isServicesPath : item.key === currentPath;
+
+            return (
+              <button
+                type="button"
+                key={item.key}
+                className={
+                  item.isPrimary
+                    ? `nav-pill ${isActive ? 'nav-pill--primary nav-pill--active' : 'nav-pill--primary-inactive pulse'}`
+                    : isActive
+                      ? 'nav-pill nav-pill--active'
+                      : 'nav-pill'
+                }
+                onClick={() => navigate(targetPath)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="portal-nav__auth">

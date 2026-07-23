@@ -125,6 +125,14 @@ body {
   padding: 0.8rem 1.3rem;
 }
 
+.nav-pill--primary-inactive {
+  background: #ffffff;
+  color: var(--brand-dark);
+  border: 1px solid #cfe0db;
+  font-size: 1.05rem;
+  padding: 0.8rem 1.3rem;
+}
+
 .nav-pill--primary.pulse {
   animation: pulse-glow 2s infinite;
 }
