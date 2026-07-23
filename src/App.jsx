@@ -335,6 +335,7 @@ function getChatbotReply(message) {
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { stepKey } = useParams();
   const currentPath = location.pathname.split('/')[1] || 'home';
 
   const [accountForm, setAccountForm] = useState({
@@ -1843,15 +1844,7 @@ function App() {
     );
   }
 
-  function ProtectedRoute({ children }) {
-    if (!isAuthenticated) {
-      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-    }
-    return children;
-  }
-
   function HowItWorksDetailPage() {
-    const { stepKey } = useParams();
     const step = stepKey ? howItWorksByKey.get(stepKey) : null;
 
     if (!step) {
@@ -2371,25 +2364,25 @@ function App() {
 
       <main className="layout">
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/how-it-works/:stepKey" element={<HowItWorksDetailPage />} />
-          <Route path="/book-pickup" element={<BookingPage />} />
-          <Route path="/booking" element={<BookingPage />} />
-          <Route path="/quote" element={<QuotePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/tracking" element={<TrackingPage />} />
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="/business" element={<BusinessPage />} />
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/about" element={<AboutUsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/" element={HomePage()} />
+          <Route path="/how-it-works/:stepKey" element={HowItWorksDetailPage()} />
+          <Route path="/book-pickup" element={BookingPage()} />
+          <Route path="/booking" element={BookingPage()} />
+          <Route path="/quote" element={QuotePage()} />
+          <Route path="/shop" element={ShopPage()} />
+          <Route path="/tracking" element={TrackingPage()} />
+          <Route path="/dashboard" element={isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />
+          <Route path="/business" element={BusinessPage()} />
+          <Route path="/support" element={SupportPage()} />
+          <Route path="/login" element={LoginPage()} />
+          <Route path="/account" element={AccountPage()} />
+          <Route path="/about" element={AboutUsPage()} />
+          <Route path="/privacy" element={PrivacyPage()} />
+          <Route path="/terms" element={TermsPage()} />
+          <Route path="/faq" element={FAQPage()} />
           {/* Phase 2: Driver Routes */}
-          {!driverAuthToken && <Route path="/driver/login" element={driverMode === 'register' ? <DriverRegisterPage /> : <DriverLoginPage />} />}
-          {driverAuthToken && <Route path="/driver/dashboard" element={<DriverDashboardPage />} />}
+          {!driverAuthToken && <Route path="/driver/login" element={driverMode === 'register' ? DriverRegisterPage() : DriverLoginPage()} />}
+          {driverAuthToken && <Route path="/driver/dashboard" element={DriverDashboardPage()} />}
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
