@@ -574,7 +574,7 @@ function App() {
   const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
   const [driverPickups, setDriverPickups] = useState([]);
   const [driverRoute, setDriverRoute] = useState([]);
-  const [driverRouteMeta, setDriverRouteMeta] = useState({ totalStops: 0, estimatedTime: '' });
+  const [driverRouteMeta, setDriverRouteMeta] = useState({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
   const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
   const [driverMode, setDriverMode] = useState('login');
@@ -1386,7 +1386,29 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
-      const response = await fetch(`${API_BASE}/drivers/route-optimization`, {
+      const withLocation = await new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          resolve(null);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 120000 }
+        );
+      });
+
+      const optimizationUrl = withLocation
+        ? `${API_BASE}/drivers/route-optimization?currentLat=${encodeURIComponent(withLocation.lat)}&currentLng=${encodeURIComponent(withLocation.lng)}`
+        : `${API_BASE}/drivers/route-optimization`;
+
+      const response = await fetch(optimizationUrl, {
         headers: { Authorization: `Bearer ${driverAuthToken}` },
       });
       const result = await response.json();
@@ -1396,13 +1418,49 @@ function App() {
       setDriverRouteMeta({
         totalStops: Number(result.totalStops || 0),
         estimatedTime: result.estimatedTime || '',
+        totalDistanceKm: Number(result.totalDistanceKm || 0),
       });
-      setStatusMessage(`Optimized route generated for ${result.totalStops || 0} stops${result.estimatedTime ? ` (${result.estimatedTime})` : ''}.`);
+      setStatusMessage(
+        `Optimized route generated for ${result.totalStops || 0} stops`
+        + `${result.estimatedTime ? ` (${result.estimatedTime})` : ''}`
+        + `${result.totalDistanceKm ? ` across ~${result.totalDistanceKm} km` : ''}.`
+      );
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function buildNavigationLink(pickup) {
+    const destination = [pickup?.pickupAddress, pickup?.pickupCity, pickup?.pickupZip]
+      .filter(Boolean)
+      .join(', ');
+    const encodedDestination = encodeURIComponent(destination);
+
+    const isAppleDevice = /iPhone|iPad|Mac/i.test(navigator.platform || '')
+      || /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+    if (isAppleDevice) {
+      return `https://maps.apple.com/?daddr=${encodedDestination}&dirflg=d`;
+    }
+
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
+  }
+
+  function handleStartDrive(pickup) {
+    const destination = [pickup?.pickupAddress, pickup?.pickupCity, pickup?.pickupZip]
+      .filter(Boolean)
+      .join(', ')
+      .trim();
+
+    if (!destination) {
+      setStatusMessage('Pickup address is missing. Please update booking details before starting navigation.');
+      return;
+    }
+
+    const navigationUrl = buildNavigationLink(pickup);
+    window.open(navigationUrl, '_blank', 'noopener,noreferrer');
   }
 
   async function handlePickupConfirm(shipmentId) {
@@ -1425,7 +1483,7 @@ function App() {
       setPickupConfirmation({ notes: '', photoUrl: '' });
       fetchDriverPickups(driverAuthToken);
       setDriverRoute([]);
-      setDriverRouteMeta({ totalStops: 0, estimatedTime: '' });
+      setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -3387,6 +3445,14 @@ function App() {
                   placeholder="E.g. Heavy items, fragile items, special instructions..."
                 />
               </label>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                style={{ marginTop: '0.75rem' }}
+                onClick={() => handleStartDrive(scannedPickup)}
+              >
+                Start Drive
+              </button>
               <div className="booking-nav" style={{marginTop: '1rem'}}>
                 <button type="button" className="btn btn--ghost" onClick={() => setScannedShipmentId('')}>
                   Cancel
@@ -3408,20 +3474,28 @@ function App() {
 
         <div>
           <h2>Route Optimization</h2>
-          <p className="section-intro">Optimized sequence using city clustering, pickup date, ZIP proximity, and service urgency.</p>
+          <p className="section-intro">Optimized by location proximity first, then service urgency and pickup date.</p>
           <button type="button" className="btn btn--ghost" onClick={handleGenerateOptimizedRoute} disabled={isLoading}>
             Generate Optimized Route
           </button>
           {driverRouteMeta.totalStops > 0 && (
             <p className="section-intro" style={{ marginTop: '0.6rem' }}>
-              {driverRouteMeta.totalStops} stops • Estimated driving window: {driverRouteMeta.estimatedTime || 'TBD'}
+              {driverRouteMeta.totalStops} stops
+              {driverRouteMeta.totalDistanceKm > 0 ? ` • ~${driverRouteMeta.totalDistanceKm} km` : ''}
+              {' • '}Estimated driving window: {driverRouteMeta.estimatedTime || 'TBD'}
             </p>
           )}
           {driverRoute.length > 0 && (
             <ol className="status-list" style={{marginTop: '1rem'}}>
               {driverRoute.map((p, idx) => (
-                <li key={p.shipmentId}>
-                  Stop {idx + 1}: {p.shipmentId} - {p.pickupCity} ({p.pickupDate || 'No date'})
+                <li
+                  key={p.shipmentId}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setScannedShipmentId(p.shipmentId)}
+                >
+                  Stop {idx + 1}: {p.shipmentId} - {p.pickupAddress}, {p.pickupCity} {p.pickupZip}
+                  {typeof p.legDistanceKm === 'number' ? ` • ${p.legDistanceKm} km leg` : ''}
+                  {p.pickupDate ? ` (${p.pickupDate})` : ' (No date)'}
                 </li>
               ))}
             </ol>

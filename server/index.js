@@ -1317,13 +1317,16 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
 
-  const cityPriority = {
-    miami: 1,
-    'fort lauderdale': 2,
-    jacksonville: 3,
-    orlando: 4,
-    kissimmee: 5,
-    tampa: 6,
+  const cityCenters = {
+    miami: { lat: 25.7617, lng: -80.1918 },
+    'fort lauderdale': { lat: 26.1224, lng: -80.1373 },
+    jacksonville: { lat: 30.3322, lng: -81.6557 },
+    orlando: { lat: 28.5383, lng: -81.3792 },
+    kissimmee: { lat: 28.2919, lng: -81.4076 },
+    tampa: { lat: 27.9506, lng: -82.4572 },
+    hollywood: { lat: 26.0112, lng: -80.1495 },
+    hialeah: { lat: 25.8576, lng: -80.2781 },
+    doral: { lat: 25.8195, lng: -80.3553 },
   };
 
   const servicePriority = {
@@ -1332,56 +1335,143 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
     Economy: 3,
   };
 
+  const parseStreetNumber = (address) => {
+    const match = String(address || '').trim().match(/\b(\d{1,6})\b/);
+    return match ? Number(match[1]) : 0;
+  };
+
+  const estimateCoordinates = ({ pickupAddress, pickupCity, pickupZip }) => {
+    const cityKey = String(pickupCity || '').trim().toLowerCase();
+    const base = cityCenters[cityKey] || { lat: 27.9944, lng: -81.7603 };
+    const streetNum = parseStreetNumber(pickupAddress);
+    const zipDigits = Number(String(pickupZip || '').replace(/\D/g, '').slice(0, 5) || 0);
+
+    // Deterministic local jitter so nearby addresses in the same city aren't treated as identical.
+    const latJitter = ((streetNum % 97) * 0.00021) + ((zipDigits % 100) * 0.00004);
+    const lngJitter = ((streetNum % 89) * 0.00023) + (((Math.floor(zipDigits / 10)) % 100) * 0.00004);
+
+    return {
+      lat: base.lat + latJitter,
+      lng: base.lng - lngJitter,
+    };
+  };
+
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const haversineKm = (a, b) => {
+    const R = 6371;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const aa =
+      (Math.sin(dLat / 2) ** 2)
+      + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * (Math.sin(dLng / 2) ** 2);
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+    return R * c;
+  };
+
   const pendingPickups = data.bookings
     .filter((b) => b.pickupDate && !b.pickedUp)
     .map((b) => {
       const pickupCity = String(b.pickupCity || '').trim();
-      const cityKey = pickupCity.toLowerCase();
-      const zipDigits = Number(String(b.pickupZip || '').replace(/\D/g, '').slice(0, 5) || 99999);
       const pickupDateValue = Number.isFinite(Date.parse(b.pickupDate)) ? Date.parse(b.pickupDate) : Number.MAX_SAFE_INTEGER;
       const serviceRank = servicePriority[b.serviceLevel] || 9;
+      const coords = estimateCoordinates({
+        pickupAddress: b.pickupAddress,
+        pickupCity,
+        pickupZip: b.pickupZip,
+      });
 
       return {
         shipmentId: b.shipmentId,
+        fullName: b.fullName,
+        phone: b.phone,
         pickupAddress: b.pickupAddress,
         pickupCity,
         pickupZip: b.pickupZip,
         pickupDate: b.pickupDate,
         serviceLevel: b.serviceLevel,
         cargoType: b.cargoType,
-        cityRank: cityPriority[cityKey] || 99,
-        zipDigits,
         pickupDateValue,
         serviceRank,
+        lat: coords.lat,
+        lng: coords.lng,
       };
     });
 
-  const optimizedRoute = pendingPickups
-    .sort((a, b) => {
-      if (a.cityRank !== b.cityRank) return a.cityRank - b.cityRank;
-      if (a.pickupDateValue !== b.pickupDateValue) return a.pickupDateValue - b.pickupDateValue;
-      if (a.zipDigits !== b.zipDigits) return a.zipDigits - b.zipDigits;
-      if (a.serviceRank !== b.serviceRank) return a.serviceRank - b.serviceRank;
-      return String(a.shipmentId).localeCompare(String(b.shipmentId));
-    })
-    .map(({ cityRank, zipDigits, pickupDateValue, serviceRank, ...stop }) => stop);
+  const queryLat = Number(req.query?.currentLat);
+  const queryLng = Number(req.query?.currentLng);
+  const hasDriverLocation = Number.isFinite(queryLat) && Number.isFinite(queryLng);
 
-  let citySwitches = 0;
-  for (let i = 1; i < optimizedRoute.length; i += 1) {
-    if (optimizedRoute[i].pickupCity !== optimizedRoute[i - 1].pickupCity) {
-      citySwitches += 1;
+  const defaultStart = (() => {
+    if (!pendingPickups.length) {
+      return { lat: 25.7617, lng: -80.1918 };
     }
+
+    const avg = pendingPickups.reduce(
+      (acc, stop) => ({ lat: acc.lat + stop.lat, lng: acc.lng + stop.lng }),
+      { lat: 0, lng: 0 }
+    );
+    return {
+      lat: avg.lat / pendingPickups.length,
+      lng: avg.lng / pendingPickups.length,
+    };
+  })();
+
+  const currentPoint = hasDriverLocation
+    ? { lat: queryLat, lng: queryLng }
+    : defaultStart;
+
+  const remaining = [...pendingPickups];
+  const ordered = [];
+  let runningPoint = { ...currentPoint };
+  let totalDistanceKm = 0;
+
+  while (remaining.length > 0) {
+    let nextIndex = 0;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < remaining.length; i += 1) {
+      const candidate = remaining[i];
+      const distanceKm = haversineKm(runningPoint, candidate);
+      const urgencyPenalty = candidate.serviceRank * 2.25;
+      const datePenalty = candidate.pickupDateValue === Number.MAX_SAFE_INTEGER
+        ? 250
+        : Math.max(0, (candidate.pickupDateValue - Date.now()) / (1000 * 60 * 60 * 24));
+
+      const score = distanceKm + urgencyPenalty + datePenalty;
+      if (score < bestScore) {
+        bestScore = score;
+        nextIndex = i;
+      }
+    }
+
+    const [nextStop] = remaining.splice(nextIndex, 1);
+    const legDistanceKm = haversineKm(runningPoint, nextStop);
+    totalDistanceKm += legDistanceKm;
+
+    ordered.push({
+      ...nextStop,
+      legDistanceKm: Number(legDistanceKm.toFixed(1)),
+      cumulativeDistanceKm: Number(totalDistanceKm.toFixed(1)),
+    });
+
+    runningPoint = { lat: nextStop.lat, lng: nextStop.lng };
   }
 
-  const baseMinutesPerStop = 12;
-  const cityTransitionPenalty = 18;
-  const estimatedMinutes = (optimizedRoute.length * baseMinutesPerStop) + (citySwitches * cityTransitionPenalty);
+  const avgCityDrivingKmh = 34;
+  const stopHandlingMinutes = ordered.length * 9;
+  const driveMinutes = (totalDistanceKm / avgCityDrivingKmh) * 60;
+  const estimatedMinutes = Math.max(15, Math.round(stopHandlingMinutes + driveMinutes));
+
+  const optimizedRoute = ordered.map(({ pickupDateValue, serviceRank, ...stop }) => stop);
 
   res.json({
     route: optimizedRoute,
     totalStops: optimizedRoute.length,
     estimatedTime: `${Math.max(15, Math.round(estimatedMinutes))} minutes`,
-    strategy: 'city -> pickupDate -> zip -> serviceLevel',
+    totalDistanceKm: Number(totalDistanceKm.toFixed(1)),
+    strategy: hasDriverLocation
+      ? 'distance-from-current-location -> service urgency -> pickup date'
+      : 'distance clustering from stop centroid -> service urgency -> pickup date',
   });
 });
 
