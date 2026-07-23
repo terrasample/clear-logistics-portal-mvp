@@ -1551,6 +1551,70 @@ app.get('/api/shipments/:shipmentId', async (req, res) => {
   res.json({ shipment });
 });
 
+app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
+  if (req.user.role === 'driver') {
+    return res.status(403).json({ error: 'Customer access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+
+  const requesterEmail = normalizeEmail(req.user.email);
+  const matchesUser = (booking) => {
+    if (!booking) return false;
+    if (booking.userId && req.user.sub && booking.userId === req.user.sub) return true;
+    return normalizeEmail(booking.email) === requesterEmail;
+  };
+
+  const normalizeMilestones = (milestones) => {
+    const source = Array.isArray(milestones) && milestones.length
+      ? milestones
+      : DEFAULT_MILESTONES;
+
+    return source.map((step, index) => {
+      if (step && typeof step === 'object') {
+        return {
+          label: String(step.label || `Milestone ${index + 1}`),
+          done: Boolean(step.done),
+        };
+      }
+
+      return {
+        label: String(step || `Milestone ${index + 1}`),
+        done: false,
+      };
+    });
+  };
+
+  const shipmentById = new Map(
+    (data.shipments || []).map((shipment) => [String(shipment?.shipmentId || '').trim(), shipment])
+  );
+
+  const shipments = data.bookings
+    .filter(matchesUser)
+    .map((booking) => {
+      const shipmentId = String(booking?.shipmentId || '').trim();
+      const shipment = shipmentById.get(shipmentId) || null;
+      const status = String(shipment?.status || (booking?.pickedUp ? 'Picked Up' : 'Pickup Scheduled'));
+      const cargoLabel = String(booking?.unitType || booking?.cargoType || shipment?.unitType || shipment?.cargoType || 'Shipment');
+      const serviceLabel = booking?.serviceLevel ? ` (${booking.serviceLevel})` : '';
+
+      return {
+        shipmentId: shipmentId || String(booking?.bookingId || 'N/A'),
+        lane: `${cargoLabel}${serviceLabel}`,
+        status,
+        paymentStatus: String(booking?.paymentStatus || shipment?.paymentStatus || 'pending'),
+        eta: shipment?.eta || (booking?.pickupDate ? `Pickup ${booking.pickupDate}` : 'Pending scheduling'),
+        createdAt: booking?.createdAt || shipment?.createdAt || new Date().toISOString(),
+        steps: normalizeMilestones(shipment?.milestones),
+      };
+    })
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+
+  return res.json({ shipments });
+});
+
 app.post('/api/support', async (req, res) => {
   const { fullName, email, message, shipmentId } = req.body || {};
   if (!fullName || !email || !message) {

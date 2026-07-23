@@ -328,6 +328,7 @@ const SITE_MAP = [
 const WHATSAPP_PHONE = '13055550100';
 const BOOKING_TAB_LABEL = 'Services';
 const BOOKING_PAGE_LABEL = 'Book Pickup';
+const SHOP_AND_SHIP_HELP_EMAIL = 'support@clearlogistics.com';
 
 const CHATBOT_PROMPTS = [
   {
@@ -619,6 +620,8 @@ function App() {
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
+  const [customerShipments, setCustomerShipments] = useState([]);
+  const [customerDashboardLoading, setCustomerDashboardLoading] = useState(false);
   const [dispatcherData, setDispatcherData] = useState(null);
   const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
@@ -654,6 +657,8 @@ function App() {
     setIsAuthenticated(false);
     setCurrentUser(null);
     setAuthToken('');
+    setCustomerShipments([]);
+    setCustomerDashboardLoading(false);
     setAdminOverview(null);
     setDispatcherData(null);
     window.localStorage.removeItem('clf_auth_token');
@@ -753,9 +758,17 @@ function App() {
       fetchAdminOverview(authToken);
     }
 
+    if (isAuthenticated && currentUser?.role !== 'admin' && authToken) {
+      fetchCustomerDashboard(authToken);
+    }
+
     if (!isAuthenticated || currentUser?.role !== 'admin') {
       setAdminOverview(null);
       setDispatcherData(null);
+    }
+
+    if (!isAuthenticated || currentUser?.role === 'admin') {
+      setCustomerShipments([]);
     }
   }, [isAuthenticated, currentUser?.role, authToken]);
 
@@ -1641,6 +1654,27 @@ function App() {
       setStatusMessage(error.message);
     } finally {
       setAdminLoading(false);
+    }
+  }
+
+  async function fetchCustomerDashboard(token = authToken) {
+    if (!token) {
+      return;
+    }
+
+    setCustomerDashboardLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/customer/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to load your dashboard.');
+      setCustomerShipments(Array.isArray(result.shipments) ? result.shipments : []);
+    } catch (error) {
+      setStatusMessage(error.message);
+      setCustomerShipments([]);
+    } finally {
+      setCustomerDashboardLoading(false);
     }
   }
 
@@ -2752,6 +2786,18 @@ function App() {
         <div>
           <h2>Shop & Ship</h2>
           <p className="section-intro">Shop from popular US stores and ship to Jamaica with Clear Logistics & Freight Services.</p>
+
+          <div className="booking-summary" style={{ marginBottom: '0.9rem', borderLeft: '4px solid var(--brand)' }}>
+            <h3 style={{ marginBottom: '0.35rem' }}>Where do I ship my online order?</h3>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Option 1: Purchase Assistance (recommended)</strong> - Submit links below and we handle checkout for you. You do not need to enter a shipping address at the store.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Option 2: You buy at the store yourself</strong> - Contact us first for your exact US receiving address and your customer reference before placing your order.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Important:</strong> Always include your customer reference/shipment ID so your package can be matched correctly at intake.</p>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Get US Address on WhatsApp</button>
+              <a className="btn btn--ghost" href={`mailto:${SHOP_AND_SHIP_HELP_EMAIL}`} style={{ textDecoration: 'none' }}>Email Support</a>
+            </div>
+          </div>
+
           <div className="stores-grid">
             {POPULAR_STORES.map((store) => (
               <a
@@ -3552,7 +3598,8 @@ function App() {
       return AdminDashboardPage({ overviewOnly: true });
     }
 
-    const activeShipment = DEMO_DASHBOARD_SHIPMENTS[0];
+    const activeShipment = customerShipments[0] || null;
+    const recentShipments = customerShipments.slice(1, 4);
     const activeShipmentProgress = activeShipment?.steps?.length
       ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
       : 0;
@@ -3586,6 +3633,12 @@ function App() {
             </div>
           </div>
         </section>
+
+        {customerDashboardLoading ? (
+          <section className="card">
+            <p className="section-intro">Loading your shipments...</p>
+          </section>
+        ) : null}
 
         {/* Active Shipment with Progress Milestone */}
         {activeShipment && (
@@ -3650,6 +3703,17 @@ function App() {
             </button>
           </section>
         )}
+
+        {!customerDashboardLoading && !activeShipment ? (
+          <section className="card">
+            <h2 style={{ marginBottom: '0.9rem' }}>No Shipments Yet</h2>
+            <p className="section-intro">You have not created a shipment yet. Start with Book Shipment or Shop & Ship to see live tracking here.</p>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn--solid" onClick={() => navigate('/book-pickup')}>Book Shipment</button>
+              <button type="button" className="btn btn--ghost" onClick={() => navigate('/shop')}>Open Shop & Ship</button>
+            </div>
+          </section>
+        ) : null}
 
         {/* AI Estimator Feature Card */}
         <section className="card dashboard-ai-feature">
@@ -3732,12 +3796,12 @@ function App() {
           </div>
         </section>
 
-        {/* Sample Shipments for Demo */}
-        {DEMO_DASHBOARD_SHIPMENTS.length > 1 && (
+        {/* Recent account shipments */}
+        {recentShipments.length > 0 && (
           <section className="card">
-            <h2 style={{ marginBottom: '1.5rem' }}>Sample Shipments (Demo)</h2>
+            <h2 style={{ marginBottom: '1.5rem' }}>Recent Shipments</h2>
             <div className="sample-shipments-grid">
-              {DEMO_DASHBOARD_SHIPMENTS.slice(0, 3).map((shipment) => (
+              {recentShipments.map((shipment) => (
                 <div key={shipment.shipmentId} className="sample-shipment-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                     <div>
