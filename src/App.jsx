@@ -131,6 +131,37 @@ const QUOTE_RESPONSE_GUARANTEE = {
   summary: 'A logistics specialist follows up within 10 minutes during business hours, or your quote is tagged VIP Priority at no extra cost.',
 };
 
+const SUPPLY_CATALOG = [
+  {
+    key: 'barrels',
+    field: 'addonBarrels',
+    label: 'Shipping Barrels',
+    description: 'Durable food-grade barrel with lid and seal ring.',
+    unitPriceUsd: 45,
+  },
+  {
+    key: 'boxes',
+    field: 'addonBoxes',
+    label: 'Heavy-Duty Boxes',
+    description: 'Reinforced moving box for household and retail items.',
+    unitPriceUsd: 8,
+  },
+  {
+    key: 'containers',
+    field: 'addonContainers',
+    label: 'Utility Cargo Containers',
+    description: 'Stackable rigid tote for consolidated shipment loads.',
+    unitPriceUsd: 30,
+  },
+  {
+    key: 'packingKits',
+    field: 'addonPackingKits',
+    label: 'Packing Supply Kits',
+    description: 'Tape, shrink wrap, labels, and markers bundled together.',
+    unitPriceUsd: 12,
+  },
+];
+
 const DEMO_DASHBOARD_SHIPMENTS = [
   {
     shipmentId: 'CLF-10025',
@@ -474,6 +505,10 @@ function App() {
     dimensionsLength: '',
     dimensionsWidth: '',
     dimensionsHeight: '',
+    addonBarrels: '0',
+    addonBoxes: '0',
+    addonContainers: '0',
+    addonPackingKits: '0',
     barrelPurchaseQty: '0',
     needsPackingSupplies: false,
     vipConcierge: false,
@@ -501,6 +536,10 @@ function App() {
     deliveryParish: 'Kingston',
     serviceLevel: 'Standard',
     estimatedValue: '',
+    addonBarrels: '0',
+    addonBoxes: '0',
+    addonContainers: '0',
+    addonPackingKits: '0',
     packingDeclaration: false,
     agreementAccepted: false,
   });
@@ -713,6 +752,32 @@ function App() {
   function handleBookingChange(event) {
     const { name, value, type, checked } = event.target;
     setBookingForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  }
+
+  function getSupplyAddons(formLike) {
+    return SUPPLY_CATALOG.map((item) => {
+      const quantity = Math.max(0, Number(formLike?.[item.field] || 0));
+      return {
+        key: item.key,
+        label: item.label,
+        quantity,
+        unitPriceUsd: item.unitPriceUsd,
+        totalUsd: quantity * item.unitPriceUsd,
+      };
+    }).filter((item) => item.quantity > 0);
+  }
+
+  function calculateSupplyAddonsTotal(formLike) {
+    return getSupplyAddons(formLike).reduce((sum, item) => sum + item.totalUsd, 0);
+  }
+
+  function calculateBookingServicePrice(formLike) {
+    if (!formLike?.weightPerUnit) return 0;
+    const weight = Math.max(0, Number(formLike.weightPerUnit || 0));
+    const quantity = Math.max(1, Number(formLike.quantity || 1));
+    const baseCost = weight * quantity * 1.25;
+    const serviceMult = SERVICE_TIERS.find((t) => t.name === formLike.serviceLevel)?.multiplier || 1;
+    return Math.round(baseCost * serviceMult);
   }
 
   function handleAccountChange(event) {
@@ -1025,9 +1090,15 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const quoteSupplyAddons = getSupplyAddons(quoteForm);
+      const quoteSupplyAddonsTotalUsd = calculateSupplyAddonsTotal(quoteForm);
       const payload = {
         ...quoteForm,
         weight: quoteForm.dontKnowWeight ? '' : quoteForm.weight,
+        supplyAddons: quoteSupplyAddons,
+        supplyAddonsTotalUsd: quoteSupplyAddonsTotalUsd,
+        barrelPurchaseQty: String(Math.max(0, Number(quoteForm.addonBarrels || 0))),
+        needsPackingSupplies: Number(quoteForm.addonPackingKits || 0) > 0,
       };
       const response = await fetch(`${API_BASE}/quotes`, {
         method: 'POST',
@@ -1044,6 +1115,7 @@ function App() {
       if (Number(result.quote?.barrelPurchaseQty || 0) > 0) premiumFlags.push('barrel add-on');
       if (result.quote?.needsPackingSupplies) premiumFlags.push('packing supplies');
       if (result.quote?.vipConcierge) premiumFlags.push('VIP concierge');
+      if (Number(result.quote?.supplyAddonsTotalUsd || 0) > 0) premiumFlags.push(`supplies total $${Number(result.quote.supplyAddonsTotalUsd).toFixed(2)}`);
       const premiumLine = premiumFlags.length ? ` Premium options: ${premiumFlags.join(', ')}.` : '';
       setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}${premiumLine} Confirmation email sent.`);
     } catch (error) {
@@ -1268,6 +1340,8 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const bookingSupplyAddons = getSupplyAddons(bookingForm);
+      const bookingSupplyAddonsTotalUsd = calculateSupplyAddonsTotal(bookingForm);
       const response = await fetch(`${API_BASE}/bookings`, {
         method: 'POST',
         headers: {
@@ -1277,6 +1351,8 @@ function App() {
         body: JSON.stringify({
           ...bookingForm,
           unitType: bookingForm.cargoType,
+          supplyAddons: bookingSupplyAddons,
+          supplyAddonsTotalUsd: bookingSupplyAddonsTotalUsd,
         }),
       });
 
@@ -1802,10 +1878,23 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const serviceTotalUsd = calculateBookingServicePrice(bookingForm);
+      const suppliesTotalUsd = calculateSupplyAddonsTotal(bookingForm);
+      const checkoutTotalUsd = Math.max(0, serviceTotalUsd + suppliesTotalUsd);
+      const amountCents = Math.max(100, Math.round(checkoutTotalUsd * 100));
+
       const response = await fetch(`${API_BASE}/payments/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 2500, shipmentId }),
+        body: JSON.stringify({
+          amount: amountCents,
+          shipmentId,
+          breakdown: {
+            serviceTotalUsd,
+            suppliesTotalUsd,
+            checkoutTotalUsd,
+          },
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Payment setup failed.');
@@ -2215,6 +2304,9 @@ function App() {
   }
 
   function QuotePage() {
+    const quoteSupplyAddons = useMemo(() => getSupplyAddons(quoteForm), [quoteForm]);
+    const quoteSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(quoteForm), [quoteForm]);
+
     return (
       <section className="card card--split">
         <div>
@@ -2325,26 +2417,20 @@ function App() {
 
             <div className="booking-summary" style={{ padding: '0.75rem', border: '1px solid #d9e5df', background: '#f7fbf9' }}>
               <p style={{ marginBottom: '0.5rem' }}><strong>One-Stop Add-Ons</strong></p>
-              <label htmlFor="quote-barrelPurchaseQty" style={{ marginBottom: '0.5rem' }}>
-                Need us to provide barrels?
-                <select id="quote-barrelPurchaseQty" name="barrelPurchaseQty" value={quoteForm.barrelPurchaseQty} onChange={handleQuoteChange}>
-                  <option value="0">No, I already have barrels</option>
-                  <option value="1">Yes, 1 barrel</option>
-                  <option value="2">Yes, 2 barrels</option>
-                  <option value="3">Yes, 3 barrels</option>
-                  <option value="4">Yes, 4+ barrels</option>
-                </select>
-              </label>
-              <label htmlFor="quote-needsPackingSupplies" className="checkbox-label" style={{ marginBottom: '0.4rem' }}>
-                <input
-                  id="quote-needsPackingSupplies"
-                  type="checkbox"
-                  name="needsPackingSupplies"
-                  checked={quoteForm.needsPackingSupplies}
-                  onChange={handleQuoteChange}
-                />
-                Add packing supplies kit (tape, wrap, labels)
-              </label>
+              {SUPPLY_CATALOG.map((supply) => (
+                <label key={supply.key} htmlFor={`quote-${supply.field}`} style={{ marginBottom: '0.5rem' }}>
+                  {supply.label} (${supply.unitPriceUsd} each)
+                  <input
+                    id={`quote-${supply.field}`}
+                    type="number"
+                    name={supply.field}
+                    min="0"
+                    value={quoteForm[supply.field]}
+                    onChange={handleQuoteChange}
+                  />
+                  <span className="section-intro" style={{ display: 'block' }}>{supply.description}</span>
+                </label>
+              ))}
               <label htmlFor="quote-vipConcierge" className="checkbox-label" style={{ marginBottom: 0 }}>
                 <input
                   id="quote-vipConcierge"
@@ -2355,6 +2441,11 @@ function App() {
                 />
                 Enable VIP concierge follow-up for priority handling
               </label>
+              {quoteSupplyAddons.length > 0 && (
+                <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+                  Supplies selected: {quoteSupplyAddons.map((item) => `${item.quantity} ${item.label}`).join(', ')}. Add-on total: ${quoteSupplyAddonsTotalUsd.toFixed(2)}.
+                </p>
+              )}
               <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
                 This creates a premium one-stop request so your shipment and supplies are coordinated in one workflow.
               </p>
@@ -2764,12 +2855,10 @@ function App() {
   }
 
   function BookingPage() {
-    const estimatedPrice = useMemo(() => {
-      if (!bookingForm.weightPerUnit) return 0;
-      const baseCost = parseFloat(bookingForm.weightPerUnit) * parseFloat(bookingForm.quantity) * 1.25;
-      const serviceMult = SERVICE_TIERS.find(t => t.name === bookingForm.serviceLevel)?.multiplier || 1;
-      return Math.round(baseCost * serviceMult);
-    }, [bookingForm.weightPerUnit, bookingForm.quantity, bookingForm.serviceLevel]);
+    const estimatedPrice = useMemo(() => calculateBookingServicePrice(bookingForm), [bookingForm]);
+    const bookingSupplyAddons = useMemo(() => getSupplyAddons(bookingForm), [bookingForm]);
+    const bookingSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(bookingForm), [bookingForm]);
+    const bookingCheckoutTotalUsd = useMemo(() => estimatedPrice + bookingSupplyAddonsTotalUsd, [estimatedPrice, bookingSupplyAddonsTotalUsd]);
 
     const stepLabels = ['Pickup Info', 'Shipment Details', 'Jamaica Delivery', 'Choose Service', 'Confirm & Pay'];
 
@@ -2859,6 +2948,23 @@ function App() {
                   Estimated Value (USD)
                   <input id="book-estimatedValue" type="number" name="estimatedValue" value={bookingForm.estimatedValue} onChange={handleBookingChange} min="0" />
                 </label>
+                <div className="booking-summary" style={{ padding: '0.75rem', border: '1px solid #d9e5df', background: '#f7fbf9' }}>
+                  <p style={{ marginBottom: '0.5rem' }}><strong>One-Stop Supply Add-Ons</strong></p>
+                  {SUPPLY_CATALOG.map((supply) => (
+                    <label key={supply.key} htmlFor={`book-${supply.field}`} style={{ marginBottom: '0.5rem' }}>
+                      {supply.label} (${supply.unitPriceUsd} each)
+                      <input
+                        id={`book-${supply.field}`}
+                        type="number"
+                        name={supply.field}
+                        min="0"
+                        value={bookingForm[supply.field]}
+                        onChange={handleBookingChange}
+                      />
+                      <span className="section-intro" style={{ display: 'block' }}>{supply.description}</span>
+                    </label>
+                  ))}
+                </div>
               </>
             )}
 
@@ -2930,6 +3036,10 @@ function App() {
                   <p><strong>Shipment:</strong> {bookingForm.quantity} {bookingForm.cargoType}(s), ~{bookingForm.weightPerUnit} lbs each</p>
                   <p><strong>Delivery:</strong> {bookingForm.jamaicaRecipient}, {bookingForm.jamaicaLocation}, Jamaica</p>
                   <p><strong>Service:</strong> {bookingForm.serviceLevel} — ${estimatedPrice}</p>
+                  {bookingSupplyAddons.length > 0 && (
+                    <p><strong>Supplies:</strong> {bookingSupplyAddons.map((item) => `${item.quantity} ${item.label}`).join(', ')} — ${bookingSupplyAddonsTotalUsd.toFixed(2)}</p>
+                  )}
+                  <p><strong>Unified Checkout Total:</strong> ${bookingCheckoutTotalUsd.toFixed(2)}</p>
                 </div>
                 <label htmlFor="book-packingDeclaration" className="checkbox-label">
                   <input id="book-packingDeclaration" type="checkbox" name="packingDeclaration" checked={bookingForm.packingDeclaration} onChange={handleBookingChange} required />
@@ -2994,6 +3104,9 @@ function App() {
               ))}
             </ul>
           </div>
+          <p className="section-intro" style={{ marginTop: '0.75rem' }}>
+            Supply add-ons available per booking: barrels, boxes, utility containers, and packing kits.
+          </p>
           <p className="section-intro" style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
             Final price calculated at checkout based on actual weight and contents.
           </p>
