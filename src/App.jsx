@@ -2108,6 +2108,9 @@ function App() {
         <div className="portal-nav__auth">
           {driverAuthToken ? (
             <>
+              <div className="nav-badge" aria-label="Signed in driver">
+                Signed in as {driverUser?.fullName || 'Driver'}
+              </div>
               <button type="button" className={currentPath === 'driver/dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/dashboard')}>
                 🚗 Driver Dashboard
               </button>
@@ -2117,6 +2120,9 @@ function App() {
             </>
           ) : isAuthenticated ? (
             <>
+              <div className="nav-badge" aria-label="Signed in customer">
+                Signed in as {currentUser?.fullName || 'Customer'}
+              </div>
               <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
                 Dashboard
               </button>

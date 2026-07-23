@@ -84,6 +84,20 @@ body {
   flex: 0 1 auto;
 }
 
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: rgba(11, 107, 97, 0.1);
+  border: 1px solid rgba(11, 107, 97, 0.25);
+  color: var(--brand-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .nav-pill {
   border: 1px solid #cfe0db;
   background: #ffffff;
@@ -789,6 +803,11 @@ body {
 
   .portal-nav__auth {
     justify-content: flex-start;
+  }
+
+  .nav-badge {
+    width: 100%;
+    justify-content: center;
   }
 }
 
