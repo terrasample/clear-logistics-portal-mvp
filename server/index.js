@@ -2226,16 +2226,15 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
     let nextIndex = 0;
     let bestScore = Number.POSITIVE_INFINITY;
 
-    const overdueOrToday = remaining.filter((candidate) => candidate.daysUntilPickup <= 0);
-    const tomorrow = remaining.filter((candidate) => candidate.daysUntilPickup === 1);
-    const nearTerm = remaining.filter((candidate) => candidate.daysUntilPickup <= 3);
-    const candidatePool = overdueOrToday.length
-      ? overdueOrToday
-      : tomorrow.length
-        ? tomorrow
-        : nearTerm.length
-          ? nearTerm
-          : remaining;
+    // Enforce strict date-first ordering: always choose from the earliest pickup day bucket.
+    const minDaysUntilPickup = remaining.reduce((min, candidate) => {
+      const value = Number.isFinite(candidate.daysUntilPickup) ? candidate.daysUntilPickup : 999;
+      return Math.min(min, value);
+    }, Number.POSITIVE_INFINITY);
+    const candidatePool = remaining.filter((candidate) => {
+      const value = Number.isFinite(candidate.daysUntilPickup) ? candidate.daysUntilPickup : 999;
+      return value === minDaysUntilPickup;
+    });
 
     for (const candidate of candidatePool) {
       const i = remaining.findIndex((stop) => stop.shipmentId === candidate.shipmentId);
@@ -2245,16 +2244,11 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
       const urgencyPenalty = candidate.serviceRank * 2.25;
 
       let datePenalty = 0;
+      // Date has already been bucketed, so this is only a mild tiebreaker.
       if (candidate.daysUntilPickup <= 0) {
-        datePenalty = -28 + (Math.abs(candidate.daysUntilPickup) * 1.25);
+        datePenalty = -2;
       } else if (candidate.daysUntilPickup === 1) {
-        datePenalty = -14;
-      } else if (candidate.daysUntilPickup === 2) {
-        datePenalty = -8;
-      } else if (candidate.daysUntilPickup === 3) {
-        datePenalty = -3;
-      } else {
-        datePenalty = candidate.daysUntilPickup * 1.9;
+        datePenalty = -1;
       }
 
       const score = distanceKm + urgencyPenalty + datePenalty;
