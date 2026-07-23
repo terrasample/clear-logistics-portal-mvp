@@ -998,6 +998,36 @@ function App() {
           </button>
         </section>
 
+        <section className="card card--split home-story-card">
+          <div>
+            <p className="home-story-card__eyebrow">Who We Are</p>
+            <h2>Your freight partner for the USA to Jamaica lane</h2>
+            <p className="section-intro">
+              Clear Logistics & Freight Services helps families, shoppers, and businesses move packages with clear pricing,
+              simple booking, and shipment visibility from pickup to delivery.
+            </p>
+            <p className="section-intro">
+              We built this portal to make shipping feel straightforward: book online, scan the pickup QR code, track milestones,
+              and get support when you need it.
+            </p>
+          </div>
+
+          <div className="home-story-card__facts">
+            <div className="home-story-card__fact">
+              <strong>Built for real customers</strong>
+              <span>Families, e-commerce shoppers, and recurring freight accounts.</span>
+            </div>
+            <div className="home-story-card__fact">
+              <strong>Jamaica-focused</strong>
+              <span>Direct delivery coverage across all 14 parishes.</span>
+            </div>
+            <div className="home-story-card__fact">
+              <strong>Support-first</strong>
+              <span>FAQ, WhatsApp, and AI chat are always within reach.</span>
+            </div>
+          </div>
+        </section>
+
         <section className="card">
           <h2>Why Customers Choose Us</h2>
           <div className="trust-grid">

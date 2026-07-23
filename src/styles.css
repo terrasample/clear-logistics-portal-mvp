@@ -421,6 +421,42 @@ body {
   font-size: 0.9rem;
 }
 
+.home-story-card {
+  align-items: stretch;
+}
+
+.home-story-card__eyebrow {
+  margin: 0 0 0.45rem;
+  color: var(--brand-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.home-story-card__facts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.home-story-card__fact {
+  padding: 0.9rem 1rem;
+  border: 1px solid #d5e7e2;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #f9fcfb 0%, #ffffff 100%);
+}
+
+.home-story-card__fact strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--brand-dark);
+}
+
+.home-story-card__fact span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .card--wide .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
