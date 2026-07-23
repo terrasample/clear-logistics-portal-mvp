@@ -12,14 +12,37 @@ const NAV_ITEMS = [
   { key: 'support', label: 'Contact Support' },
 ];
 
-const JAMAICA_LOCATIONS = [
+const JAMAICA_LOCATIONS_WITH_PARISHES = [
+  { city: 'Kingston', parish: 'Kingston' },
+  { city: 'Saint Andrew', parish: 'Saint Andrew' },
+  { city: 'Portmore', parish: 'St. Catherine' },
+  { city: 'Spanish Town', parish: 'St. Catherine' },
+  { city: 'Montego Bay', parish: 'Saint James' },
+  { city: 'Mandeville', parish: 'Manchester' },
+  { city: 'Negril', parish: 'Westmoreland' },
+  { city: 'Savanna-la-Mar', parish: 'Westmoreland' },
+  { city: 'Morant Bay', parish: 'Saint Thomas' },
+  { city: 'Port Antonio', parish: 'Portland' },
+  { city: 'Ocho Rios', parish: 'Saint Ann' },
+  { city: 'Runaway Bay', parish: 'Saint Ann' },
+  { city: 'Other', parish: 'Other' },
+];
+
+const JAMAICA_PARISHES = [
   'Kingston',
-  'Portmore',
-  'Montego Bay',
-  'Spanish Town',
-  'Mandeville',
-  'Negril',
-  'Other',
+  'Saint Andrew',
+  'St. Catherine',
+  'Saint Thomas',
+  'Portland',
+  'Saint Mary',
+  'St. Ann',
+  'Trelawny',
+  'Saint James',
+  'Hanover',
+  'Westmoreland',
+  'Manchester',
+  'Clarendon',
+  'Saint Elizabeth',
 ];
 
 const SERVICE_TIERS = [
@@ -234,6 +257,7 @@ function App() {
     jamaicaRecipient: '',
     jamaicaAddress: '',
     jamaicaLocation: 'Kingston',
+    deliveryParish: 'Kingston',
     serviceLevel: 'Standard',
     estimatedValue: '',
     packingDeclaration: false,
@@ -799,7 +823,12 @@ function App() {
             </label>
             <label>
               Delivery Parish (Jamaica)
-              <input name="deliveryParish" value={quoteForm.deliveryParish} onChange={handleQuoteChange} placeholder="Kingston, St. Catherine, St. James, etc." required />
+              <select name="deliveryParish" value={quoteForm.deliveryParish} onChange={handleQuoteChange} required>
+                <option value="">Select a parish</option>
+                {JAMAICA_PARISHES.map(parish => (
+                  <option key={parish} value={parish}>{parish}</option>
+                ))}
+              </select>
             </label>
             <label>
               Declared Value (USD)
@@ -1093,14 +1122,30 @@ function App() {
                   Delivery Address
                   <input name="jamaicaAddress" placeholder="Street address" value={bookingForm.jamaicaAddress} onChange={handleBookingChange} required />
                 </label>
-                <label>
-                  Jamaica Location
-                  <select name="jamaicaLocation" value={bookingForm.jamaicaLocation} onChange={handleBookingChange} required>
-                    {JAMAICA_LOCATIONS.map(loc => (
-                      <option key={loc}>{loc}</option>
-                    ))}
-                  </select>
-                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <label>
+                    Jamaica City/Area
+                    <select name="jamaicaLocation" value={bookingForm.jamaicaLocation} onChange={handleBookingChange} required>
+                      {JAMAICA_LOCATIONS_WITH_PARISHES.map(loc => (
+                        <option key={loc.city} value={loc.city}>{loc.city}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Parish
+                    <select 
+                      name="deliveryParish" 
+                      value={bookingForm.deliveryParish || ''} 
+                      onChange={handleBookingChange}
+                      required
+                    >
+                      <option value="">Select parish</option>
+                      {JAMAICA_PARISHES.map(parish => (
+                        <option key={parish} value={parish}>{parish}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </>
             )}
 

@@ -1,128 +1,28 @@
 {
   "accounts": [
     {
-      "id": "17a4445c-e3ee-4c57-97dc-3f8609dd4f2e",
-      "fullName": "Portal Test User",
-      "email": "portal.test@example.com",
-      "password": "Test123!",
-      "createdAt": "2026-07-22T21:12:23.102Z"
-    },
-    {
-      "id": "a589a07c-f928-47d0-91d7-252b0ca8682a",
-      "fullName": "Secure User",
-      "email": "secure.user@example.com",
-      "password": "StrongPass123!",
-      "createdAt": "2026-07-22T21:20:15.979Z"
+      "id": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "passwordHash": "$2a$10$r.r2LZ9fVe9eU5HkAGfFie8hBCsIe9F9eMaW1H7v8kZ8KqP9v6K5O",
+      "phone": "+1-555-0100",
+      "address": "123 Test Street, New York, NY 10001",
+      "createdAt": "2026-07-23T00:27:49.270Z"
     }
   ],
-  "quotes": [
-    {
-      "quoteId": "Q-1784755950403",
-      "fullName": "No Weight User",
-      "email": "noweight@example.com",
-      "phone": "5551234567",
-      "cargoType": "Box",
-      "origin": "Miami, FL",
-      "destination": "Kingston, Jamaica",
-      "dontKnowWeight": true,
-      "quantity": "2",
-      "dimensionsLength": "20",
-      "dimensionsWidth": "15",
-      "dimensionsHeight": "12",
-      "pricingMode": "estimated",
-      "createdAt": "2026-07-22T21:32:30.403Z"
-    },
-    {
-      "quoteId": "Q-1784756077724",
-      "fullName": "Math Check",
-      "email": "math@example.com",
-      "phone": "5550001111",
-      "cargoType": "Box",
-      "serviceLevel": "Priority",
-      "itemCategory": "Electronics",
-      "origin": "Miami, FL",
-      "destination": "Kingston, Jamaica",
-      "deliveryParish": "St. James",
-      "declaredValueUsd": "450",
-      "weight": "18",
-      "dontKnowWeight": false,
-      "quantity": "1",
-      "pricingMode": "weight-based",
-      "createdAt": "2026-07-22T21:34:37.724Z"
-    },
-    {
-      "quoteId": "Q-1784756077736",
-      "fullName": "Estimate Check",
-      "email": "estimate@example.com",
-      "phone": "5550002222",
-      "cargoType": "Box",
-      "serviceLevel": "Standard",
-      "itemCategory": "Clothing",
-      "origin": "Miami, FL",
-      "destination": "Kingston, Jamaica",
-      "deliveryParish": "Kingston",
-      "declaredValueUsd": "200",
-      "dontKnowWeight": true,
-      "quantity": "2",
-      "dimensionsLength": "20",
-      "dimensionsWidth": "16",
-      "dimensionsHeight": "14",
-      "pricingMode": "estimated",
-      "createdAt": "2026-07-22T21:34:37.736Z"
-    },
-    {
-      "quoteId": "Q-1784756234407",
-      "fullName": "Math Check 2",
-      "email": "math2@example.com",
-      "phone": "5550001111",
-      "cargoType": "Box",
-      "serviceLevel": "Priority",
-      "itemCategory": "Electronics",
-      "origin": "Miami, FL",
-      "destination": "Kingston, Jamaica",
-      "deliveryParish": "St. James",
-      "declaredValueUsd": "450",
-      "weight": "18",
-      "dontKnowWeight": false,
-      "quantity": "1",
-      "pricingMode": "weight-based",
-      "estimatedRangeUsd": null,
-      "quotedPriceUsd": 43,
-      "createdAt": "2026-07-22T21:37:14.407Z"
-    },
-    {
-      "quoteId": "Q-1784756234426",
-      "fullName": "Estimate Check 2",
-      "email": "estimate2@example.com",
-      "phone": "5550002222",
-      "cargoType": "Box",
-      "serviceLevel": "Standard",
-      "itemCategory": "Clothing",
-      "origin": "Miami, FL",
-      "destination": "Kingston, Jamaica",
-      "deliveryParish": "Kingston",
-      "declaredValueUsd": "200",
-      "dontKnowWeight": true,
-      "quantity": "2",
-      "dimensionsLength": "20",
-      "dimensionsWidth": "16",
-      "dimensionsHeight": "14",
-      "pricingMode": "estimated",
-      "estimatedRangeUsd": {
-        "low": 150,
-        "high": 201
-      },
-      "quotedPriceUsd": null,
-      "createdAt": "2026-07-22T21:37:14.426Z"
-    }
-  ],
+  "drivers": [],
+  "quotes": [],
   "bookings": [],
+  "purchaseRequests": [],
   "supportTickets": [],
   "shipments": [
     {
       "shipmentId": "CLF-10025",
       "fullName": "John",
       "status": "At Miami Warehouse",
+      "cargoType": "Box",
+      "quantity": "3",
+      "unitType": "Box",
       "milestones": [
         {
           "label": "Pickup Scheduled",
@@ -130,11 +30,11 @@
         },
         {
           "label": "Picked Up",
-          "done": true
+          "done": false
         },
         {
           "label": "At Miami Warehouse",
-          "done": true
+          "done": false
         },
         {
           "label": "Loaded on Vessel",
@@ -157,23 +57,6 @@
           "done": false
         }
       ]
-    }
-  ],
-  "purchaseRequests": [
-    {
-      "requestId": "PR-1784755967137",
-      "fullName": "Buyer User",
-      "email": "buyer@example.com",
-      "phone": "5559876543",
-      "storeName": "Amazon",
-      "productLinks": [
-        "https://www.amazon.com/dp/B000000001"
-      ],
-      "sizeColorSpecs": "Blue, M",
-      "budgetUsd": 250,
-      "notes": "Please use fastest shipping",
-      "createdAt": "2026-07-22T21:32:47.137Z",
-      "status": "Received"
     }
   ]
 }

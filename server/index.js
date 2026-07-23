@@ -38,7 +38,17 @@ async function ensureDataFile() {
     await fs.access(dataFile);
   } catch {
     const initial = {
-      accounts: [],
+      accounts: [
+        {
+          id: 'test-user-001',
+          fullName: 'Test Customer',
+          email: 'test@example.com',
+          passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
+          phone: '+1-555-0100',
+          address: '123 Test Street, New York, NY 10001',
+          createdAt: new Date().toISOString()
+        }
+      ],
       drivers: [],
       quotes: [],
       bookings: [],
