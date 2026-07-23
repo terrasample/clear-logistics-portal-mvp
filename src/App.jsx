@@ -1840,9 +1840,15 @@ function App() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await response.json();
-      if (response.ok) setDriverPickups(result.pickups || []);
+      if (response.ok) {
+        const pickups = result.pickups || [];
+        setDriverPickups(pickups);
+        return pickups;
+      }
+      return [];
     } catch (error) {
       console.error('Failed to fetch pickups:', error);
+      return [];
     }
   }
 
@@ -1862,10 +1868,12 @@ function App() {
 
   async function logDriverScan(shipmentId, source = 'manual-input') {
     const cleanedShipmentId = String(shipmentId || '').trim();
-    if (!driverAuthToken || !cleanedShipmentId) return;
+    if (!driverAuthToken || !cleanedShipmentId) {
+      return { ok: false, error: 'Driver session expired. Please log in again.' };
+    }
 
     try {
-      await fetch(`${API_BASE}/drivers/scans`, {
+      const response = await fetch(`${API_BASE}/drivers/scans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1873,9 +1881,49 @@ function App() {
         },
         body: JSON.stringify({ shipmentId: cleanedShipmentId, source }),
       });
+      const result = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: result.error || 'Unable to log scan.' };
+      }
+      return { ok: true, result };
     } catch (error) {
       console.error('Failed to log scan event:', error);
+      return { ok: false, error: 'Unable to log scan right now. Check your connection and try again.' };
     }
+  }
+
+  async function openPickupFromScan(rawShipmentId, source = 'manual-input') {
+    const cleanedShipmentId = String(rawShipmentId || '').trim();
+    if (!cleanedShipmentId) {
+      setStatusMessage('Enter or scan a shipment ID first.');
+      return;
+    }
+
+    const scanResult = await logDriverScan(cleanedShipmentId, source);
+
+    const localFound = driverPickups.some((p) => p.shipmentId === cleanedShipmentId)
+      || driverRoute.some((p) => p.shipmentId === cleanedShipmentId);
+
+    let refreshedPickups = driverPickups;
+    if (!localFound && driverAuthToken) {
+      refreshedPickups = await fetchDriverPickups(driverAuthToken);
+    }
+
+    const afterRefreshFound = refreshedPickups.some((p) => p.shipmentId === cleanedShipmentId)
+      || driverRoute.some((p) => p.shipmentId === cleanedShipmentId);
+
+    if (!afterRefreshFound) {
+      setStatusMessage(scanResult.ok
+        ? `Scan logged for ${cleanedShipmentId}, but no active pickup details were found.`
+        : (scanResult.error || 'Shipment not found in your assigned pickups.'));
+      return;
+    }
+
+    setScannedShipmentId(cleanedShipmentId);
+    setScanInput(cleanedShipmentId);
+    setStatusMessage(scanResult.ok
+      ? `Scan logged and pickup opened for ${cleanedShipmentId}.`
+      : `Pickup opened for ${cleanedShipmentId}. Note: scan log failed (${scanResult.error}).`);
   }
 
   async function handleStartRouteTracking() {
@@ -4254,7 +4302,32 @@ function App() {
   }
 
   function DriverDashboardPage() {
-    const scannedPickup = driverPickups.find(p => p.shipmentId === scannedShipmentId);
+    const scannedPickup = (() => {
+      const exactPickup = driverPickups.find((p) => p.shipmentId === scannedShipmentId);
+      if (exactPickup) {
+        return exactPickup;
+      }
+
+      const routeStop = driverRoute.find((p) => p.shipmentId === scannedShipmentId);
+      if (!routeStop) {
+        return null;
+      }
+
+      return {
+        shipmentId: routeStop.shipmentId,
+        fullName: routeStop.fullName || 'Assigned customer',
+        pickupAddress: routeStop.pickupAddress || '',
+        pickupCity: routeStop.pickupCity || '',
+        pickupZip: routeStop.pickupZip || '',
+        phone: routeStop.phone || 'Not available',
+        quantity: routeStop.quantity || '—',
+        cargoType: routeStop.cargoType || 'Cargo',
+        weight: routeStop.weight || '—',
+        jamaicaRecipient: routeStop.jamaicaRecipient || 'Pending recipient',
+        jamaicaLocation: routeStop.jamaicaLocation || 'Jamaica',
+        serviceLevel: routeStop.serviceLevel || 'Standard',
+      };
+    })();
     
     return (
       <section className="card card--split">
@@ -4278,15 +4351,7 @@ function App() {
                 type="button"
                 className="btn btn--solid"
                 style={{ marginTop: '0.6rem' }}
-                onClick={async () => {
-                  const value = scanInput.trim();
-                  if (!value) {
-                    setStatusMessage('Enter or scan a shipment ID first.');
-                    return;
-                  }
-                  await logDriverScan(value, 'manual-input');
-                  setScannedShipmentId(value);
-                }}
+                onClick={() => openPickupFromScan(scanInput, 'manual-input')}
               >
                 Log Scan & Open Pickup
               </button>
@@ -4298,10 +4363,7 @@ function App() {
                       <li
                         key={p.shipmentId}
                         style={{cursor: 'pointer', padding: '0.5rem', borderBottom: '1px solid #e0e0e0'}}
-                        onClick={async () => {
-                          await logDriverScan(p.shipmentId, 'list-select');
-                          setScannedShipmentId(p.shipmentId);
-                        }}
+                        onClick={() => openPickupFromScan(p.shipmentId, 'list-select')}
                       >
                         <strong>{p.shipmentId}</strong> - {p.fullName} ({p.pickupCity})
                         <small style={{ marginLeft: '0.4rem' }}>• Pickup: {p.pickupDate || 'TBD'}</small>
@@ -4394,7 +4456,7 @@ function App() {
                 <li
                   key={p.shipmentId}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setScannedShipmentId(p.shipmentId)}
+                  onClick={() => openPickupFromScan(p.shipmentId, 'route-stop-select')}
                 >
                   Stop {idx + 1}: {p.shipmentId} - {p.pickupAddress}, {p.pickupCity} {p.pickupZip}
                   {typeof p.legDistanceKm === 'number' ? ` • ${p.legDistanceKm} km leg` : ''}
