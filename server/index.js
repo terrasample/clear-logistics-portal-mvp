@@ -467,7 +467,7 @@ app.post('/api/payments/checkout', async (req, res) => {
   if (!stripe) {
     return res.json({
       mode: 'mock',
-      url: `${frontendUrl}/?payment=mock-success&shipmentId=${encodeURIComponent(shipmentId)}`,
+      url: `${frontendUrl}/mock-checkout?shipmentId=${encodeURIComponent(shipmentId)}&amount=${amount}`,
       message: 'Stripe key not configured. Using mock checkout URL.'
     });
   }

@@ -1098,6 +1098,66 @@ function App() {
     );
   }
 
+  function MockCheckoutPage() {
+    const params = new URLSearchParams(location.search);
+    const checkoutShipmentId = params.get('shipmentId') || shipmentId;
+    const amountCents = Number(params.get('amount') || 2500);
+    const amountUsd = (amountCents / 100).toFixed(2);
+
+    if (!checkoutShipmentId) {
+      return (
+        <section className="card">
+          <h2>Mock Checkout</h2>
+          <p className="section-intro">No shipment is attached to this checkout session.</p>
+          <button type="button" className="btn btn--solid" onClick={() => navigate('/book-pickup')}>
+            Back to Booking
+          </button>
+        </section>
+      );
+    }
+
+    return (
+      <section className="card card--split mock-checkout">
+        <div>
+          <p className="home-story-card__eyebrow">Mock Checkout</p>
+          <h2>Review and complete your payment</h2>
+          <p className="section-intro">
+            Stripe is not configured in this environment, so this page simulates the checkout handoff you would normally see.
+          </p>
+          <div className="booking-summary">
+            <p><strong>Shipment:</strong> {checkoutShipmentId}</p>
+            <p><strong>Deposit:</strong> ${amountUsd}</p>
+            <p><strong>Mode:</strong> Demo payment flow</p>
+          </div>
+        </div>
+
+        <div className="mock-checkout__panel">
+          <div className="mock-checkout__card">
+            <p className="mock-checkout__card-label">Demo card</p>
+            <strong>4242 4242 4242 4242</strong>
+            <span>Expires 12/34</span>
+          </div>
+          <div className="booking-nav mock-checkout__actions">
+            <button
+              type="button"
+              className="btn btn--solid"
+              onClick={() => navigate(`/?payment=mock-success&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+            >
+              Complete Payment
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => navigate(`/?payment=cancelled&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   function QuotePage() {
     return (
       <section className="card card--split">
@@ -2372,6 +2432,7 @@ function App() {
           <Route path="/book-pickup" element={BookingPage()} />
           <Route path="/booking" element={BookingPage()} />
           <Route path="/quote" element={QuotePage()} />
+          <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route path="/dashboard" element={isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />} />

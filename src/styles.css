@@ -483,6 +483,47 @@ body {
   line-height: 1.5;
 }
 
+.mock-checkout {
+  align-items: stretch;
+}
+
+.mock-checkout__panel {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+
+.mock-checkout__card {
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand));
+  color: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
+}
+
+.mock-checkout__card-label {
+  margin: 0 0 0.75rem;
+  opacity: 0.85;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mock-checkout__card strong {
+  display: block;
+  font-size: 1.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.mock-checkout__card span {
+  display: block;
+  opacity: 0.9;
+}
+
+.mock-checkout__actions {
+  justify-content: flex-start;
+}
+
 .card--wide .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
