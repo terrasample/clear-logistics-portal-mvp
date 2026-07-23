@@ -666,7 +666,9 @@ function App() {
       return;
     }
 
-    const hasCartLink = links.some((link) => isCartStyleUrl(link));
+    const cartLinks = links.filter((link) => isCartStyleUrl(link));
+    const productLinks = links.filter((link) => !isCartStyleUrl(link));
+    const hasCartLink = cartLinks.length > 0;
     const manualSubtotal = Number(estimatorSubtotalInput);
     const hasValidManualSubtotal = Number.isFinite(manualSubtotal) && manualSubtotal > 0;
 
@@ -675,42 +677,50 @@ function App() {
       return;
     }
 
-    const estimatedItems = links.map((link, index) => {
+    const inferredItems = productLinks.map((link, index) => {
       const category = inferCategoryFromUrl(link);
       const inferredPrice = inferDefaultPrice(category);
       const store = getStoreNameFromUrl(link);
-      const defaultName = isCartStyleUrl(link) ? `${store} cart items` : `${category} item`;
-
-      let unitPrice = inferredPrice;
-      if (hasCartLink && hasValidManualSubtotal) {
-        unitPrice = Number((manualSubtotal / links.length).toFixed(2));
-      }
 
       return {
-        name: defaultName || `Item ${index + 1}`,
+        name: `${category} item` || `Item ${index + 1}`,
         link,
         quantity: 1,
-        unitPriceUsd: unitPrice,
+        unitPriceUsd: inferredPrice,
         category,
         store,
       };
     });
 
-    const inferredSubtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
-    const subtotal = hasValidManualSubtotal ? manualSubtotal : inferredSubtotal;
+    const cartItems = hasValidManualSubtotal
+      ? [
+          {
+            name: `${getStoreNameFromUrl(cartLinks[0])} cart subtotal`,
+            link: cartLinks[0] || 'cart-link',
+            quantity: 1,
+            unitPriceUsd: Number(manualSubtotal.toFixed(2)),
+            category: 'General',
+            store: getStoreNameFromUrl(cartLinks[0]),
+          },
+        ]
+      : [];
+
+    const estimatedItems = [...cartItems, ...inferredItems];
+
+    const subtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
     const hasLuxury = estimatedItems.some((item) => LUXURY_STORE_KEYWORDS.some((k) => `${item.store} ${item.link}`.toLowerCase().includes(k)));
     const customs = subtotal * (hasLuxury ? 0.24 : 0.16);
     const brokerage = subtotal > 0 ? 35 : 0;
     const processing = subtotal * 0.05;
     const shipping = subtotal * 0.09;
     const total = subtotal + customs + brokerage + processing + shipping;
-    const unknownCount = estimatedItems.filter((item) => item.category === 'General').length;
+    const unknownCount = inferredItems.filter((item) => item.category === 'General').length;
     const confidence = Math.max(55, Math.min(92, Math.round(90 - unknownCount * 9 - (hasLuxury ? 8 : 0))));
     const confidenceLabel = confidence >= 82 ? 'High' : confidence >= 68 ? 'Medium' : 'Low';
 
     const missing = [];
-    if (unknownCount > 0 && !hasValidManualSubtotal) missing.push('Add exact product category for more accurate duty estimation.');
-    if (hasCartLink && !hasValidManualSubtotal) missing.push('Provide your store cart subtotal to prevent under/over-estimation.');
+    if (unknownCount > 0) missing.push('Add exact product category for more accurate duty estimation.');
+    if (hasCartLink && productLinks.length === 0) missing.push('Paste key product links too if you want better duty-category precision.');
     if (estimatedItems.some((item) => item.unitPriceUsd >= 300)) missing.push('Confirm actual store cart totals for high-value items.');
     if (hasLuxury) missing.push('Luxury goods may require additional customs review and supporting invoice details.');
 
@@ -2041,7 +2051,7 @@ function App() {
           <p className="estimator-page__eyebrow">Pre-checkout Intelligence</p>
           <h2>AI Cart Link Estimator</h2>
           <p className="section-intro">Paste product/cart links from US stores to get a quick landed-cost estimate before checkout.</p>
-          <p className="section-intro" style={{ marginTop: '-0.35rem' }}>For Amazon or other cart URLs, enter your actual store subtotal to get an accurate estimate.</p>
+          <p className="section-intro" style={{ marginTop: '-0.35rem' }}>For Amazon or other cart URLs, enter your actual store subtotal. The estimator will use that subtotal directly.</p>
 
           <div className="shop-estimator estimator-panel">
             <label className="estimator-field">
@@ -2054,7 +2064,7 @@ function App() {
               />
             </label>
             <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
-              Store Cart Subtotal (USD) - Optional but recommended for cart links
+              Store Cart Subtotal (USD) - Required for cart links
               <input
                 type="number"
                 min="0"
