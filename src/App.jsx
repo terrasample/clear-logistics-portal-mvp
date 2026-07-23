@@ -279,6 +279,8 @@ const PERSONAL_FEATURES = [
 const SITE_MAP = [
   'Home',
   'Services: Freight Shipping, Air Freight, Vehicle Imports, Commercial Freight, Door-to-Door',
+  'Shipping Information',
+  'Service Policy',
   'Track Shipment',
   'Get a Quote',
   'Shop & Ship',
@@ -3063,6 +3065,95 @@ function App() {
     );
   }
 
+  function ShippingInformationPage() {
+    return (
+      <section className="card card--wide">
+        <h2>Shipping Information</h2>
+        <p className="section-intro">Know exactly what to prepare before your cargo moves from the USA to Jamaica.</p>
+
+        <h3>1. How The Shipping Flow Works</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Book pickup or submit Shop & Ship purchase request.</li>
+          <li>Cargo is collected and checked into our US warehouse.</li>
+          <li>Shipment is prepared, manifested, and dispatched to Jamaica.</li>
+          <li>Customs clearance is processed before final delivery.</li>
+        </ul>
+
+        <h3>2. Service Timelines</h3>
+        <p><strong>Economy:</strong> 14-18 days | <strong>Standard:</strong> 7-12 days | <strong>Premium:</strong> 3-5 days</p>
+        <p>Timelines are estimates and may vary due to customs inspections, weather disruptions, and port congestion.</p>
+
+        <h3>3. Required Documents</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Commercial invoice or order receipt for each shipment.</li>
+          <li>Government-issued ID for customs validation when requested.</li>
+          <li>Import permit for controlled or regulated categories.</li>
+          <li>Accurate declared values matching your actual order totals.</li>
+        </ul>
+
+        <h3>4. Prohibited and Restricted Items</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Explosives, flammables, hazardous chemicals, and toxic materials.</li>
+          <li>Illegal drugs, unauthorized pharmaceuticals, and contraband.</li>
+          <li>Firearms and weapon components without legal approvals.</li>
+          <li>Counterfeit items and goods restricted by customs regulations.</li>
+        </ul>
+
+        <h3>5. Pricing and Charges</h3>
+        <p>Final pricing is influenced by weight, dimensions, cargo category, destination parish, and declared value. Customs duties and related fees are applied according to Jamaica import rules.</p>
+
+        <h3>6. Tracking and Updates</h3>
+        <p>Use your shipment ID on the tracking page to view milestone progress. Major status events include pickup, warehouse intake, dispatch, customs clearance, and delivery.</p>
+
+        <h3>7. Need Help?</h3>
+        <p><a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact Support →</a></p>
+      </section>
+    );
+  }
+
+  function ServicePolicyPage() {
+    return (
+      <section className="card card--wide">
+        <h2>Service Policy</h2>
+        <p className="section-intro">Clear operating policies for bookings, payment, delivery timelines, and claims.</p>
+
+        <h3>1. Booking Accuracy</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Customers must provide accurate shipment details and declared values.</li>
+          <li>Incorrect declarations may cause delays, penalties, or shipment holds.</li>
+          <li>Final charges may be adjusted based on verified warehouse measurements.</li>
+        </ul>
+
+        <h3>2. Payment Policy</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Payment is required before cargo release and final delivery.</li>
+          <li>Unpaid balances can delay customs release and dispatch.</li>
+          <li>Pricing includes service-level fees; customs and government charges may apply separately.</li>
+        </ul>
+
+        <h3>3. Cancellation and Rescheduling</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Pickup cancellations should be requested before driver dispatch.</li>
+          <li>Rescheduling may be subject to route capacity and service windows.</li>
+          <li>Late cancellations can incur operational handling fees.</li>
+        </ul>
+
+        <h3>4. Delays and Exceptions</h3>
+        <p>Shipping times are estimates. Delays may occur from weather, port congestion, airline/ocean carrier disruptions, or customs inspections. Clear Logistics will provide milestone updates and revised ETA guidance when exceptions occur.</p>
+
+        <h3>5. Claims and Liability</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Damage or loss claims should be submitted within 48 hours of delivery.</li>
+          <li>Claims require shipment ID, supporting photos, and value documentation.</li>
+          <li>Compensation is handled according to declared value and active coverage terms.</li>
+        </ul>
+
+        <h3>6. Contact and Escalation</h3>
+        <p>For policy questions, billing clarifications, or claims support, use <a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact Support →</a></p>
+      </section>
+    );
+  }
+
   function FAQPage() {
     return (
       <section className="card card--wide">
@@ -3111,6 +3202,8 @@ function App() {
             <div className="footer-links">
               <button type="button" className="footer-link" onClick={() => navigate('/')}>Home</button>
               <button type="button" className="footer-link" onClick={() => navigate('/about')}>About Us</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/shipping-information')}>Shipping Information</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/service-policy')}>Service Policy</button>
               <button type="button" className="footer-link" onClick={() => navigate('/faq')}>FAQ</button>
               <button type="button" className="footer-link" onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button type="button" className="footer-link" onClick={() => navigate('/terms')}>Terms of Service</button>
@@ -3283,6 +3376,8 @@ function App() {
           <Route path="/login" element={LoginPage()} />
           <Route path="/account" element={AccountPage()} />
           <Route path="/about" element={AboutUsPage()} />
+          <Route path="/shipping-information" element={ShippingInformationPage()} />
+          <Route path="/service-policy" element={ServicePolicyPage()} />
           <Route path="/privacy" element={PrivacyPage()} />
           <Route path="/terms" element={TermsPage()} />
           <Route path="/faq" element={FAQPage()} />
