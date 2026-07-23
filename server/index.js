@@ -84,6 +84,7 @@ async function ensureDataFile() {
       bookings: [],
       purchaseRequests: [],
       supportTickets: [],
+      scanEvents: [],
       routes: [],
       shipments: [
         {
@@ -125,6 +126,7 @@ async function readData() {
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
   if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
   if (!Array.isArray(data.routes)) data.routes = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
   return data;
@@ -943,6 +945,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
   if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
 
   const sortByCreated = (items) => [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
@@ -953,12 +956,14 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
       bookings: data.bookings.length,
       purchaseRequests: data.purchaseRequests.length,
       supportTickets: data.supportTickets.length,
+      scanEvents: data.scanEvents.length,
       shipments: data.shipments.length,
     },
     rfqs: sortByCreated(data.quotes).slice(0, 12),
     recentBookings: sortByCreated(data.bookings).slice(0, 12),
     purchaseRequests: sortByCreated(data.purchaseRequests).slice(0, 12),
     supportTickets: sortByCreated(data.supportTickets).slice(0, 12),
+    recentScans: sortByCreated(data.scanEvents).slice(0, 12),
     shipments: sortByCreated(data.shipments).slice(0, 12),
   });
 });
@@ -1661,6 +1666,55 @@ app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
     .sort((a, b) => new Date(a.pickupDate) - new Date(b.pickupDate));
 
   res.json({ pickups, count: pickups.length });
+});
+
+app.post('/api/drivers/scans', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const shipmentId = String(req.body?.shipmentId || '').trim();
+  const source = String(req.body?.source || 'manual').trim().toLowerCase();
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
+
+  const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
+  if (!booking) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  if (booking.assignedDriverId && booking.assignedDriverId !== req.user.sub) {
+    return res.status(403).json({ error: 'This shipment is assigned to a different driver.' });
+  }
+
+  const scanEvent = {
+    scanId: `SCAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    shipmentId,
+    bookingId: booking.bookingId,
+    driverId: req.user.sub,
+    driverName: req.user.fullName,
+    source,
+    createdAt: new Date().toISOString(),
+  };
+
+  booking.lastScannedAt = scanEvent.createdAt;
+  booking.lastScannedBy = req.user.fullName;
+  booking.lastScanSource = source;
+  data.scanEvents.push(scanEvent);
+
+  await writeData(data);
+  await sendNotification('Barcode Scanned', `Shipment ${shipmentId} scanned by ${req.user.fullName} via ${source}.`);
+
+  return res.status(201).json({
+    ok: true,
+    scanEvent,
+    message: `Scan recorded for ${shipmentId}.`,
+  });
 });
 
 app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res) => {

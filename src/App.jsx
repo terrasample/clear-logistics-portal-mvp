@@ -590,6 +590,7 @@ function App() {
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
   const [driverMode, setDriverMode] = useState('login');
   const [scannedShipmentId, setScannedShipmentId] = useState('');
+  const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
 
   useEffect(() => {
@@ -1501,6 +1502,24 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to fetch active route:', error);
+    }
+  }
+
+  async function logDriverScan(shipmentId, source = 'manual-input') {
+    const cleanedShipmentId = String(shipmentId || '').trim();
+    if (!driverAuthToken || !cleanedShipmentId) return;
+
+    try {
+      await fetch(`${API_BASE}/drivers/scans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${driverAuthToken}`,
+        },
+        body: JSON.stringify({ shipmentId: cleanedShipmentId, source }),
+      });
+    } catch (error) {
+      console.error('Failed to log scan event:', error);
     }
   }
 
@@ -2984,6 +3003,9 @@ function App() {
 
   function DashboardPage() {
     const activeShipment = DEMO_DASHBOARD_SHIPMENTS[0];
+    const activeShipmentProgress = activeShipment?.steps?.length
+      ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
+      : 0;
 
     return (
       <>
@@ -3034,10 +3056,10 @@ function App() {
             <div className="progress-shell" style={{ margin: '1.5rem 0' }}>
               <div className="progress-label">
                 <span>Journey Progress</span>
-                <span>{activeShipment.progress}%</span>
+                <span>{activeShipmentProgress}%</span>
               </div>
               <div className="progress-bar">
-                <div style={{ width: `${activeShipment.progress}%` }} />
+                <div style={{ width: `${activeShipmentProgress}%` }} />
               </div>
             </div>
 
@@ -3207,6 +3229,7 @@ function App() {
       bookings: { key: 'recentBookings', label: 'Bookings' },
       purchaseRequests: { key: 'purchaseRequests', label: 'Purchase Requests' },
       supportTickets: { key: 'supportTickets', label: 'Support Tickets' },
+      scanEvents: { key: 'recentScans', label: 'Barcode Scans' },
       dispatcher: { key: 'dispatcher', label: 'Dispatcher' },
     };
 
@@ -3292,6 +3315,10 @@ function App() {
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'supportTickets' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('supportTickets')}>
             <strong>{counts?.supportTickets || 0}</strong>
             <span>Support Tickets</span>
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'scanEvents' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('scanEvents')}>
+            <strong>{counts?.scanEvents || 0}</strong>
+            <span>Barcode Scans</span>
           </button>
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'dispatcher' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('dispatcher')}>
             <strong>{dispatcherData?.drivers?.length ?? (counts ? '—' : '…')}</strong>
@@ -3501,6 +3528,20 @@ function App() {
               ))}
               {!adminOverview?.supportTickets?.length && <p className="section-intro">No support tickets yet.</p>}
             </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <h2>Recent Barcode Scans</h2>
+          <div className="admin-list">
+            {(adminOverview?.recentScans || []).map((scan) => (
+              <div key={scan.scanId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                <p><strong>{scan.shipmentId}</strong> - {scan.driverName || scan.driverId}</p>
+                <p><strong>Source:</strong> {scan.source || 'manual'}</p>
+                <p><strong>When:</strong> {scan.createdAt ? new Date(scan.createdAt).toLocaleString() : 'N/A'}</p>
+              </div>
+            ))}
+            {!adminOverview?.recentScans?.length && <p className="section-intro">No scan events yet.</p>}
           </div>
         </section>
 
@@ -3761,16 +3802,39 @@ function App() {
                 QR Code / Shipment ID
                 <input
                   placeholder="Scan QR or enter Shipment ID"
-                  value={scannedShipmentId}
-                  onChange={(e) => setScannedShipmentId(e.target.value)}
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
                 />
               </label>
+              <button
+                type="button"
+                className="btn btn--solid"
+                style={{ marginTop: '0.6rem' }}
+                onClick={async () => {
+                  const value = scanInput.trim();
+                  if (!value) {
+                    setStatusMessage('Enter or scan a shipment ID first.');
+                    return;
+                  }
+                  await logDriverScan(value, 'manual-input');
+                  setScannedShipmentId(value);
+                }}
+              >
+                Log Scan & Open Pickup
+              </button>
               <h3 style={{marginTop: '2rem'}}>Assigned Pickups ({driverPickups.length})</h3>
               <div className="pickups-list">
                 {driverPickups.length > 0 ? (
                   <ul className="status-list">
                     {driverPickups.map(p => (
-                      <li key={p.shipmentId} style={{cursor: 'pointer', padding: '0.5rem', borderBottom: '1px solid #e0e0e0'}} onClick={() => setScannedShipmentId(p.shipmentId)}>
+                      <li
+                        key={p.shipmentId}
+                        style={{cursor: 'pointer', padding: '0.5rem', borderBottom: '1px solid #e0e0e0'}}
+                        onClick={async () => {
+                          await logDriverScan(p.shipmentId, 'list-select');
+                          setScannedShipmentId(p.shipmentId);
+                        }}
+                      >
                         <strong>{p.shipmentId}</strong> - {p.fullName} ({p.pickupCity})
                         <small style={{ marginLeft: '0.4rem' }}>• Pickup: {p.pickupDate || 'TBD'}</small>
                       </li>
