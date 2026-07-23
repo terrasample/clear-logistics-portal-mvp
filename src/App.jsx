@@ -1723,7 +1723,9 @@ function App() {
             key={item.key}
             className={
               item.isPrimary
-                ? 'nav-pill nav-pill--primary'
+                ? `nav-pill nav-pill--primary ${
+                    currentPath !== 'book-pickup' && currentPath !== 'booking' ? 'pulse' : ''
+                  }`
                 : item.key === currentPath || (item.key === 'home' && currentPath === '')
                   ? 'nav-pill nav-pill--active'
                   : 'nav-pill'

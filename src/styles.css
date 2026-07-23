@@ -94,6 +94,19 @@ body {
   padding: 0.8rem 1.3rem;
 }
 
+.nav-pill--primary.pulse {
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 6px 16px rgba(11, 107, 97, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 28px rgba(11, 107, 97, 0.6), 0 0 20px rgba(11, 107, 97, 0.4);
+  }
+}
+
 .booking-steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
