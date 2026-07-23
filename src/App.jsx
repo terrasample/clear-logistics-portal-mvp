@@ -278,6 +278,17 @@ function App() {
 
   const [activeShipment] = useState('CLF-10025');
 
+  // Phase 2: Driver app state
+  const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
+  const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
+  const [driverPickups, setDriverPickups] = useState([]);
+  const [driverRoute, setDriverRoute] = useState([]);
+  const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
+  const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
+  const [driverMode, setDriverMode] = useState('login');
+  const [scannedShipmentId, setScannedShipmentId] = useState('');
+  const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
+
   const completion = useMemo(() => {
     const done = DASHBOARD_STEPS.filter((s) => s.done).length;
     return Math.round((done / DASHBOARD_STEPS.length) * 100);
@@ -542,6 +553,107 @@ function App() {
     window.localStorage.removeItem('clf_auth_token');
     window.localStorage.removeItem('clf_auth_user');
     setStatusMessage('You have been logged out.');
+    navigate('/');
+  }
+
+  // Phase 2: Driver handlers
+  async function handleDriverLogin(e) {
+    e.preventDefault();
+    setIsLoading(true);
+    setStatusMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/drivers/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(driverLoginForm)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Login failed.');
+      
+      localStorage.setItem('driverAuthToken', result.token);
+      localStorage.setItem('driverUser', JSON.stringify(result.user));
+      setDriverAuthToken(result.token);
+      setDriverUser(result.user);
+      setDriverLoginForm({ email: '', password: '' });
+      setDriverMode('dashboard');
+      setStatusMessage(`Welcome back, ${result.user.fullName}!`);
+      fetchDriverPickups(result.token);
+      navigate('/driver/dashboard');
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleDriverRegister(e) {
+    e.preventDefault();
+    setIsLoading(true);
+    setStatusMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/drivers/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(driverRegisterForm)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Registration failed.');
+      
+      setStatusMessage('Registration successful! Please login.');
+      setDriverRegisterForm({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
+      setDriverMode('login');
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function fetchDriverPickups(token) {
+    try {
+      const response = await fetch(`${API_BASE}/drivers/dashboard`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (response.ok) setDriverPickups(result.pickups || []);
+    } catch (error) {
+      console.error('Failed to fetch pickups:', error);
+    }
+  }
+
+  async function handlePickupConfirm(shipmentId) {
+    setIsLoading(true);
+    setStatusMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/drivers/pickups/${shipmentId}/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${driverAuthToken}`
+        },
+        body: JSON.stringify(pickupConfirmation)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Confirmation failed.');
+      
+      setStatusMessage(`Pickup confirmed for ${shipmentId}!`);
+      setScannedShipmentId('');
+      setPickupConfirmation({ notes: '', photoUrl: '' });
+      fetchDriverPickups(driverAuthToken);
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function handleDriverLogout() {
+    localStorage.removeItem('driverAuthToken');
+    localStorage.removeItem('driverUser');
+    setDriverAuthToken(null);
+    setDriverUser(null);
+    setDriverMode('login');
+    setStatusMessage('Driver logout successful.');
     navigate('/');
   }
 
@@ -1347,6 +1459,171 @@ function App() {
     );
   }
 
+  function DriverLoginPage() {
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Driver Login</h2>
+          <p className="section-intro">Sign in to access your pickup assignments and complete deliveries.</p>
+          <form className="form" onSubmit={handleDriverLogin}>
+            <label>
+              Email
+              <input type="email" value={driverLoginForm.email} onChange={(e) => setDriverLoginForm({...driverLoginForm, email: e.target.value})} required />
+            </label>
+            <label>
+              Password
+              <input type="password" value={driverLoginForm.password} onChange={(e) => setDriverLoginForm({...driverLoginForm, password: e.target.value})} required />
+            </label>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
+          </form>
+        </div>
+        <div>
+          <h2>New Driver?</h2>
+          <p className="section-intro">Create a driver account to start accepting pickups.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('register')}>Create Driver Account</button>
+        </div>
+      </section>
+    );
+  }
+
+  function DriverRegisterPage() {
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Driver Registration</h2>
+          <p className="section-intro">Sign up to become a driver and start earning.</p>
+          <form className="form" onSubmit={handleDriverRegister}>
+            <label>
+              Full Name
+              <input value={driverRegisterForm.fullName} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, fullName: e.target.value})} required />
+            </label>
+            <label>
+              Email
+              <input type="email" value={driverRegisterForm.email} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, email: e.target.value})} required />
+            </label>
+            <label>
+              Phone
+              <input type="tel" value={driverRegisterForm.phone} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, phone: e.target.value})} required />
+            </label>
+            <label>
+              Vehicle
+              <input placeholder="e.g., Honda Civic 2020" value={driverRegisterForm.vehicle} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, vehicle: e.target.value})} required />
+            </label>
+            <label>
+              Password
+              <input type="password" value={driverRegisterForm.password} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, password: e.target.value})} required />
+            </label>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>Create Account</button>
+          </form>
+        </div>
+        <div>
+          <h2>Already a Driver?</h2>
+          <p className="section-intro">Login to your existing account.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('login')}>Back to Login</button>
+        </div>
+      </section>
+    );
+  }
+
+  function DriverDashboardPage() {
+    const scannedPickup = driverPickups.find(p => p.shipmentId === scannedShipmentId);
+    
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>🚚 Driver Dashboard</h2>
+          <p className="section-intro">Hello, {driverUser?.fullName}!</p>
+          <p>Vehicle: {driverUser?.vehicle}</p>
+          
+          {!scannedShipmentId ? (
+            <>
+              <h3>Scan QR Code or Select Pickup</h3>
+              <label>
+                QR Code / Shipment ID
+                <input
+                  placeholder="Scan QR or enter Shipment ID"
+                  value={scannedShipmentId}
+                  onChange={(e) => setScannedShipmentId(e.target.value)}
+                />
+              </label>
+              <h3 style={{marginTop: '2rem'}}>Your Pickups ({driverPickups.length})</h3>
+              <div className="pickups-list">
+                {driverPickups.length > 0 ? (
+                  <ul className="status-list">
+                    {driverPickups.map(p => (
+                      <li key={p.shipmentId} style={{cursor: 'pointer', padding: '0.5rem', borderBottom: '1px solid #e0e0e0'}} onClick={() => setScannedShipmentId(p.shipmentId)}>
+                        <strong>{p.shipmentId}</strong> - {p.fullName} ({p.pickupCity})
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="section-intro">No pending pickups. Check back later!</p>
+                )}
+              </div>
+            </>
+          ) : scannedPickup ? (
+            <>
+              <h3>Confirm Pickup: {scannedPickup.shipmentId}</h3>
+              <div className="booking-summary">
+                <p><strong>Customer:</strong> {scannedPickup.fullName}</p>
+                <p><strong>Address:</strong> {scannedPickup.pickupAddress}, {scannedPickup.pickupCity} {scannedPickup.pickupZip}</p>
+                <p><strong>Phone:</strong> {scannedPickup.phone}</p>
+                <p><strong>Cargo:</strong> {scannedPickup.quantity} x {scannedPickup.cargoType} (~{scannedPickup.weight} lbs)</p>
+                <p><strong>Delivery:</strong> {scannedPickup.jamaicaRecipient}, {scannedPickup.jamaicaLocation}, Jamaica</p>
+                <p><strong>Service:</strong> {scannedPickup.serviceLevel}</p>
+              </div>
+              <label>
+                Pickup Notes
+                <textarea
+                  value={pickupConfirmation.notes}
+                  onChange={(e) => setPickupConfirmation({...pickupConfirmation, notes: e.target.value})}
+                  rows="3"
+                  placeholder="E.g. Heavy items, fragile items, special instructions..."
+                />
+              </label>
+              <div className="booking-nav" style={{marginTop: '1rem'}}>
+                <button type="button" className="btn btn--ghost" onClick={() => setScannedShipmentId('')}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn--solid" onClick={() => handlePickupConfirm(scannedPickup.shipmentId)} disabled={isLoading}>
+                  Confirm Pickup
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="section-intro" style={{color: '#d32f2f', marginTop: '1rem'}}>Shipment ID not found.</p>
+              <button type="button" className="btn btn--ghost" onClick={() => setScannedShipmentId('')}>
+                Back to List
+              </button>
+            </>
+          )}
+        </div>
+
+        <div>
+          <h2>Route Optimization</h2>
+          <p className="section-intro">Optimized pickup sequence for efficiency.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => {
+            const optimized = [...driverPickups].sort((a, b) => new Date(a.pickupDate) - new Date(b.pickupDate));
+            setDriverRoute(optimized);
+          }}>Generate Optimized Route</button>
+          {driverRoute.length > 0 && (
+            <ol className="status-list" style={{marginTop: '1rem'}}>
+              {driverRoute.map((p, idx) => (
+                <li key={p.shipmentId}>
+                  Stop {idx + 1}: {p.shipmentId} - {p.pickupCity}
+                </li>
+              ))}
+            </ol>
+          )}
+          <button type="button" className="btn btn--solid" onClick={handleDriverLogout} style={{marginTop: '2rem', width: '100%'}}>
+            Logout
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="page-shell">
       <header className="hero">
@@ -1374,7 +1651,16 @@ function App() {
             {item.label}
           </button>
         ))}
-        {isAuthenticated ? (
+        {driverAuthToken ? (
+          <>
+            <button type="button" className={currentPath === 'driver/dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/dashboard')}>
+              🚗 Driver Dashboard
+            </button>
+            <button type="button" className="nav-pill" onClick={handleDriverLogout}>
+              Driver Logout
+            </button>
+          </>
+        ) : isAuthenticated ? (
           <>
             <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
               Dashboard
@@ -1390,6 +1676,9 @@ function App() {
             </button>
             <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
               Create Account
+            </button>
+            <button type="button" className={currentPath === 'driver' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
+              🚗 Driver Login
             </button>
           </>
         )}
@@ -1409,6 +1698,9 @@ function App() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/account" element={<AccountPage />} />
+          {/* Phase 2: Driver Routes */}
+          {!driverAuthToken && <Route path="/driver/login" element={driverMode === 'register' ? <DriverRegisterPage /> : <DriverLoginPage />} />}
+          {driverAuthToken && <Route path="/driver/dashboard" element={<DriverDashboardPage />} />}
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>

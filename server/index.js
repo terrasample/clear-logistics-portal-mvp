@@ -39,6 +39,7 @@ async function ensureDataFile() {
   } catch {
     const initial = {
       accounts: [],
+      drivers: [],
       quotes: [],
       bookings: [],
       purchaseRequests: [],
@@ -64,6 +65,7 @@ async function readData() {
   const raw = await fs.readFile(dataFile, 'utf-8');
   const data = JSON.parse(raw);
   if (!Array.isArray(data.accounts)) data.accounts = [];
+  if (!Array.isArray(data.drivers)) data.drivers = [];
   if (!Array.isArray(data.quotes)) data.quotes = [];
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
@@ -454,6 +456,192 @@ app.post('/api/payments/checkout', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message || 'Unable to create Stripe checkout session.' });
   }
+});
+
+// ============================================================================
+// PHASE 2: DRIVER APP ENDPOINTS
+// ============================================================================
+
+app.post('/api/drivers/register', async (req, res) => {
+  const { fullName, email, password, phone, vehicle } = req.body || {};
+  if (!fullName || !email || !password || !phone || !vehicle) {
+    return res.status(400).json({ error: 'fullName, email, password, phone, and vehicle are required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.drivers)) data.drivers = [];
+  
+  const existing = data.drivers.find((d) => d.email.toLowerCase() === String(email).toLowerCase());
+  if (existing) {
+    return res.status(409).json({ error: 'Driver account already exists for this email.' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const driver = {
+    id: randomUUID(),
+    fullName,
+    email,
+    password: passwordHash,
+    phone,
+    vehicle,
+    role: 'driver',
+    status: 'active',
+    createdAt: new Date().toISOString()
+  };
+
+  data.drivers.push(driver);
+  await writeData(data);
+  await sendNotification('New Driver Registered', `Driver: ${fullName} <${email}> - Vehicle: ${vehicle}`);
+
+  res.status(201).json({ driver: { ...driver, password: undefined } });
+});
+
+app.post('/api/drivers/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.drivers)) data.drivers = [];
+  
+  const driver = data.drivers.find((d) => d.email.toLowerCase() === String(email).toLowerCase());
+  if (!driver) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  const passwordOk = await bcrypt.compare(password, driver.password);
+  if (!passwordOk) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  const token = jwt.sign(
+    {
+      sub: driver.id,
+      email: driver.email,
+      fullName: driver.fullName,
+      role: 'driver'
+    },
+    jwtSecret,
+    { expiresIn: '24h' }
+  );
+
+  res.json({
+    user: { ...driver, password: undefined },
+    token,
+    role: 'driver'
+  });
+});
+
+app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+
+  // Return all pending pickups (shipments not yet picked up)
+  const pickups = data.bookings
+    .filter((b) => b.pickupDate && !b.pickedUp)
+    .map((b) => {
+      const shipment = data.shipments.find((s) => s.shipmentId === b.shipmentId);
+      return {
+        shipmentId: b.shipmentId,
+        bookingId: b.bookingId,
+        fullName: b.fullName,
+        email: b.email,
+        phone: b.phone,
+        pickupAddress: b.pickupAddress,
+        pickupCity: b.pickupCity,
+        pickupZip: b.pickupZip,
+        pickupDate: b.pickupDate,
+        cargoType: b.cargoType,
+        quantity: b.quantity,
+        weight: b.weight,
+        jamaicaRecipient: b.jamaicaRecipient,
+        jamaicaLocation: b.jamaicaLocation,
+        serviceLevel: b.serviceLevel,
+        status: shipment?.status || 'Pickup Scheduled',
+        createdAt: b.createdAt
+      };
+    })
+    .sort((a, b) => new Date(a.pickupDate) - new Date(b.pickupDate));
+
+  res.json({ pickups, count: pickups.length });
+});
+
+app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const { notes, photoUrl } = req.body || {};
+  const shipmentId = req.params.shipmentId;
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+
+  const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
+  if (!booking) {
+    return res.status(404).json({ error: 'Pickup not found.' });
+  }
+
+  const shipment = data.shipments.find((s) => s.shipmentId === shipmentId);
+  if (shipment) {
+    shipment.status = 'Picked Up';
+    // Update milestone
+    if (Array.isArray(shipment.milestones)) {
+      const milestone = shipment.milestones.find((m) => m.label === 'Picked Up');
+      if (milestone) milestone.done = true;
+    }
+  }
+
+  booking.pickedUp = true;
+  booking.pickedUpAt = new Date().toISOString();
+  booking.pickedUpBy = req.user.fullName;
+  booking.pickupNotes = notes;
+  booking.pickupPhotoUrl = photoUrl;
+
+  await writeData(data);
+  await sendNotification('Pickup Confirmed', `Shipment ${shipmentId} picked up by ${req.user.fullName}`);
+
+  res.json({ booking, shipment, message: 'Pickup confirmed.' });
+});
+
+app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const pickups = data.bookings
+    .filter((b) => b.pickupDate && !b.pickedUp)
+    .map((b) => ({
+      shipmentId: b.shipmentId,
+      lat: 28.3949 + (Math.random() - 0.5) * 0.5, // Simulated lat around Miami
+      lng: -81.4872 + (Math.random() - 0.5) * 0.5, // Simulated lng around Miami
+      address: b.pickupAddress,
+      city: b.pickupCity,
+      zip: b.pickupZip
+    }));
+
+  // Simple distance sorting (in production, use actual routing API)
+  const optimizedRoute = pickups.sort((a, b) => {
+    const distA = Math.abs(a.lat - 28.3949) + Math.abs(a.lng + 81.4872);
+    const distB = Math.abs(b.lat - 28.3949) + Math.abs(b.lng + 81.4872);
+    return distA - distB;
+  });
+
+  res.json({
+    route: optimizedRoute,
+    totalStops: optimizedRoute.length,
+    estimatedTime: `${Math.round(optimizedRoute.length * 15)} minutes`
+  });
 });
 
 ensureDataFile()
