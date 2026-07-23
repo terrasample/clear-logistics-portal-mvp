@@ -84,6 +84,7 @@ async function ensureDataFile() {
       bookings: [],
       purchaseRequests: [],
       supportTickets: [],
+      routes: [],
       shipments: [
         {
           shipmentId: 'CLF-10025',
@@ -124,6 +125,7 @@ async function readData() {
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
   if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
+  if (!Array.isArray(data.routes)) data.routes = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
   return data;
 }
@@ -624,6 +626,78 @@ async function seedDriverDemoData() {
   }
 }
 
+function getActiveDrivers(data) {
+  return (data.drivers || []).filter((d) => String(d?.status || 'active').toLowerCase() === 'active');
+}
+
+function getPendingAssignmentCount(data, driverId) {
+  return (data.bookings || []).filter((b) => !b.pickedUp && b.assignedDriverId === driverId).length;
+}
+
+function autoAssignUnassignedBookings(data) {
+  const drivers = getActiveDrivers(data);
+  if (!drivers.length) {
+    return { assignedCount: 0, changed: false };
+  }
+
+  const counts = new Map(drivers.map((d) => [d.id, getPendingAssignmentCount(data, d.id)]));
+  const unassigned = (data.bookings || [])
+    .filter((b) => !b.pickedUp && !b.assignedDriverId)
+    .sort((a, b) => {
+      const aDate = Number.isFinite(Date.parse(a.pickupDate)) ? Date.parse(a.pickupDate) : Number.MAX_SAFE_INTEGER;
+      const bDate = Number.isFinite(Date.parse(b.pickupDate)) ? Date.parse(b.pickupDate) : Number.MAX_SAFE_INTEGER;
+      if (aDate !== bDate) return aDate - bDate;
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+    });
+
+  let assignedCount = 0;
+  for (const booking of unassigned) {
+    const nextDriver = [...drivers].sort((a, b) => {
+      const countDelta = (counts.get(a.id) || 0) - (counts.get(b.id) || 0);
+      if (countDelta !== 0) return countDelta;
+      return String(a.id).localeCompare(String(b.id));
+    })[0];
+
+    if (!nextDriver) {
+      continue;
+    }
+
+    booking.assignedDriverId = nextDriver.id;
+    booking.assignedDriverName = nextDriver.fullName;
+    booking.assignedAt = new Date().toISOString();
+    booking.assignmentMode = 'auto';
+    counts.set(nextDriver.id, (counts.get(nextDriver.id) || 0) + 1);
+    assignedCount += 1;
+  }
+
+  return { assignedCount, changed: assignedCount > 0 };
+}
+
+function startOfDay(dateValue) {
+  const d = new Date(dateValue);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function findActiveRouteForDriver(data, driverId) {
+  if (!Array.isArray(data.routes)) {
+    return null;
+  }
+  return data.routes.find((route) => route.driverId === driverId && route.status === 'active') || null;
+}
+
+function routeProgress(route) {
+  const total = Array.isArray(route?.stops) ? route.stops.length : 0;
+  const completed = Array.isArray(route?.stops)
+    ? route.stops.filter((s) => s.status === 'completed').length
+    : 0;
+  return {
+    total,
+    completed,
+    pending: Math.max(0, total - completed),
+  };
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, stripe: Boolean(stripe), timestamp: new Date().toISOString() });
 });
@@ -987,6 +1061,10 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
     ...payload,
     unitType,
     paymentStatus: 'pending',
+    assignedDriverId: null,
+    assignedDriverName: null,
+    assignedAt: null,
+    assignmentMode: null,
     createdAt: new Date().toISOString()
   };
 
@@ -1002,10 +1080,23 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
     milestones: DEFAULT_MILESTONES
   });
 
+  const assignment = autoAssignUnassignedBookings(data);
+
   await writeData(data);
   await sendNotification('New Shipment Booking', `Shipment ${shipmentId} booked by ${payload.fullName} - ${payload.quantity} x ${payload.unitType}`);
 
-  res.status(201).json({ booking, shipmentId, message: 'Pickup scheduled successfully.' });
+  const savedBooking = data.bookings.find((b) => b.shipmentId === shipmentId) || booking;
+  res.status(201).json({
+    booking: savedBooking,
+    shipmentId,
+    assignment: {
+      mode: savedBooking.assignmentMode,
+      assignedDriverId: savedBooking.assignedDriverId,
+      assignedDriverName: savedBooking.assignedDriverName,
+      autoAssignedInBatch: assignment.assignedCount,
+    },
+    message: 'Pickup scheduled successfully.'
+  });
 });
 
 app.get('/api/shipments/:shipmentId', async (req, res) => {
@@ -1231,6 +1322,26 @@ app.post('/api/drivers/login', async (req, res) => {
   });
 });
 
+app.post('/api/drivers/assignments/auto', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const data = await readData();
+  const result = autoAssignUnassignedBookings(data);
+  if (result.changed) {
+    await writeData(data);
+  }
+
+  return res.json({
+    ok: true,
+    assignedCount: result.assignedCount,
+    message: result.assignedCount
+      ? `Auto-assigned ${result.assignedCount} pickups.`
+      : 'No unassigned pickups found.',
+  });
+});
+
 app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
   if (req.user.role !== 'driver') {
     return res.status(403).json({ error: 'Driver access required.' });
@@ -1240,9 +1351,13 @@ app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
 
-  // Return all pending pickups (shipments not yet picked up)
+  const assignment = autoAssignUnassignedBookings(data);
+  if (assignment.changed) {
+    await writeData(data);
+  }
+
   const pickups = data.bookings
-    .filter((b) => b.pickupDate && !b.pickedUp)
+    .filter((b) => b.pickupDate && !b.pickedUp && b.assignedDriverId === req.user.sub)
     .map((b) => {
       const shipment = data.shipments.find((s) => s.shipmentId === b.shipmentId);
       return {
@@ -1261,6 +1376,10 @@ app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
         jamaicaRecipient: b.jamaicaRecipient,
         jamaicaLocation: b.jamaicaLocation,
         serviceLevel: b.serviceLevel,
+        assignedDriverId: b.assignedDriverId,
+        assignedDriverName: b.assignedDriverName,
+        assignedAt: b.assignedAt,
+        assignmentMode: b.assignmentMode,
         status: shipment?.status || 'Pickup Scheduled',
         createdAt: b.createdAt
       };
@@ -1287,6 +1406,10 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
     return res.status(404).json({ error: 'Pickup not found.' });
   }
 
+  if (booking.assignedDriverId && booking.assignedDriverId !== req.user.sub) {
+    return res.status(403).json({ error: 'This pickup is assigned to a different driver.' });
+  }
+
   const shipment = data.shipments.find((s) => s.shipmentId === shipmentId);
   if (shipment) {
     shipment.status = 'Picked Up';
@@ -1303,10 +1426,182 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
   booking.pickupNotes = notes;
   booking.pickupPhotoUrl = photoUrl;
 
+  const activeRoute = findActiveRouteForDriver(data, req.user.sub);
+  if (activeRoute && Array.isArray(activeRoute.stops)) {
+    const routeStop = activeRoute.stops.find((s) => s.shipmentId === shipmentId);
+    if (routeStop && routeStop.status !== 'completed') {
+      routeStop.status = 'completed';
+      routeStop.completedAt = new Date().toISOString();
+      activeRoute.lastCompletedShipmentId = shipmentId;
+      activeRoute.lastUpdatedAt = new Date().toISOString();
+    }
+
+    const progress = routeProgress(activeRoute);
+    activeRoute.progress = progress;
+    if (progress.pending === 0 && activeRoute.status === 'active') {
+      activeRoute.status = 'completed';
+      activeRoute.completedAt = new Date().toISOString();
+    }
+  }
+
   await writeData(data);
   await sendNotification('Pickup Confirmed', `Shipment ${shipmentId} picked up by ${req.user.fullName}`);
 
-  res.json({ booking, shipment, message: 'Pickup confirmed.' });
+  res.json({ booking, shipment, activeRoute: activeRoute || null, message: 'Pickup confirmed.' });
+});
+
+app.get('/api/drivers/routes/active', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.routes)) data.routes = [];
+
+  const activeRoute = findActiveRouteForDriver(data, req.user.sub);
+  return res.json({ route: activeRoute || null });
+});
+
+app.post('/api/drivers/routes/start', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const stopShipmentIds = Array.isArray(req.body?.stopShipmentIds)
+    ? req.body.stopShipmentIds.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+
+  if (!stopShipmentIds.length) {
+    return res.status(400).json({ error: 'stopShipmentIds is required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.routes)) data.routes = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const existingActive = findActiveRouteForDriver(data, req.user.sub);
+  if (existingActive) {
+    return res.status(409).json({ error: 'Driver already has an active route.', route: existingActive });
+  }
+
+  const allowedShipments = new Set(
+    data.bookings
+      .filter((b) => !b.pickedUp && b.assignedDriverId === req.user.sub)
+      .map((b) => b.shipmentId)
+  );
+
+  const uniqueStopIds = [...new Set(stopShipmentIds)].filter((id) => allowedShipments.has(id));
+  if (!uniqueStopIds.length) {
+    return res.status(400).json({ error: 'No valid assigned pickups were provided.' });
+  }
+
+  const stops = uniqueStopIds.map((shipmentId, index) => {
+    const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
+    return {
+      order: index + 1,
+      shipmentId,
+      pickupAddress: booking?.pickupAddress || '',
+      pickupCity: booking?.pickupCity || '',
+      pickupZip: booking?.pickupZip || '',
+      pickupDate: booking?.pickupDate || '',
+      status: 'pending',
+      completedAt: null,
+    };
+  });
+
+  const route = {
+    routeId: `RTE-${Date.now()}`,
+    driverId: req.user.sub,
+    driverName: req.user.fullName,
+    status: 'active',
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    stops,
+    progress: routeProgress({ stops }),
+    locationTrail: [],
+    startedFrom: {
+      lat: Number(req.body?.startLat),
+      lng: Number(req.body?.startLng),
+    },
+  };
+
+  data.routes.push(route);
+  await writeData(data);
+  await sendNotification('Driver Route Started', `Route ${route.routeId} started by ${req.user.fullName} with ${stops.length} stops.`);
+
+  return res.status(201).json({ route, message: 'Route tracking started.' });
+});
+
+app.post('/api/drivers/routes/:routeId/location', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const routeId = String(req.params.routeId || '').trim();
+  const lat = Number(req.body?.lat);
+  const lng = Number(req.body?.lng);
+
+  if (!routeId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({ error: 'routeId, lat, and lng are required.' });
+  }
+
+  const data = await readData();
+  const route = (data.routes || []).find((r) => r.routeId === routeId && r.driverId === req.user.sub);
+  if (!route) {
+    return res.status(404).json({ error: 'Route not found.' });
+  }
+
+  if (!Array.isArray(route.locationTrail)) route.locationTrail = [];
+  route.locationTrail.push({
+    lat,
+    lng,
+    at: new Date().toISOString(),
+    speedKph: Number.isFinite(Number(req.body?.speedKph)) ? Number(req.body?.speedKph) : null,
+  });
+  if (route.locationTrail.length > 200) {
+    route.locationTrail = route.locationTrail.slice(route.locationTrail.length - 200);
+  }
+
+  route.lastKnownLocation = { lat, lng, at: new Date().toISOString() };
+  await writeData(data);
+
+  return res.json({ ok: true, routeId, points: route.locationTrail.length });
+});
+
+app.put('/api/drivers/routes/:routeId/stops/:shipmentId/complete', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const routeId = String(req.params.routeId || '').trim();
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  const data = await readData();
+
+  const route = (data.routes || []).find((r) => r.routeId === routeId && r.driverId === req.user.sub);
+  if (!route) {
+    return res.status(404).json({ error: 'Route not found.' });
+  }
+
+  const stop = (route.stops || []).find((s) => s.shipmentId === shipmentId);
+  if (!stop) {
+    return res.status(404).json({ error: 'Stop not found on route.' });
+  }
+
+  if (stop.status !== 'completed') {
+    stop.status = 'completed';
+    stop.completedAt = new Date().toISOString();
+    route.lastCompletedShipmentId = shipmentId;
+    route.lastUpdatedAt = new Date().toISOString();
+  }
+
+  route.progress = routeProgress(route);
+  if (route.progress.pending === 0 && route.status === 'active') {
+    route.status = 'completed';
+    route.completedAt = new Date().toISOString();
+  }
+
+  await writeData(data);
+  return res.json({ route, message: `Stop ${shipmentId} marked complete.` });
 });
 
 app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
@@ -1316,6 +1611,11 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
 
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const assignment = autoAssignUnassignedBookings(data);
+  if (assignment.changed) {
+    await writeData(data);
+  }
 
   const cityCenters = {
     miami: { lat: 25.7617, lng: -80.1918 },
@@ -1368,11 +1668,17 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
     return R * c;
   };
 
+  const todayStart = startOfDay(new Date());
+
   const pendingPickups = data.bookings
-    .filter((b) => b.pickupDate && !b.pickedUp)
+    .filter((b) => b.pickupDate && !b.pickedUp && b.assignedDriverId === req.user.sub)
     .map((b) => {
       const pickupCity = String(b.pickupCity || '').trim();
       const pickupDateValue = Number.isFinite(Date.parse(b.pickupDate)) ? Date.parse(b.pickupDate) : Number.MAX_SAFE_INTEGER;
+      const pickupDay = pickupDateValue === Number.MAX_SAFE_INTEGER ? null : startOfDay(pickupDateValue);
+      const daysUntilPickup = pickupDay
+        ? Math.floor((pickupDay.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
+        : 999;
       const serviceRank = servicePriority[b.serviceLevel] || 9;
       const coords = estimateCoordinates({
         pickupAddress: b.pickupAddress,
@@ -1391,6 +1697,7 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
         serviceLevel: b.serviceLevel,
         cargoType: b.cargoType,
         pickupDateValue,
+        daysUntilPickup,
         serviceRank,
         lat: coords.lat,
         lng: coords.lng,
@@ -1429,13 +1736,36 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
     let nextIndex = 0;
     let bestScore = Number.POSITIVE_INFINITY;
 
-    for (let i = 0; i < remaining.length; i += 1) {
-      const candidate = remaining[i];
+    const overdueOrToday = remaining.filter((candidate) => candidate.daysUntilPickup <= 0);
+    const tomorrow = remaining.filter((candidate) => candidate.daysUntilPickup === 1);
+    const nearTerm = remaining.filter((candidate) => candidate.daysUntilPickup <= 3);
+    const candidatePool = overdueOrToday.length
+      ? overdueOrToday
+      : tomorrow.length
+        ? tomorrow
+        : nearTerm.length
+          ? nearTerm
+          : remaining;
+
+    for (const candidate of candidatePool) {
+      const i = remaining.findIndex((stop) => stop.shipmentId === candidate.shipmentId);
+      if (i < 0) continue;
+
       const distanceKm = haversineKm(runningPoint, candidate);
       const urgencyPenalty = candidate.serviceRank * 2.25;
-      const datePenalty = candidate.pickupDateValue === Number.MAX_SAFE_INTEGER
-        ? 250
-        : Math.max(0, (candidate.pickupDateValue - Date.now()) / (1000 * 60 * 60 * 24));
+
+      let datePenalty = 0;
+      if (candidate.daysUntilPickup <= 0) {
+        datePenalty = -28 + (Math.abs(candidate.daysUntilPickup) * 1.25);
+      } else if (candidate.daysUntilPickup === 1) {
+        datePenalty = -14;
+      } else if (candidate.daysUntilPickup === 2) {
+        datePenalty = -8;
+      } else if (candidate.daysUntilPickup === 3) {
+        datePenalty = -3;
+      } else {
+        datePenalty = candidate.daysUntilPickup * 1.9;
+      }
 
       const score = distanceKm + urgencyPenalty + datePenalty;
       if (score < bestScore) {
@@ -1462,7 +1792,7 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
   const driveMinutes = (totalDistanceKm / avgCityDrivingKmh) * 60;
   const estimatedMinutes = Math.max(15, Math.round(stopHandlingMinutes + driveMinutes));
 
-  const optimizedRoute = ordered.map(({ pickupDateValue, serviceRank, ...stop }) => stop);
+  const optimizedRoute = ordered.map(({ pickupDateValue, serviceRank, daysUntilPickup, ...stop }) => stop);
 
   res.json({
     route: optimizedRoute,
@@ -1470,8 +1800,8 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
     estimatedTime: `${Math.max(15, Math.round(estimatedMinutes))} minutes`,
     totalDistanceKm: Number(totalDistanceKm.toFixed(1)),
     strategy: hasDriverLocation
-      ? 'distance-from-current-location -> service urgency -> pickup date'
-      : 'distance clustering from stop centroid -> service urgency -> pickup date',
+      ? 'date windows (overdue/today first) -> distance from current location -> service urgency'
+      : 'date windows (overdue/today first) -> distance clustering from stop centroid -> service urgency',
   });
 });
 

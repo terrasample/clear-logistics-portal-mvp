@@ -574,6 +574,7 @@ function App() {
   const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
   const [driverPickups, setDriverPickups] = useState([]);
   const [driverRoute, setDriverRoute] = useState([]);
+  const [activeDriverRoute, setActiveDriverRoute] = useState(null);
   const [driverRouteMeta, setDriverRouteMeta] = useState({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
   const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
@@ -602,6 +603,17 @@ function App() {
       setShopAccessMode('account');
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!driverAuthToken) {
+      setDriverPickups([]);
+      setActiveDriverRoute(null);
+      return;
+    }
+
+    fetchDriverPickups(driverAuthToken);
+    fetchDriverActiveRoute(driverAuthToken);
+  }, [driverAuthToken]);
 
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
@@ -1334,6 +1346,7 @@ function App() {
       setDriverMode('dashboard');
       setStatusMessage(`Welcome back, ${result.user.fullName}!`);
       fetchDriverPickups(result.token);
+      fetchDriverActiveRoute(result.token);
       navigate('/driver/dashboard');
     } catch (error) {
       setStatusMessage(error.message);
@@ -1374,6 +1387,77 @@ function App() {
       if (response.ok) setDriverPickups(result.pickups || []);
     } catch (error) {
       console.error('Failed to fetch pickups:', error);
+    }
+  }
+
+  async function fetchDriverActiveRoute(token) {
+    try {
+      const response = await fetch(`${API_BASE}/drivers/routes/active`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setActiveDriverRoute(result.route || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch active route:', error);
+    }
+  }
+
+  async function handleStartRouteTracking() {
+    if (!driverAuthToken) {
+      setStatusMessage('Driver session expired. Please log in again.');
+      return;
+    }
+
+    if (!driverRoute.length) {
+      setStatusMessage('Generate an optimized route before starting route tracking.');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMessage('');
+    try {
+      const withLocation = await new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          resolve(null);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 120000 }
+        );
+      });
+
+      const response = await fetch(`${API_BASE}/drivers/routes/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${driverAuthToken}`,
+        },
+        body: JSON.stringify({
+          stopShipmentIds: driverRoute.map((stop) => stop.shipmentId),
+          startLat: withLocation?.lat,
+          startLng: withLocation?.lng,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to start route tracking.');
+
+      setActiveDriverRoute(result.route || null);
+      setStatusMessage(`Route tracking started (${result.route?.routeId || 'active route'}).`);
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -1482,6 +1566,11 @@ function App() {
       setScannedShipmentId('');
       setPickupConfirmation({ notes: '', photoUrl: '' });
       fetchDriverPickups(driverAuthToken);
+      if (result.activeRoute) {
+        setActiveDriverRoute(result.activeRoute);
+      } else {
+        fetchDriverActiveRoute(driverAuthToken);
+      }
       setDriverRoute([]);
       setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
     } catch (error) {
@@ -1496,6 +1585,10 @@ function App() {
     localStorage.removeItem('driverUser');
     setDriverAuthToken(null);
     setDriverUser(null);
+    setDriverPickups([]);
+    setDriverRoute([]);
+    setActiveDriverRoute(null);
+    setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
     setDriverMode('login');
     setStatusMessage('Driver logout successful.');
     navigate('/');
@@ -3410,13 +3503,14 @@ function App() {
                   onChange={(e) => setScannedShipmentId(e.target.value)}
                 />
               </label>
-              <h3 style={{marginTop: '2rem'}}>Your Pickups ({driverPickups.length})</h3>
+              <h3 style={{marginTop: '2rem'}}>Assigned Pickups ({driverPickups.length})</h3>
               <div className="pickups-list">
                 {driverPickups.length > 0 ? (
                   <ul className="status-list">
                     {driverPickups.map(p => (
                       <li key={p.shipmentId} style={{cursor: 'pointer', padding: '0.5rem', borderBottom: '1px solid #e0e0e0'}} onClick={() => setScannedShipmentId(p.shipmentId)}>
                         <strong>{p.shipmentId}</strong> - {p.fullName} ({p.pickupCity})
+                        <small style={{ marginLeft: '0.4rem' }}>• Pickup: {p.pickupDate || 'TBD'}</small>
                       </li>
                     ))}
                   </ul>
@@ -3474,7 +3568,7 @@ function App() {
 
         <div>
           <h2>Route Optimization</h2>
-          <p className="section-intro">Optimized by location proximity first, then service urgency and pickup date.</p>
+          <p className="section-intro">Optimized with date windows first (overdue/today), then distance, then service urgency.</p>
           <button type="button" className="btn btn--ghost" onClick={handleGenerateOptimizedRoute} disabled={isLoading}>
             Generate Optimized Route
           </button>
@@ -3485,6 +3579,21 @@ function App() {
               {' • '}Estimated driving window: {driverRouteMeta.estimatedTime || 'TBD'}
             </p>
           )}
+
+          {driverRoute.length > 0 && !activeDriverRoute && (
+            <button type="button" className="btn btn--solid" style={{ marginTop: '0.6rem' }} onClick={handleStartRouteTracking} disabled={isLoading}>
+              Start Route Tracking
+            </button>
+          )}
+
+          {activeDriverRoute && (
+            <div className="booking-summary" style={{ marginTop: '0.9rem' }}>
+              <p><strong>Active Route:</strong> {activeDriverRoute.routeId}</p>
+              <p><strong>Status:</strong> {activeDriverRoute.status}</p>
+              <p><strong>Progress:</strong> {activeDriverRoute.progress?.completed || 0}/{activeDriverRoute.progress?.total || 0} stops completed</p>
+            </div>
+          )}
+
           {driverRoute.length > 0 && (
             <ol className="status-list" style={{marginTop: '1rem'}}>
               {driverRoute.map((p, idx) => (
