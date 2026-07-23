@@ -172,80 +172,6 @@ const BOX_PRESETS = [
 
 const BOOKING_DRAFT_KEY = 'clf_booking_draft_v1';
 
-const DEMO_DASHBOARD_SHIPMENTS = [
-  {
-    shipmentId: 'CLF-10025',
-    lane: 'Box (Standard)',
-    status: 'At Miami Warehouse',
-    paymentStatus: 'Paid',
-    eta: '5-8 business days',
-    progress: 38,
-    steps: [
-      { label: 'Pickup Scheduled', done: true },
-      { label: 'Picked Up', done: true },
-      { label: 'At Miami Warehouse', done: true },
-      { label: 'Loaded on Vessel', done: false },
-      { label: 'Arrived in Kingston', done: false },
-      { label: 'Out for Delivery', done: false },
-      { label: 'Delivered', done: false },
-    ],
-  },
-  {
-    shipmentId: 'CLF-10041',
-    lane: 'Barrel (Premium)',
-    status: 'Out for Delivery',
-    paymentStatus: 'Paid',
-    eta: 'Today by 6:00 PM',
-    progress: 88,
-    steps: [
-      { label: 'Pickup Scheduled', done: true },
-      { label: 'Picked Up', done: true },
-      { label: 'At Miami Warehouse', done: true },
-      { label: 'Loaded on Vessel', done: true },
-      { label: 'Arrived in Kingston', done: true },
-      { label: 'Customs Clearance', done: true },
-      { label: 'Out for Delivery', done: true },
-      { label: 'Delivered', done: false },
-    ],
-  },
-  {
-    shipmentId: 'CLF-10067',
-    lane: 'Pallet (Commercial)',
-    status: 'Delivered',
-    paymentStatus: 'Paid',
-    eta: 'Completed',
-    progress: 100,
-    steps: [
-      { label: 'Pickup Scheduled', done: true },
-      { label: 'Picked Up', done: true },
-      { label: 'At Miami Warehouse', done: true },
-      { label: 'Loaded on Vessel', done: true },
-      { label: 'Arrived in Kingston', done: true },
-      { label: 'Customs Clearance', done: true },
-      { label: 'Out for Delivery', done: true },
-      { label: 'Delivered', done: true },
-    ],
-  },
-  {
-    shipmentId: 'CLF-10088',
-    lane: 'Barrel (Economy)',
-    status: 'Pickup Scheduled',
-    paymentStatus: 'Pending',
-    eta: 'Pickup tomorrow',
-    progress: 12,
-    steps: [
-      { label: 'Pickup Scheduled', done: true },
-      { label: 'Picked Up', done: false },
-      { label: 'At Miami Warehouse', done: false },
-      { label: 'Loaded on Vessel', done: false },
-      { label: 'Arrived in Kingston', done: false },
-      { label: 'Customs Clearance', done: false },
-      { label: 'Out for Delivery', done: false },
-      { label: 'Delivered', done: false },
-    ],
-  },
-];
-
 const PRICING = [
   { lane: 'Barrel (Standard)', eta: '10-15 business days', from: '$85' },
   { lane: 'Box (Medium)', eta: '7-12 business days', from: '$45' },
@@ -336,8 +262,8 @@ const CHATBOT_PROMPTS = [
     answer: `Click ${BOOKING_TAB_LABEL}, open ${BOOKING_PAGE_LABEL}, complete the 5 booking steps, then log in to finalize shipment and payment.`
   },
   {
-    label: 'What shipment IDs can I demo?',
-    answer: 'Try CLF-10025, CLF-10041, CLF-10067, CLF-10088, CLF-10102, or CLF-10109.'
+    label: 'How do I find my shipment ID?',
+    answer: 'Use the shipment ID shown on your Dashboard, booking confirmation, or payment confirmation message.'
   },
   {
     label: 'How do I track my shipment?',
@@ -360,7 +286,7 @@ const CHATBOT_PROMPTS = [
 function getChatbotReply(message) {
   const normalized = message.trim().toLowerCase();
   if (!normalized) {
-    return 'Ask me about booking, tracking, payment, FAQs, or demo shipment IDs.';
+    return 'Ask me about booking, tracking, payment, FAQs, and support contact.';
   }
 
   if (normalized.includes('book') || normalized.includes('shipment')) {
@@ -368,7 +294,7 @@ function getChatbotReply(message) {
   }
 
   if (normalized.includes('track') || normalized.includes('status') || normalized.includes('shipment id')) {
-    return 'Go to Track Shipment and enter a shipment ID. For demo, try CLF-10025 or CLF-10102.';
+    return 'Go to Track Shipment and enter your shipment ID from your Dashboard or confirmation message.';
   }
 
   if (normalized.includes('pay') || normalized.includes('payment') || normalized.includes('checkout')) {
@@ -384,10 +310,10 @@ function getChatbotReply(message) {
   }
 
   if (normalized.includes('demo') || normalized.includes('test')) {
-    return 'For demo use test@example.com / password123 and track CLF-10025, CLF-10041, CLF-10067, or CLF-10102.';
+    return 'For security and data integrity, each account only sees its own shipments. Sign in and use your own shipment ID from Dashboard.';
   }
 
-  return 'I can help with booking, tracking, payment, FAQs, demo IDs, and support contact. Try one of the suggested questions.';
+  return 'I can help with booking, tracking, payment, FAQs, and support contact. Try one of the suggested questions.';
 }
 
 function createEmptyShopItem() {
@@ -633,7 +559,7 @@ function App() {
     {
       id: 'assistant-welcome',
       role: 'assistant',
-      text: 'Hi, I can help with booking, tracking, payment, FAQs, and demo shipment IDs.'
+      text: 'Hi, I can help with booking, tracking, payment, FAQs, and support.'
     }
   ]);
   const chatMessageIdRef = useRef(0);
@@ -3547,7 +3473,7 @@ function App() {
             <input
               value={trackingId}
               onChange={(e) => setTrackingId(e.target.value)}
-              placeholder="Enter shipment ID (e.g., CLF-10025)"
+              placeholder="Enter shipment ID (e.g., CLF-12345)"
             />
           </label>
           <button type="button" className="btn btn--ghost" onClick={handleTrackShipment} disabled={isLoading}>
@@ -4978,7 +4904,7 @@ function App() {
             <div className="chat-panel__header">
               <div>
                 <strong>AI Chat Assistant</strong>
-                <p>Ask about booking, tracking, payment, or demo shipments.</p>
+                <p>Ask about booking, tracking, payment, or support.</p>
               </div>
               <button type="button" className="chat-panel__close" onClick={() => setChatOpen(false)} aria-label="Close chat assistant">
                 ×
