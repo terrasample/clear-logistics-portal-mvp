@@ -2102,91 +2102,136 @@ function App() {
       : [];
 
     return (
-      <section className="card estimator-page">
-        <div className="estimator-page__lead">
-          <p className="estimator-page__eyebrow">Pre-checkout Intelligence</p>
-          <h2>AI Cart Link Estimator</h2>
-          <p className="section-intro">Paste product/cart links from US stores to get a quick landed-cost estimate before checkout.</p>
-          <p className="section-intro" style={{ marginTop: '-0.35rem' }}>For Amazon or other cart URLs, enter your actual store subtotal. The estimator will use that subtotal directly.</p>
-
-          <div className="shop-estimator estimator-panel">
-            <label className="estimator-field">
-              Product/Cart Links (one per line)
-              <textarea
-                rows="6"
-                value={estimatorLinks}
-                onChange={(event) => setEstimatorLinks(event.target.value)}
-                placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/..."
-              />
-            </label>
-            <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
-              Store Cart Subtotal (USD) - Required for cart links
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={estimatorSubtotalInput}
-                onChange={(event) => setEstimatorSubtotalInput(event.target.value)}
-                placeholder="e.g. 224.40"
-              />
-            </label>
-            <div className="estimator-panel__actions">
-              <button type="button" className="btn btn--ghost" onClick={runLinkEstimator}>
-                Estimate Full Shipping Cost
-              </button>
+      <>
+        <section className="card estimator-hero">
+          <div style={{ maxWidth: '700px' }}>
+            <p className="estimator-page__eyebrow">✨ Signature Feature</p>
+            <h1 style={{ fontSize: '2.2rem', marginBottom: '1rem' }}>Smart Shipping Estimator</h1>
+            <p className="section-intro" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
+              Paste an Amazon, Walmart, eBay, Gucci, or any US store product/cart link. 
+              Get an instant landed-cost estimate including shipping, duties, and processing fees—all in seconds.
+            </p>
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(11, 107, 97, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--brand)' }}>
+              <p style={{ margin: '0', fontSize: '0.95rem', fontWeight: '500' }}>
+                💡 <strong>Pro Tip:</strong> For cart links (like Amazon), paste your actual cart subtotal below. 
+                For individual product links, just paste the link.
+              </p>
             </div>
+          </div>
+        </section>
 
-            {estimatorResult && (
-              <div className="estimator-results">
-                <div className="estimator-metrics">
-                  {estimatorMetrics.map((metric) => (
-                    <article key={metric.label} className="estimator-metric">
-                      <span>{metric.label}</span>
-                      <strong>{metric.value}</strong>
-                    </article>
-                  ))}
-                </div>
-                {estimatorResult.missing.length > 0 && (
-                  <div className="estimator-notes">
-                    <p><strong>Improve Accuracy</strong></p>
-                    <ul className="type-list">
-                      {estimatorResult.missing.map((msg) => (
-                        <li key={msg}>{msg}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <button type="button" className="btn btn--solid" onClick={handleImportAndGoToShop}>
-                  Import Estimate to Shop & Ship Cart
+        <section className="card estimator-page">
+          <div className="estimator-page__lead">
+            <h2>Estimate Your Shipping</h2>
+
+            <div className="shop-estimator estimator-panel">
+              <label className="estimator-field">
+                Product/Cart Links (one per line)
+                <textarea
+                  rows="6"
+                  value={estimatorLinks}
+                  onChange={(event) => setEstimatorLinks(event.target.value)}
+                  placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/...&#10;https://www.amazon.com/gp/cart/view.html?ref_=nav_cart"
+                />
+              </label>
+              <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
+                Store Cart Subtotal (USD) - Required for cart links
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={estimatorSubtotalInput}
+                  onChange={(event) => setEstimatorSubtotalInput(event.target.value)}
+                  placeholder="e.g. 224.40"
+                />
+              </label>
+              <div className="estimator-panel__actions">
+                <button type="button" className="btn btn--solid" onClick={runLinkEstimator}>
+                  🚀 Get Instant Estimate
                 </button>
               </div>
-            )}
-          </div>
-        </div>
 
-        <div className="estimator-page__guide">
-          <div className="estimator-guide-card">
-            <h3>How To Use</h3>
-            <ul className="type-list">
-              <li>Paste links from one or multiple stores.</li>
-              <li>Review confidence and estimated landed total.</li>
-              <li>Import to Shop & Ship and complete checkout.</li>
-            </ul>
+              {estimatorResult && (
+                <div className="estimator-results">
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: 'var(--brand)' }}>Your Estimate</h3>
+                  <div className="estimator-metrics">
+                    {estimatorMetrics.map((metric) => (
+                      <article key={metric.label} className="estimator-metric">
+                        <span>{metric.label}</span>
+                        <strong>{metric.value}</strong>
+                      </article>
+                    ))}
+                  </div>
+                  {estimatorResult.missing.length > 0 && (
+                    <div className="estimator-notes">
+                      <p><strong>Improve Accuracy</strong></p>
+                      <ul className="type-list">
+                        {estimatorResult.missing.map((msg) => (
+                          <li key={msg}>{msg}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <button type="button" className="btn btn--solid" onClick={handleImportAndGoToShop} style={{ marginTop: '1.5rem', width: '100%' }}>
+                    📦 Add to Shop & Ship Cart
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="estimator-guide-card estimator-guide-card--accent">
-            <h3>For Better Estimates</h3>
-            <ul className="type-list">
-              <li>Use exact product page URLs instead of generic store homepages.</li>
-              <li>Include multiple links when your cart has different item types.</li>
-              <li>Confirm final totals in Shop & Ship before payment.</li>
-            </ul>
-            <button type="button" className="btn btn--solid" onClick={() => navigate('/shop')}>
-              Go to Shop & Ship
-            </button>
+          <div className="estimator-page__guide">
+            <div className="estimator-guide-card">
+              <h3>📋 How To Use</h3>
+              <ul className="type-list">
+                <li><strong>Paste Links:</strong> One per line from US stores</li>
+                <li><strong>Enter Subtotal:</strong> Required for cart URLs only</li>
+                <li><strong>Get Estimate:</strong> Instant landed-cost breakdown</li>
+                <li><strong>Import & Ship:</strong> Add to Shop & Ship and checkout</li>
+              </ul>
+            </div>
+
+            <div className="estimator-guide-card estimator-guide-card--accent">
+              <h3>⭐ For Best Results</h3>
+              <ul className="type-list">
+                <li>Use exact product page URLs</li>
+                <li>Mix product + cart links as needed</li>
+                <li>Confirm totals in Shop & Ship</li>
+                <li>Custom items? Use "Get a Quote"</li>
+              </ul>
+              <button type="button" className="btn btn--solid" onClick={() => navigate('/shop')}>
+                Go to Shop & Ship
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="card" style={{ background: '#f9f9f9', textAlign: 'center' }}>
+          <h2>Why Use the AI Estimator?</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>⚡</p>
+              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Instant Quotes</h3>
+              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>No waiting. Get your landed cost in seconds.</p>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>🎯</p>
+              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Accurate Pricing</h3>
+              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>Includes shipping, duties, taxes, and processing fees.</p>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>🛍️</p>
+              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Shop Freely</h3>
+              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>Browse any US store, know the total cost upfront.</p>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>✅</p>
+              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Book & Ship</h3>
+              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>One-click import to checkout. No surprises at payment.</p>
+            </div>
+          </div>
+        </section>
+      </>
     );
   }
 
@@ -2491,94 +2536,187 @@ function App() {
 
     return (
       <>
-        <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '2rem' }}>
+        {/* Welcome Banner */}
+        <section className="card dashboard-welcome" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '2rem' }}>
             <div>
               <h2>Welcome back, {currentUser?.fullName || 'Customer'}! 👋</h2>
-              <p className="section-intro">Manage your shipments and track deliveries in real time.</p>
+              <p className="section-intro">Track your shipments in real time and get instant quotes on new shipments.</p>
             </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn--solid"
+                onClick={() => navigate('/book-pickup')}
+                style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+              >
+                📦 Book Shipment
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => navigate('/cart-estimator')}
+                style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+              >
+                🤖 AI Estimator
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Active Shipment with Progress Milestone */}
+        {activeShipment && (
+          <section className="card dashboard-shipment">
+            <h2 style={{ marginBottom: '1.5rem' }}>Your Active Shipment</h2>
+            <div className="shipment-header">
+              <div>
+                <p className="shipment-id">{activeShipment.shipmentId}</p>
+                <p style={{ margin: '0.25rem 0', color: '#666', fontSize: '0.95rem' }}>{activeShipment.lane}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: '0', fontWeight: 'bold', color: '#0b6b61' }}>{activeShipment.status}</p>
+                <p style={{ margin: '0.25rem 0', color: '#666', fontSize: '0.9rem' }}>ETA: {activeShipment.eta}</p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="progress-shell" style={{ margin: '1.5rem 0' }}>
+              <div className="progress-label">
+                <span>Journey Progress</span>
+                <span>{activeShipment.progress}%</span>
+              </div>
+              <div className="progress-bar">
+                <div style={{ width: `${activeShipment.progress}%` }} />
+              </div>
+            </div>
+
+            {/* Milestone Timeline */}
+            <div className="milestone-timeline">
+              {activeShipment.steps.map((step, idx) => (
+                <div key={step.label} className={`milestone-step ${step.done ? 'completed' : 'pending'}`}>
+                  <div className="milestone-indicator">
+                    <div className="milestone-dot">{step.done ? '✔' : ''}</div>
+                    {idx < activeShipment.steps.length - 1 && <div className="milestone-line" />}
+                  </div>
+                  <div className="milestone-content">
+                    <p className="milestone-title">{step.label}</p>
+                    {step.done && <p className="milestone-date">Completed</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <button
               type="button"
-              className="btn btn--solid"
-              onClick={() => navigate('/book-pickup')}
-              style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+              className="btn btn--ghost"
+              onClick={() => navigate('/tracking')}
+              style={{ marginTop: '1.5rem', width: '100%' }}
             >
-              📦 Book Another Shipment
+              View Full Tracking Details
+            </button>
+          </section>
+        )}
+
+        {/* AI Estimator Feature Card */}
+        <section className="card dashboard-ai-feature">
+          <div className="ai-feature-header">
+            <div>
+              <h2>✨ Smart Shipping Estimator</h2>
+              <p className="section-intro">Paste an Amazon, Walmart, or eBay link. Get an instant quote in seconds.</p>
+            </div>
+          </div>
+          <div className="ai-feature-demo">
+            <div className="ai-feature-step">
+              <div className="step-number">1</div>
+              <p>Paste a product or cart link</p>
+            </div>
+            <div className="ai-feature-arrow">→</div>
+            <div className="ai-feature-step">
+              <div className="step-number">2</div>
+              <p>Get instant cost estimate</p>
+            </div>
+            <div className="ai-feature-arrow">→</div>
+            <div className="ai-feature-step">
+              <div className="step-number">3</div>
+              <p>Book with one click</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn--solid"
+            onClick={() => navigate('/cart-estimator')}
+            style={{ width: '100%', marginTop: '1.5rem' }}
+          >
+            Try the AI Estimator
+          </button>
+        </section>
+
+        {/* Quick Actions Grid */}
+        <section className="card">
+          <h2 style={{ marginBottom: '1.5rem' }}>Quick Actions</h2>
+          <div className="quick-actions-grid">
+            <button
+              type="button"
+              className="quick-action-card"
+              onClick={() => navigate('/quote')}
+            >
+              <div className="quick-action-icon">💰</div>
+              <h3>Get a Quote</h3>
+              <p>Pricing for your shipment</p>
+            </button>
+            <button
+              type="button"
+              className="quick-action-card"
+              onClick={() => navigate('/tracking')}
+            >
+              <div className="quick-action-icon">📍</div>
+              <h3>Track Shipment</h3>
+              <p>See where your package is</p>
+            </button>
+            <button
+              type="button"
+              className="quick-action-card"
+              onClick={() => navigate('/shop')}
+            >
+              <div className="quick-action-icon">🛍️</div>
+              <h3>Shop & Ship</h3>
+              <p>Buy online, ship to Jamaica</p>
+            </button>
+            <button
+              type="button"
+              className="quick-action-card"
+              onClick={() => navigate('/support')}
+            >
+              <div className="quick-action-icon">💬</div>
+              <h3>Contact Support</h3>
+              <p>Get help anytime</p>
             </button>
           </div>
         </section>
 
-        <section className="card card--split">
-          <div>
-            <h2>Your Shipments</h2>
-            {activeShipment ? (
-              <>
-                <div className="booking-summary" style={{ marginBottom: '1.5rem' }}>
-                  <p style={{ margin: '0.5rem 0' }}><strong>Active Shipment:</strong> {activeShipment.shipmentId}</p>
-                  <p style={{ margin: '0.5rem 0' }}><strong>Status:</strong> {activeShipment.status}</p>
-                  <p style={{ margin: '0.5rem 0' }}><strong>ETA:</strong> {activeShipment.eta}</p>
-                  <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Track, update, or manage your active shipment</p>
-                </div>
-                <div className="progress-shell">
-                  <div className="progress-label">
-                    <span>Journey Progress</span>
-                    <span>{activeShipment.progress}%</span>
+        {/* Sample Shipments for Demo */}
+        {DEMO_DASHBOARD_SHIPMENTS.length > 1 && (
+          <section className="card">
+            <h2 style={{ marginBottom: '1.5rem' }}>Sample Shipments (Demo)</h2>
+            <div className="sample-shipments-grid">
+              {DEMO_DASHBOARD_SHIPMENTS.slice(0, 3).map((shipment) => (
+                <div key={shipment.shipmentId} className="sample-shipment-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                    <div>
+                      <p style={{ margin: '0', fontWeight: 'bold', fontSize: '1.05rem' }}>{shipment.shipmentId}</p>
+                      <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>{shipment.lane}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: '0', fontSize: '0.85rem', fontWeight: '600', color: '#0b6b61' }}>
+                        {shipment.paymentStatus === 'Paid' ? '✔ Paid' : 'Pending'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="progress-bar">
-                    <div style={{ width: `${activeShipment.progress}%` }} />
-                  </div>
-                </div>
-                <ul className="status-list" style={{ marginTop: '1rem' }}>
-                  {activeShipment.steps.map((step) => (
-                    <li key={step.label} className={step.done ? 'done' : ''}>
-                      <span>{step.done ? '✔' : '◻'}</span> {step.label}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              <div style={{ padding: '2rem', textAlign: 'center', background: '#f9f9f9', borderRadius: '8px' }}>
-                <p style={{ margin: '0', color: '#666' }}>No active shipments yet</p>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={() => navigate('/book-pickup')}
-                  style={{ marginTop: '1rem' }}
-                >
-                  Book Your First Shipment
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h2>Quick Links</h2>
-            <ul className="status-list">
-              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/quote')}>
-                <span>•</span> <strong>Get a Quote</strong>
-              </li>
-              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/tracking')}>
-                <span>•</span> <strong>Track Shipment</strong>
-              </li>
-              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/shop')}>
-                <span>•</span> <strong>Shop & Ship</strong>
-              </li>
-              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/support')}>
-                <span>•</span> <strong>Contact Support</strong>
-              </li>
-            </ul>
-
-            <h3 style={{ marginTop: '1.5rem' }}>Sample Shipments for Demo</h3>
-            <div style={{ display: 'grid', gap: '0.7rem' }}>
-              {DEMO_DASHBOARD_SHIPMENTS.map((shipment) => (
-                <div key={shipment.shipmentId} className="booking-summary" style={{ marginBottom: 0 }}>
-                  <p style={{ margin: '0.2rem 0' }}><strong>{shipment.shipmentId}</strong> - {shipment.lane}</p>
-                  <p style={{ margin: '0.2rem 0' }}><strong>Status:</strong> {shipment.status}</p>
-                  <p style={{ margin: '0.2rem 0' }}><strong>Payment:</strong> {shipment.paymentStatus}</p>
+                  <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Status: {shipment.status}</p>
                   <button
                     type="button"
                     className="btn btn--ghost"
-                    style={{ marginTop: '0.6rem', width: '100%' }}
+                    style={{ marginTop: '1rem', width: '100%' }}
                     onClick={() => {
                       setTrackingId(shipment.shipmentId);
                       navigate('/tracking');
@@ -2589,8 +2727,8 @@ function App() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </>
     );
   }

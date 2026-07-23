@@ -1616,3 +1616,298 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Phase 2: Dashboard Improvements */
+.dashboard-welcome {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(11, 107, 97, 0.08);
+}
+
+.dashboard-shipment {
+  border: 2px solid rgba(11, 107, 97, 0.15);
+  border-radius: 12px;
+}
+
+.shipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(11, 107, 97, 0.1);
+}
+
+.shipment-id {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+/* Milestone Timeline */
+.milestone-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(11, 107, 97, 0.02);
+  border-radius: 10px;
+  border-left: 4px solid var(--brand);
+}
+
+.milestone-step {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.milestone-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.milestone-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #dbe6e3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--brand);
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.milestone-step.completed .milestone-dot {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.milestone-line {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, var(--brand), #dbe6e3);
+  opacity: 0.4;
+  z-index: 1;
+}
+
+.milestone-step:last-child .milestone-line {
+  display: none;
+}
+
+.milestone-content {
+  flex: 1;
+  padding-top: 0.5rem;
+}
+
+.milestone-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.milestone-step.pending .milestone-title {
+  color: var(--muted);
+}
+
+.milestone-date {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--brand);
+  font-weight: 500;
+}
+
+/* AI Feature Card */
+.dashboard-ai-feature {
+  background: linear-gradient(135deg, rgba(11, 107, 97, 0.08) 0%, rgba(242, 184, 75, 0.08) 100%);
+  border: 2px solid rgba(11, 107, 97, 0.2);
+  border-radius: 12px;
+  margin: 2rem auto;
+}
+
+.ai-feature-header {
+  margin-bottom: 1.5rem;
+}
+
+.ai-feature-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--brand);
+}
+
+.ai-feature-demo {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.ai-feature-step {
+  text-align: center;
+  flex: 1;
+  min-width: 120px;
+}
+
+.step-number {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  box-shadow: 0 2px 8px rgba(11, 107, 97, 0.2);
+}
+
+.ai-feature-step p {
+  margin: 0;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.ai-feature-arrow {
+  font-size: 1.5rem;
+  color: var(--brand);
+  font-weight: 700;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .ai-feature-arrow {
+    display: block;
+  }
+}
+
+/* Quick Actions Grid */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.quick-action-card {
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.quick-action-card:hover {
+  border-color: var(--brand);
+  background: rgba(11, 107, 97, 0.05);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(11, 107, 97, 0.1);
+}
+
+.quick-action-icon {
+  font-size: 2.5rem;
+  display: block;
+}
+
+.quick-action-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.quick-action-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Sample Shipments Grid */
+.sample-shipments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.sample-shipment-card {
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.sample-shipment-card:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 12px rgba(11, 107, 97, 0.1);
+}
+
+/* Responsive dashboard */
+@media (max-width: 768px) {
+  .ai-feature-demo {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .milestone-timeline {
+    padding: 1rem;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Phase 2: AI Estimator Hero */
+.estimator-hero {
+  background: linear-gradient(135deg, rgba(11, 107, 97, 0.12) 0%, rgba(242, 184, 75, 0.1) 100%);
+  border: 2px solid rgba(11, 107, 97, 0.2);
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(11, 107, 97, 0.08);
+}
+
+.estimator-hero h1 {
+  background: linear-gradient(135deg, var(--brand) 0%, #2d7a6f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
+}
+
+.estimator-page__eyebrow {
+  display: inline-block;
+  background: rgba(11, 107, 97, 0.15);
+  color: var(--brand);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 1rem;
+}
