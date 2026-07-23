@@ -361,7 +361,8 @@ const LUXURY_STORE_KEYWORDS = ['louis vuitton', 'gucci', 'dior', 'chanel', 'bale
 
 function inferCategoryFromUrl(url) {
   const lower = url.toLowerCase();
-  if (lower.includes('laptop') || lower.includes('phone') || lower.includes('camera') || lower.includes('electronics')) return 'Electronics';
+  if (lower.includes('phone-case') || lower.includes('case') || lower.includes('cover') || lower.includes('charger') || lower.includes('cable') || lower.includes('airtag') || lower.includes('accessory')) return 'Accessories';
+  if (lower.includes('laptop') || lower.includes('phone') || lower.includes('camera') || lower.includes('electronics') || lower.includes('tablet') || lower.includes('monitor')) return 'Electronics';
   if (lower.includes('dress') || lower.includes('shirt') || lower.includes('shoe') || lower.includes('fashion')) return 'Fashion';
   if (lower.includes('beauty') || lower.includes('makeup') || lower.includes('skincare')) return 'Beauty';
   if (lower.includes('furniture') || lower.includes('home')) return 'Home';
@@ -369,11 +370,17 @@ function inferCategoryFromUrl(url) {
 }
 
 function inferDefaultPrice(category) {
+  if (category === 'Accessories') return 32;
   if (category === 'Electronics') return 380;
   if (category === 'Fashion') return 160;
   if (category === 'Beauty') return 85;
   if (category === 'Home') return 210;
   return 120;
+}
+
+function isCartStyleUrl(url) {
+  const lower = String(url || '').toLowerCase();
+  return lower.includes('/cart') || lower.includes('/gp/cart') || lower.includes('view.html?ref_=nav_cart');
 }
 
 function getStoreNameFromUrl(url) {
@@ -483,6 +490,7 @@ function App() {
     importPermitUrl: { uploading: false, fileName: '', error: '' },
   });
   const [estimatorLinks, setEstimatorLinks] = useState('');
+  const [estimatorSubtotalInput, setEstimatorSubtotalInput] = useState('');
   const [estimatorResult, setEstimatorResult] = useState(null);
 
   const [trackingId, setTrackingId] = useState('');
@@ -656,21 +664,38 @@ function App() {
       return;
     }
 
-    const estimatedItems = links.map((link) => {
+    const hasCartLink = links.some((link) => isCartStyleUrl(link));
+    const manualSubtotal = Number(estimatorSubtotalInput);
+    const hasValidManualSubtotal = Number.isFinite(manualSubtotal) && manualSubtotal > 0;
+
+    if (hasCartLink && !hasValidManualSubtotal) {
+      setStatusMessage('Cart links detected. Enter the actual store subtotal to improve accuracy.');
+      return;
+    }
+
+    const estimatedItems = links.map((link, index) => {
       const category = inferCategoryFromUrl(link);
       const inferredPrice = inferDefaultPrice(category);
       const store = getStoreNameFromUrl(link);
+      const defaultName = isCartStyleUrl(link) ? `${store} cart items` : `${category} item`;
+
+      let unitPrice = inferredPrice;
+      if (hasCartLink && hasValidManualSubtotal) {
+        unitPrice = Number((manualSubtotal / links.length).toFixed(2));
+      }
+
       return {
-        name: `${category} item`,
+        name: defaultName || `Item ${index + 1}`,
         link,
         quantity: 1,
-        unitPriceUsd: inferredPrice,
+        unitPriceUsd: unitPrice,
         category,
         store,
       };
     });
 
-    const subtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
+    const inferredSubtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
+    const subtotal = hasValidManualSubtotal ? manualSubtotal : inferredSubtotal;
     const hasLuxury = estimatedItems.some((item) => LUXURY_STORE_KEYWORDS.some((k) => `${item.store} ${item.link}`.toLowerCase().includes(k)));
     const customs = subtotal * (hasLuxury ? 0.24 : 0.16);
     const brokerage = subtotal > 0 ? 35 : 0;
@@ -682,7 +707,8 @@ function App() {
     const confidenceLabel = confidence >= 82 ? 'High' : confidence >= 68 ? 'Medium' : 'Low';
 
     const missing = [];
-    if (unknownCount > 0) missing.push('Add exact product category for more accurate duty estimation.');
+    if (unknownCount > 0 && !hasValidManualSubtotal) missing.push('Add exact product category for more accurate duty estimation.');
+    if (hasCartLink && !hasValidManualSubtotal) missing.push('Provide your store cart subtotal to prevent under/over-estimation.');
     if (estimatedItems.some((item) => item.unitPriceUsd >= 300)) missing.push('Confirm actual store cart totals for high-value items.');
     if (hasLuxury) missing.push('Luxury goods may require additional customs review and supporting invoice details.');
 
@@ -941,6 +967,7 @@ function App() {
         importPermitUrl: { uploading: false, fileName: '', error: '' },
       });
       setEstimatorLinks('');
+      setEstimatorSubtotalInput('');
       setEstimatorResult(null);
       window.location.assign(checkoutResult.url);
     } catch (error) {
@@ -2012,6 +2039,7 @@ function App() {
           <p className="estimator-page__eyebrow">Pre-checkout Intelligence</p>
           <h2>AI Cart Link Estimator</h2>
           <p className="section-intro">Paste product/cart links from US stores to get a quick landed-cost estimate before checkout.</p>
+          <p className="section-intro" style={{ marginTop: '-0.35rem' }}>For Amazon or other cart URLs, enter your actual store subtotal to get an accurate estimate.</p>
 
           <div className="shop-estimator estimator-panel">
             <label className="estimator-field">
@@ -2021,6 +2049,17 @@ function App() {
                 value={estimatorLinks}
                 onChange={(event) => setEstimatorLinks(event.target.value)}
                 placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/..."
+              />
+            </label>
+            <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
+              Store Cart Subtotal (USD) - Optional but recommended for cart links
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={estimatorSubtotalInput}
+                onChange={(event) => setEstimatorSubtotalInput(event.target.value)}
+                placeholder="e.g. 224.40"
               />
             </label>
             <div className="estimator-panel__actions">
