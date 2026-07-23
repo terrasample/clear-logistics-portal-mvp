@@ -134,16 +134,78 @@ const TRUST_INDICATORS = [
   'Professional Customer Support',
 ];
 
-const DASHBOARD_STEPS = [
-  { label: 'Pickup Scheduled', done: true },
-  { label: 'Driver En Route', done: false },
-  { label: 'Picked Up', done: false },
-  { label: 'At Miami Warehouse', done: false },
-  { label: 'Loaded on Vessel', done: false },
-  { label: 'Arrived in Jamaica', done: false },
-  { label: 'Customs Clearance', done: false },
-  { label: 'Out for Delivery', done: false },
-  { label: 'Delivered', done: false },
+const DEMO_DASHBOARD_SHIPMENTS = [
+  {
+    shipmentId: 'CLF-10025',
+    lane: 'Box (Standard)',
+    status: 'At Miami Warehouse',
+    paymentStatus: 'Paid',
+    eta: '5-8 business days',
+    progress: 38,
+    steps: [
+      { label: 'Pickup Scheduled', done: true },
+      { label: 'Picked Up', done: true },
+      { label: 'At Miami Warehouse', done: true },
+      { label: 'Loaded on Vessel', done: false },
+      { label: 'Arrived in Kingston', done: false },
+      { label: 'Out for Delivery', done: false },
+      { label: 'Delivered', done: false },
+    ],
+  },
+  {
+    shipmentId: 'CLF-10041',
+    lane: 'Barrel (Premium)',
+    status: 'Out for Delivery',
+    paymentStatus: 'Paid',
+    eta: 'Today by 6:00 PM',
+    progress: 88,
+    steps: [
+      { label: 'Pickup Scheduled', done: true },
+      { label: 'Picked Up', done: true },
+      { label: 'At Miami Warehouse', done: true },
+      { label: 'Loaded on Vessel', done: true },
+      { label: 'Arrived in Kingston', done: true },
+      { label: 'Customs Clearance', done: true },
+      { label: 'Out for Delivery', done: true },
+      { label: 'Delivered', done: false },
+    ],
+  },
+  {
+    shipmentId: 'CLF-10067',
+    lane: 'Pallet (Commercial)',
+    status: 'Delivered',
+    paymentStatus: 'Paid',
+    eta: 'Completed',
+    progress: 100,
+    steps: [
+      { label: 'Pickup Scheduled', done: true },
+      { label: 'Picked Up', done: true },
+      { label: 'At Miami Warehouse', done: true },
+      { label: 'Loaded on Vessel', done: true },
+      { label: 'Arrived in Kingston', done: true },
+      { label: 'Customs Clearance', done: true },
+      { label: 'Out for Delivery', done: true },
+      { label: 'Delivered', done: true },
+    ],
+  },
+  {
+    shipmentId: 'CLF-10088',
+    lane: 'Barrel (Economy)',
+    status: 'Pickup Scheduled',
+    paymentStatus: 'Pending',
+    eta: 'Pickup tomorrow',
+    progress: 12,
+    steps: [
+      { label: 'Pickup Scheduled', done: true },
+      { label: 'Picked Up', done: false },
+      { label: 'At Miami Warehouse', done: false },
+      { label: 'Loaded on Vessel', done: false },
+      { label: 'Arrived in Kingston', done: false },
+      { label: 'Customs Clearance', done: false },
+      { label: 'Out for Delivery', done: false },
+      { label: 'Delivered', done: false },
+    ],
+  },
 ];
 
 const PRICING = [
@@ -300,8 +362,6 @@ function App() {
   const [authToken, setAuthToken] = useState('');
   const [shopAccessMode, setShopAccessMode] = useState('');
 
-  const [activeShipment] = useState('CLF-10025');
-
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
   const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
@@ -312,11 +372,6 @@ function App() {
   const [driverMode, setDriverMode] = useState('login');
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
-
-  const completion = useMemo(() => {
-    const done = DASHBOARD_STEPS.filter((s) => s.done).length;
-    return Math.round((done / DASHBOARD_STEPS.length) * 100);
-  }, []);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem('clf_auth_token');
@@ -1418,6 +1473,8 @@ function App() {
   }
 
   function DashboardPage() {
+    const activeShipment = DEMO_DASHBOARD_SHIPMENTS[0];
+
     return (
       <>
         <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '2rem' }}>
@@ -1443,20 +1500,22 @@ function App() {
             {activeShipment ? (
               <>
                 <div className="booking-summary" style={{ marginBottom: '1.5rem' }}>
-                  <p style={{ margin: '0.5rem 0' }}><strong>Active Shipment:</strong> {activeShipment}</p>
+                  <p style={{ margin: '0.5rem 0' }}><strong>Active Shipment:</strong> {activeShipment.shipmentId}</p>
+                  <p style={{ margin: '0.5rem 0' }}><strong>Status:</strong> {activeShipment.status}</p>
+                  <p style={{ margin: '0.5rem 0' }}><strong>ETA:</strong> {activeShipment.eta}</p>
                   <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Track, update, or manage your active shipment</p>
                 </div>
                 <div className="progress-shell">
                   <div className="progress-label">
                     <span>Journey Progress</span>
-                    <span>{completion}%</span>
+                    <span>{activeShipment.progress}%</span>
                   </div>
                   <div className="progress-bar">
-                    <div style={{ width: `${completion}%` }} />
+                    <div style={{ width: `${activeShipment.progress}%` }} />
                   </div>
                 </div>
                 <ul className="status-list" style={{ marginTop: '1rem' }}>
-                  {DASHBOARD_STEPS.map((step) => (
+                  {activeShipment.steps.map((step) => (
                     <li key={step.label} className={step.done ? 'done' : ''}>
                       <span>{step.done ? '✔' : '◻'}</span> {step.label}
                     </li>
@@ -1494,6 +1553,28 @@ function App() {
                 <span>•</span> <strong>Contact Support</strong>
               </li>
             </ul>
+
+            <h3 style={{ marginTop: '1.5rem' }}>Sample Shipments for Demo</h3>
+            <div style={{ display: 'grid', gap: '0.7rem' }}>
+              {DEMO_DASHBOARD_SHIPMENTS.map((shipment) => (
+                <div key={shipment.shipmentId} className="booking-summary" style={{ marginBottom: 0 }}>
+                  <p style={{ margin: '0.2rem 0' }}><strong>{shipment.shipmentId}</strong> - {shipment.lane}</p>
+                  <p style={{ margin: '0.2rem 0' }}><strong>Status:</strong> {shipment.status}</p>
+                  <p style={{ margin: '0.2rem 0' }}><strong>Payment:</strong> {shipment.paymentStatus}</p>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    style={{ marginTop: '0.6rem', width: '100%' }}
+                    onClick={() => {
+                      setTrackingId(shipment.shipmentId);
+                      navigate('/tracking');
+                    }}
+                  >
+                    Track {shipment.shipmentId}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </>

@@ -57,6 +57,135 @@
           "done": false
         }
       ]
+    },
+    {
+      "shipmentId": "CLF-10041",
+      "fullName": "Sarah Brown",
+      "status": "Out for Delivery",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": true
+        },
+        {
+          "label": "Out for Delivery",
+          "done": true
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10067",
+      "fullName": "Kingston Hardware Ltd",
+      "status": "Delivered",
+      "cargoType": "Pallet",
+      "quantity": "1",
+      "unitType": "Pallet",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": true
+        },
+        {
+          "label": "Out for Delivery",
+          "done": true
+        },
+        {
+          "label": "Delivered",
+          "done": true
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10088",
+      "fullName": "Marcus Wilson",
+      "status": "Pickup Scheduled",
+      "cargoType": "Barrel",
+      "quantity": "1",
+      "unitType": "Barrel",
+      "paymentStatus": "pending",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
     }
   ]
 }
