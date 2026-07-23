@@ -4370,11 +4370,6 @@ function App() {
         <div>
           <h2>Driver Login</h2>
           <p className="section-intro">Sign in to access your pickup assignments and complete deliveries.</p>
-          <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
-            <p><strong>Test Login</strong></p>
-            <p>Email: driver.demo@clearlogistics.test</p>
-            <p>Password: Driver123!</p>
-          </div>
           <form className="form" onSubmit={handleDriverLogin}>
             <label>
               Email

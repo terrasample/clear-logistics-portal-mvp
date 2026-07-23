@@ -36,6 +36,9 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const publicApiBase = process.env.PUBLIC_API_BASE || `http://localhost:${port}`;
+const allowDemoSeed = String(
+  process.env.ALLOW_DEMO_SEED || (process.env.NODE_ENV === 'production' ? 'false' : 'true')
+).toLowerCase() === 'true';
 const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
 const uploadDir = path.resolve(process.cwd(), 'server', 'uploads');
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
@@ -88,18 +91,36 @@ async function ensureDataFile() {
   try {
     await fs.access(dataFile);
   } catch {
+    const demoAccounts = allowDemoSeed
+      ? [
+          {
+            id: 'test-user-001',
+            fullName: 'Test Customer',
+            email: 'test@example.com',
+            passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
+            phone: '+1-555-0100',
+            address: '123 Test Street, New York, NY 10001',
+            createdAt: new Date().toISOString()
+          }
+        ]
+      : [];
+
+    const demoShipments = allowDemoSeed
+      ? [
+          {
+            shipmentId: 'CLF-10025',
+            fullName: 'John',
+            status: 'At Miami Warehouse',
+            cargoType: 'Box',
+            quantity: '3',
+            unitType: 'Box',
+            milestones: DEFAULT_MILESTONES
+          }
+        ]
+      : [];
+
     const initial = {
-      accounts: [
-        {
-          id: 'test-user-001',
-          fullName: 'Test Customer',
-          email: 'test@example.com',
-          passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
-          phone: '+1-555-0100',
-          address: '123 Test Street, New York, NY 10001',
-          createdAt: new Date().toISOString()
-        }
-      ],
+      accounts: demoAccounts,
       drivers: [],
       quotes: [],
       bookings: [],
@@ -107,17 +128,7 @@ async function ensureDataFile() {
       supportTickets: [],
       scanEvents: [],
       routes: [],
-      shipments: [
-        {
-          shipmentId: 'CLF-10025',
-          fullName: 'John',
-          status: 'At Miami Warehouse',
-          cargoType: 'Box',
-          quantity: '3',
-          unitType: 'Box',
-          milestones: DEFAULT_MILESTONES
-        }
-      ]
+      shipments: demoShipments
     };
     await fs.writeFile(dataFile, JSON.stringify(initial, null, 2), 'utf-8');
   }
@@ -834,6 +845,10 @@ function buildDemoPickup(index) {
 }
 
 async function seedDriverDemoData() {
+  if (!allowDemoSeed) {
+    return;
+  }
+
   const data = await readData();
   let hasChanges = false;
 
