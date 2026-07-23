@@ -980,6 +980,16 @@ function routeProgress(route) {
   };
 }
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'clear-logistics-api',
+    message: 'API is running. Use /api/health for health checks.',
+    healthUrl: '/api/health',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, stripe: Boolean(stripe), timestamp: new Date().toISOString() });
 });
