@@ -89,7 +89,7 @@ async function writeData(data) {
 }
 
 function sanitizeAccount(account) {
-  const { password, ...safeAccount } = account;
+  const { password, passwordHash, ...safeAccount } = account;
   return safeAccount;
 }
 
@@ -235,7 +235,7 @@ app.post('/api/accounts', async (req, res) => {
     id: randomUUID(),
     fullName,
     email,
-    password: passwordHash,
+    passwordHash,
     createdAt: new Date().toISOString()
   };
 
@@ -259,14 +259,16 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  const storedHash = account.passwordHash || account.password || '';
   let passwordOk = false;
-  if (account.password && account.password.startsWith('$2')) {
-    passwordOk = await bcrypt.compare(password, account.password);
-  } else if (account.password) {
+  if (storedHash && storedHash.startsWith('$2')) {
+    passwordOk = await bcrypt.compare(password, storedHash);
+  } else if (storedHash) {
     // Backward-compatible login for earlier plain-text records, then migrate to hash.
-    passwordOk = account.password === password;
+    passwordOk = storedHash === password;
     if (passwordOk) {
-      data.accounts[accountIndex].password = await bcrypt.hash(password, 10);
+      data.accounts[accountIndex].passwordHash = await bcrypt.hash(password, 10);
+      delete data.accounts[accountIndex].password;
       await writeData(data);
     }
   }
@@ -366,7 +368,7 @@ app.post('/api/purchase-requests', async (req, res) => {
 
 app.post('/api/bookings', requireAuth, async (req, res) => {
   const payload = req.body || {};
-  const required = ['fullName', 'email', 'pickupDate', 'pickupAddress', 'cargoType', 'quantity', 'unitType'];
+  const required = ['fullName', 'email', 'pickupDate', 'pickupAddress', 'cargoType', 'quantity'];
   const missing = required.filter((k) => !payload[k]);
 
   if (missing.length) {
@@ -375,10 +377,14 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
 
   const data = await readData();
   const shipmentId = `CLF-${10000 + data.bookings.length + 1}`;
+  const unitType = payload.unitType || payload.cargoType;
   const booking = {
     bookingId: `B-${Date.now()}`,
     shipmentId,
+    userId: req.user?.sub || null,
     ...payload,
+    unitType,
+    paymentStatus: 'pending',
     createdAt: new Date().toISOString()
   };
 
@@ -389,7 +395,8 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
     status: 'Pickup Scheduled',
     cargoType: payload.cargoType,
     quantity: payload.quantity,
-    unitType: payload.unitType,
+    unitType,
+    paymentStatus: 'pending',
     milestones: DEFAULT_MILESTONES
   });
 
@@ -466,6 +473,39 @@ app.post('/api/payments/checkout', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message || 'Unable to create Stripe checkout session.' });
   }
+});
+
+app.post('/api/payments/confirm', async (req, res) => {
+  const shipmentId = String(req.body?.shipmentId || '').trim();
+  const providerStatus = String(req.body?.providerStatus || '').trim();
+
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const data = await readData();
+  const shipment = data.shipments.find((s) => s.shipmentId === shipmentId);
+  const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
+
+  if (!shipment && !booking) {
+    return res.status(404).json({ error: 'Shipment not found for payment confirmation.' });
+  }
+
+  if (shipment) {
+    shipment.paymentStatus = 'paid';
+    if (shipment.status === 'Pickup Scheduled') {
+      shipment.status = 'Payment Received';
+    }
+  }
+
+  if (booking) {
+    booking.paymentStatus = 'paid';
+  }
+
+  await writeData(data);
+  await sendNotification('Payment Confirmed', `Shipment ${shipmentId} marked paid (${providerStatus || 'manual-confirm'}).`);
+
+  res.json({ ok: true, shipmentId, paymentStatus: 'paid' });
 });
 
 // ============================================================================

@@ -346,8 +346,8 @@ function App() {
   }
 
   function handleBookingChange(event) {
-    const { name, value } = event.target;
-    setBookingForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    setBookingForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   }
 
   function handleAccountChange(event) {
@@ -466,8 +466,48 @@ function App() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
   }
 
+  function validateBookingStep(step) {
+    if (step === 1) {
+      if (!bookingForm.fullName || !bookingForm.email || !bookingForm.phone || !bookingForm.pickupAddress || !bookingForm.pickupCity || !bookingForm.pickupZip || !bookingForm.pickupDate) {
+        setStatusMessage('Please complete all pickup fields before continuing.');
+        return false;
+      }
+    }
+
+    if (step === 2) {
+      if (!bookingForm.cargoType || !bookingForm.quantity || Number(bookingForm.quantity) < 1 || !bookingForm.weightPerUnit || Number(bookingForm.weightPerUnit) < 1) {
+        setStatusMessage('Please provide valid shipment details before continuing.');
+        return false;
+      }
+    }
+
+    if (step === 3) {
+      if (!bookingForm.jamaicaRecipient || !bookingForm.jamaicaAddress || !bookingForm.jamaicaLocation || !bookingForm.deliveryParish) {
+        setStatusMessage('Please complete all Jamaica delivery details before continuing.');
+        return false;
+      }
+    }
+
+    if (step === 4) {
+      if (!bookingForm.serviceLevel) {
+        setStatusMessage('Please select a service level before continuing.');
+        return false;
+      }
+    }
+
+    if (step === 5) {
+      if (!bookingForm.packingDeclaration || !bookingForm.agreementAccepted) {
+        setStatusMessage('Please accept both declarations before creating your shipment.');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   function handleBookingStepNext() {
-    if (bookingStep < 5) {
+    if (bookingStep < 5 && validateBookingStep(bookingStep)) {
+      setStatusMessage('');
       setBookingStep(bookingStep + 1);
     }
   }
@@ -480,17 +520,52 @@ function App() {
 
   async function handleBookingSubmit(event) {
     event.preventDefault();
+    if (!validateBookingStep(5)) {
+      return;
+    }
+
+    if (!isAuthenticated || !authToken) {
+      setStatusMessage('Please log in to finalize your shipment and proceed to payment.');
+      navigate('/login', { state: { from: '/book-pickup' } });
+      return;
+    }
+
     setIsLoading(true);
     setStatusMessage('');
     try {
-      const newShipmentId = generateShipmentId();
-      const qrUrl = generateQrCode(newShipmentId);
-      
-      setShipmentId(newShipmentId);
+      const response = await fetch(`${API_BASE}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          ...bookingForm,
+          unitType: bookingForm.cargoType,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to create shipment.');
+      }
+
+      const createdShipmentId = result.shipmentId || generateShipmentId();
+      const qrUrl = generateQrCode(createdShipmentId);
+      setShipmentId(createdShipmentId);
+      setTrackingId(createdShipmentId);
       setBookingQrCode(qrUrl);
-      setStatusMessage(`Shipment ${newShipmentId} created. Proceeding to payment.`);
+      setStatusMessage(`Shipment ${createdShipmentId} created. Review the QR code, then continue to payment.`);
       setBookingStep(6); // Confirmation/payment step
     } catch (error) {
+      if (String(error.message || '').toLowerCase().includes('expired') || String(error.message || '').toLowerCase().includes('authentication')) {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setAuthToken('');
+        window.localStorage.removeItem('clf_auth_token');
+        window.localStorage.removeItem('clf_auth_user');
+        navigate('/login', { state: { from: '/book-pickup' } });
+      }
       setStatusMessage(error.message);
     } finally {
       setIsLoading(false);
@@ -682,13 +757,18 @@ function App() {
   }
 
   async function handlePayment() {
+    if (!shipmentId) {
+      setStatusMessage('Create a shipment first before starting payment.');
+      return;
+    }
+
     setIsLoading(true);
     setStatusMessage('');
     try {
       const response = await fetch(`${API_BASE}/payments/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 2500, shipmentId: trackingId || 'CLF-NEW' }),
+        body: JSON.stringify({ amount: 2500, shipmentId }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Payment setup failed.');
@@ -708,6 +788,35 @@ function App() {
     });
     return map;
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const payment = params.get('payment');
+    const paidShipmentId = params.get('shipmentId');
+
+    if (!payment) {
+      return;
+    }
+
+    if (payment === 'success' || payment === 'mock-success') {
+      if (paidShipmentId) {
+        setTrackingId(paidShipmentId);
+        fetch(`${API_BASE}/payments/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shipmentId: paidShipmentId, providerStatus: payment }),
+        }).catch(() => undefined);
+      }
+      setStatusMessage(`Payment successful for ${paidShipmentId || 'shipment'}. You can now track your cargo.`);
+      navigate('/tracking', { replace: true });
+      return;
+    }
+
+    if (payment === 'cancelled') {
+      setStatusMessage('Payment was cancelled. Your shipment is saved; you can resume payment anytime.');
+      navigate('/book-pickup', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   function HomePage() {
     return (
