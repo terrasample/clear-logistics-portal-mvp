@@ -230,6 +230,21 @@ const POPULAR_STORES = [
   { name: 'Costco', icon: 'C', logo: 'https://icons.duckduckgo.com/ip3/www.costco.com.ico', url: 'https://www.costco.com' },
   { name: 'Sam\'s Club', icon: 'SC', logo: 'https://icons.duckduckgo.com/ip3/www.samsclub.com.ico', url: 'https://www.samsclub.com' },
   { name: 'Old Navy', icon: 'ON', logo: 'https://icons.duckduckgo.com/ip3/oldnavy.gap.com.ico', url: 'https://oldnavy.gap.com' },
+  { name: 'Ulta Beauty', icon: 'Ul', logo: 'https://icons.duckduckgo.com/ip3/www.ulta.com.ico', url: 'https://www.ulta.com' },
+  { name: 'Sephora', icon: 'Se', logo: 'https://icons.duckduckgo.com/ip3/www.sephora.com.ico', url: 'https://www.sephora.com' },
+  { name: 'H&M', icon: 'HM', logo: 'https://icons.duckduckgo.com/ip3/www2.hm.com.ico', url: 'https://www2.hm.com' },
+  { name: 'Louis Vuitton', icon: 'LV', logo: 'https://icons.duckduckgo.com/ip3/us.louisvuitton.com.ico', url: 'https://us.louisvuitton.com' },
+  { name: 'Gucci', icon: 'Gu', logo: 'https://icons.duckduckgo.com/ip3/www.gucci.com.ico', url: 'https://www.gucci.com' },
+  { name: 'Dior', icon: 'Di', logo: 'https://icons.duckduckgo.com/ip3/www.dior.com.ico', url: 'https://www.dior.com' },
+  { name: 'Chanel', icon: 'Ch', logo: 'https://icons.duckduckgo.com/ip3/www.chanel.com.ico', url: 'https://www.chanel.com' },
+  { name: 'Balenciaga', icon: 'Ba', logo: 'https://icons.duckduckgo.com/ip3/www.balenciaga.com.ico', url: 'https://www.balenciaga.com' },
+  { name: 'Zara', icon: 'Za', logo: 'https://icons.duckduckgo.com/ip3/www.zara.com.ico', url: 'https://www.zara.com' },
+  { name: 'ASOS', icon: 'As', logo: 'https://icons.duckduckgo.com/ip3/www.asos.com.ico', url: 'https://www.asos.com' },
+  { name: 'Fashion Nova', icon: 'FN', logo: 'https://icons.duckduckgo.com/ip3/www.fashionnova.com.ico', url: 'https://www.fashionnova.com' },
+  { name: 'Nordstrom', icon: 'No', logo: 'https://icons.duckduckgo.com/ip3/www.nordstrom.com.ico', url: 'https://www.nordstrom.com' },
+  { name: 'Bloomingdale\'s', icon: 'Bl', logo: 'https://icons.duckduckgo.com/ip3/www.bloomingdales.com.ico', url: 'https://www.bloomingdales.com' },
+  { name: 'Saks Fifth Avenue', icon: 'Sa', logo: 'https://icons.duckduckgo.com/ip3/www.saksfifthavenue.com.ico', url: 'https://www.saksfifthavenue.com' },
+  { name: 'Neiman Marcus', icon: 'Ne', logo: 'https://icons.duckduckgo.com/ip3/www.neimanmarcus.com.ico', url: 'https://www.neimanmarcus.com' },
 ];
 
 
