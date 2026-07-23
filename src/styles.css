@@ -766,3 +766,49 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.footer {
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #ffffff;
+  padding: 2rem 1.25rem;
+  margin-top: 3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-content {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 1rem 0;
+}
+
+.footer-link {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.footer-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.footer h3 {
+  color: #ffffff;
+}
+
+.footer p {
+  margin: 0.5rem 0;
+}

@@ -1706,6 +1706,183 @@ function App() {
     );
   }
 
+  function AboutUsPage() {
+    return (
+      <section className="card card--wide">
+        <h2>About Clear Logistics & Freight Services</h2>
+        <p className="section-intro">Your trusted partner for seamless USA-Jamaica shipping.</p>
+        
+        <h3>Our Mission</h3>
+        <p>We simplify international shipping by providing reliable, transparent, and affordable freight services between the USA and Jamaica. Our goal is to make logistics easy, fast, and stress-free for everyone.</p>
+        
+        <h3>Why Choose Us?</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>✅ <strong>Real-Time Tracking</strong> - Monitor your shipment every step of the way</li>
+          <li>✅ <strong>Competitive Pricing</strong> - Transparent rates with no hidden fees</li>
+          <li>✅ <strong>Fast Processing</strong> - Book in minutes, ship within days</li>
+          <li>✅ <strong>Professional Support</strong> - Expert assistance for every shipment</li>
+          <li>✅ <strong>Customs Clearance</strong> - We handle all Jamaica import documentation</li>
+          <li>✅ <strong>Door-to-Door Service</strong> - Pickup from your location, delivery to your door</li>
+        </ul>
+        
+        <h3>Our Locations</h3>
+        <p>We operate from Miami, Florida with direct service to all 14 parishes in Jamaica, including Kingston, Montego Bay, Mandeville, Negril, and beyond.</p>
+        
+        <h3>Contact Us</h3>
+        <p>Have questions? Our support team is available via email and phone. <a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact Support →</a></p>
+      </section>
+    );
+  }
+
+  function PrivacyPage() {
+    return (
+      <section className="card card--wide">
+        <h2>Privacy Policy</h2>
+        <p className="section-intro">Last Updated: July 2026</p>
+        
+        <h3>1. Information We Collect</h3>
+        <p>We collect information you provide directly, such as:</p>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Name, email, and phone number</li>
+          <li>Shipping address and delivery location</li>
+          <li>Cargo information and declared value</li>
+          <li>Payment information (processed securely via Stripe)</li>
+        </ul>
+
+        <h3>2. How We Use Your Information</h3>
+        <p>We use your information to:</p>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Process and deliver your shipments</li>
+          <li>Track and provide shipping updates</li>
+          <li>Handle customer support requests</li>
+          <li>Comply with shipping and customs regulations</li>
+          <li>Improve our services</li>
+        </ul>
+
+        <h3>3. Data Security</h3>
+        <p>We implement industry-standard security measures to protect your personal information. All payments are processed securely through encrypted connections.</p>
+
+        <h3>4. Sharing Your Information</h3>
+        <p>We do not sell your information. We may share information with:</p>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Customs brokers in Jamaica (for clearance)</li>
+          <li>Shipping carriers (for delivery)</li>
+          <li>Law enforcement (if required by law)</li>
+        </ul>
+
+        <h3>5. Your Rights</h3>
+        <p>You have the right to access, update, or delete your personal information. Contact us at support@clearlogistics.com to make requests.</p>
+
+        <h3>6. Contact Us</h3>
+        <p>Questions about this privacy policy? <a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact us →</a></p>
+      </section>
+    );
+  }
+
+  function TermsPage() {
+    return (
+      <section className="card card--wide">
+        <h2>Terms of Service</h2>
+        <p className="section-intro">Last Updated: July 2026</p>
+        
+        <h3>1. Acceptance of Terms</h3>
+        <p>By using Clear Logistics & Freight Services, you agree to these terms. If you do not agree, please do not use our services.</p>
+
+        <h3>2. Booking & Payment</h3>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>All bookings require valid payment information</li>
+          <li>Prices are based on declared weight and service level</li>
+          <li>Cancellations must be made before pickup; refunds subject to policy</li>
+          <li>Final weight at warehouse may result in price adjustments</li>
+        </ul>
+
+        <h3>3. Cargo Restrictions</h3>
+        <p>The following items are NOT permitted:</p>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Hazardous materials (flammable, explosive, toxic)</li>
+          <li>Weapons or firearms</li>
+          <li>Illegal drugs or controlled substances</li>
+          <li>Perishable items (unless specified)</li>
+          <li>Items subject to customs restrictions</li>
+        </ul>
+
+        <h3>4. Liability</h3>
+        <p>Clear Logistics is not liable for:</p>
+        <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+          <li>Theft, loss, or damage to cargo (unless covered by declared value insurance)</li>
+          <li>Delays due to customs, weather, or port closures</li>
+          <li>Damage caused by improper packing</li>
+        </ul>
+
+        <h3>5. Insurance</h3>
+        <p>Standard service includes basic coverage. Additional insurance available for high-value items. Declared value must match actual cargo value.</p>
+
+        <h3>6. Contact Us</h3>
+        <p>Questions about these terms? <a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact us →</a></p>
+      </section>
+    );
+  }
+
+  function FAQPage() {
+    return (
+      <section className="card card--wide">
+        <h2>Frequently Asked Questions</h2>
+        <p className="section-intro">Find answers to common shipping questions.</p>
+
+        <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1rem', marginTop: '1rem' }}>
+          <h3>How long does shipping take?</h3>
+          <p><strong>Economy:</strong> 14-18 days | <strong>Standard:</strong> 7-12 days | <strong>Premium:</strong> 3-5 days. Timelines depend on customs and port availability.</p>
+
+          <h3>How do I track my shipment?</h3>
+          <p>Use your Shipment ID to track your package on our tracking page. You'll receive updates via email at each milestone (pickup, warehouse, arrival, delivery).</p>
+
+          <h3>What if my shipment is damaged?</h3>
+          <p>Report damage within 48 hours of delivery with photos. Claims require proper documentation and insurance coverage. Contact support immediately.</p>
+
+          <h3>Can I change my delivery address?</h3>
+          <p>Yes, but only before pickup. Once picked up, delivery address changes incur a fee. Contact support ASAP to request changes.</p>
+
+          <h3>Do you ship to all Jamaica parishes?</h3>
+          <p>Yes! We deliver to all 14 parishes: Kingston, Saint Andrew, St. Catherine, St. Thomas, Portland, St. Mary, St. Ann, Trelawny, Saint James, Hanover, Westmoreland, Manchester, Clarendon, and Saint Elizabeth.</p>
+
+          <h3>What payment methods do you accept?</h3>
+          <p>We accept all major credit/debit cards (Visa, Mastercard, American Express) via secure Stripe payment processing.</p>
+
+          <h3>Is insurance required?</h3>
+          <p>Standard coverage is included. Additional insurance is recommended for items over $1,000 USD.</p>
+
+          <h3>How do customs work?</h3>
+          <p>Our customs brokers handle all Jamaica import documentation. Declarations must be accurate; fines apply for undervaluation.</p>
+
+          <h3>Still have questions?</h3>
+          <p><a href="/support" style={{ color: 'var(--brand)', fontWeight: '600' }}>Contact our support team →</a></p>
+        </div>
+      </section>
+    );
+  }
+
+  function Footer() {
+    return (
+      <footer className="footer">
+        <div className="footer-content">
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ margin: '0 0 1rem' }}>Clear Logistics & Freight Services</h3>
+            <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>Reliable USA-Jamaica Shipping</p>
+            <div className="footer-links">
+              <button type="button" className="footer-link" onClick={() => navigate('/')}>Home</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/about')}>About Us</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/faq')}>FAQ</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/privacy')}>Privacy Policy</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/terms')}>Terms of Service</button>
+              <button type="button" className="footer-link" onClick={() => navigate('/support')}>Contact Support</button>
+            </div>
+            <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>© 2026 Clear Logistics & Freight Services. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <div className="page-shell">
       <header className="hero">
@@ -1782,12 +1959,17 @@ function App() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/faq" element={<FAQPage />} />
           {/* Phase 2: Driver Routes */}
           {!driverAuthToken && <Route path="/driver/login" element={driverMode === 'register' ? <DriverRegisterPage /> : <DriverLoginPage />} />}
           {driverAuthToken && <Route path="/driver/dashboard" element={<DriverDashboardPage />} />}
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
+      <Footer />
     </div>
   );
 }
