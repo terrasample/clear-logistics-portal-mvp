@@ -618,6 +618,7 @@ function App() {
   const [authToken, setAuthToken] = useState('');
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [dispatcherData, setDispatcherData] = useState(null);
   const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
@@ -1696,6 +1697,33 @@ function App() {
       fetchDispatcherData();
     } catch (error) {
       setStatusMessage(error.message);
+    }
+  }
+
+  async function handleAdminRecordAction({ endpoint, body, successMessage, refreshDispatcher = false }) {
+    if (!authToken) {
+      setStatusMessage('Please sign in as admin to run this action.');
+      return;
+    }
+
+    setAdminActionLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify(body || {}),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to run admin action.');
+      setStatusMessage(successMessage || result.message || 'Admin action completed.');
+      await fetchAdminOverview(authToken);
+      if (refreshDispatcher) {
+        await fetchDispatcherData(authToken);
+      }
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setAdminActionLoading(false);
     }
   }
 
@@ -3519,116 +3547,15 @@ function App() {
 
   function DashboardPage() {
     const isAdminUser = currentUser?.role === 'admin';
+
+    if (isAdminUser) {
+      return AdminDashboardPage({ overviewOnly: true });
+    }
+
     const activeShipment = DEMO_DASHBOARD_SHIPMENTS[0];
     const activeShipmentProgress = activeShipment?.steps?.length
       ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
       : 0;
-
-    if (isAdminUser) {
-      const counts = adminOverview?.counts || {};
-
-      return (
-        <>
-          <section className="card dashboard-welcome admin-dashboard-welcome" style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '2rem' }}>
-              <div>
-                <h2>Operations overview, {currentUser?.fullName || 'Admin'}.</h2>
-                <p className="section-intro">This dashboard is your command snapshot. Open the Admin tab for full triage and dispatch actions.</p>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="btn btn--solid"
-                  onClick={() => navigate('/admin')}
-                  style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
-                >
-                  Open Admin Workspace
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={() => fetchAdminOverview(authToken)}
-                  disabled={adminLoading}
-                  style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
-                >
-                  {adminLoading ? 'Refreshing...' : 'Refresh Ops Data'}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="admin-metrics" aria-label="Admin dashboard quick metrics">
-            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
-              <strong>{counts.rfqs ?? 0}</strong>
-              <span>Open RFQs</span>
-            </button>
-            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
-              <strong>{counts.bookings ?? 0}</strong>
-              <span>Recent Bookings</span>
-            </button>
-            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
-              <strong>{counts.purchaseRequests ?? 0}</strong>
-              <span>Purchase Requests</span>
-            </button>
-            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
-              <strong>{counts.supportTickets ?? 0}</strong>
-              <span>Support Tickets</span>
-            </button>
-            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
-              <strong>{counts.scanEvents ?? 0}</strong>
-              <span>Recent Scans</span>
-            </button>
-          </section>
-
-          <section className="card" style={{ marginTop: '2rem' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Customer View Tools</h2>
-            <p className="section-intro">Need to simulate a customer workflow? Use these tools without leaving your session.</p>
-            <div className="quick-actions-grid">
-              <button
-                type="button"
-                className="quick-action-card"
-                onClick={() => navigate('/book-pickup')}
-                aria-label="Create a booking as customer"
-              >
-                <div className="quick-action-icon">📦</div>
-                <h3>Create Booking</h3>
-                <p>Walk through customer booking flow</p>
-              </button>
-              <button
-                type="button"
-                className="quick-action-card"
-                onClick={() => navigate('/tracking')}
-                aria-label="Check customer tracking journey"
-              >
-                <div className="quick-action-icon">📍</div>
-                <h3>Track Shipment</h3>
-                <p>Preview customer tracking experience</p>
-              </button>
-              <button
-                type="button"
-                className="quick-action-card"
-                onClick={() => navigate('/support')}
-                aria-label="Open support workflow"
-              >
-                <div className="quick-action-icon">💬</div>
-                <h3>Support View</h3>
-                <p>Review how customers submit issues</p>
-              </button>
-              <button
-                type="button"
-                className="quick-action-card"
-                onClick={() => navigate('/shop')}
-                aria-label="Open shop and ship flow"
-              >
-                <div className="quick-action-icon">🛍️</div>
-                <h3>Shop & Ship</h3>
-                <p>Validate estimator and shop workflows</p>
-              </button>
-            </div>
-          </section>
-        </>
-      );
-    }
 
     return (
       <>
@@ -3844,7 +3771,7 @@ function App() {
     );
   }
 
-  function AdminDashboardPage() {
+  function AdminDashboardPage({ overviewOnly = false } = {}) {
     const counts = adminOverview?.counts;
 
     const sectionMap = {
@@ -3868,57 +3795,28 @@ function App() {
       }
     }
 
-    function getAdminDetailAction(item, sectionKey) {
-      if (sectionKey === 'rfqs') {
-        return {
-          label: 'Review Quote',
-          action: () => {
-            setStatusMessage(`RFQ ${item.quoteId} selected for review.`);
-          }
-        };
-      }
-
-      if (sectionKey === 'bookings') {
-        return {
-          label: 'View Shipment',
-          action: () => {
-            if (item.shipmentId) {
-              setTrackingId(item.shipmentId);
-              navigate('/tracking');
-            }
-          }
-        };
-      }
-
-      if (sectionKey === 'purchaseRequests') {
-        return {
-          label: 'Review Request',
-          action: () => {
-            setStatusMessage(`Purchase request ${item.requestId} selected for admin review.`);
-          }
-        };
-      }
-
-      return {
-        label: 'Respond',
-        action: () => {
-          setStatusMessage(`Support ticket ${item.ticketId} selected for response.`);
-          navigate('/support');
-        }
-      };
-    }
-
     return (
       <>
-        <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '1rem' }}>
+        <section className={`card ${overviewOnly ? 'admin-dashboard-welcome' : ''}`} style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <h2>Admin Dashboard</h2>
-              <p className="section-intro">Review RFQs, bookings, support, and purchase requests from one place.</p>
+              <h2>{overviewOnly ? 'Operations Dashboard' : 'Admin Workspace'}</h2>
+              <p className="section-intro">
+                {overviewOnly
+                  ? 'Live overview of RFQs, bookings, support, and dispatcher activity.'
+                  : 'Administrative actions are enabled here for review, approvals, and case resolution.'}
+              </p>
             </div>
-            <button type="button" className="btn btn--ghost" onClick={() => fetchAdminOverview(authToken)} disabled={adminLoading}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {overviewOnly ? (
+                <button type="button" className="btn btn--solid" onClick={() => navigate('/admin')}>
+                  Open Admin Actions
+                </button>
+              ) : null}
+              <button type="button" className="btn btn--ghost" onClick={() => fetchAdminOverview(authToken)} disabled={adminLoading || adminActionLoading}>
               {adminLoading ? 'Refreshing...' : 'Refresh Data'}
-            </button>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -3959,7 +3857,7 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn--ghost" onClick={() => fetchDispatcherData()}>Refresh</button>
-                  <button type="button" className="btn btn--solid" onClick={handleDispatcherAutoAssign}>Run Auto-Assign</button>
+                  {!overviewOnly ? <button type="button" className="btn btn--solid" onClick={handleDispatcherAutoAssign}>Run Auto-Assign</button> : null}
                 </div>
               </div>
 
@@ -4004,8 +3902,8 @@ function App() {
                         <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Pickup Date</th>
                         <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>City</th>
                         <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Current Driver</th>
-                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Reassign To</th>
-                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}></th>
+                        {!overviewOnly ? <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Reassign To</th> : null}
+                        {!overviewOnly ? <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}></th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -4021,29 +3919,33 @@ function App() {
                               : <span style={{ color: '#c62828' }}>Unassigned</span>
                             }
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <select
-                              value={dispatcherReassignMap[booking.bookingId] || ''}
-                              onChange={(e) => setDispatcherReassignMap((prev) => ({ ...prev, [booking.bookingId]: e.target.value }))}
-                              style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #ccc', fontSize: '0.85rem', maxWidth: '180px' }}
-                            >
-                              <option value="">Select driver…</option>
-                              {(dispatcherData.drivers || []).map((d) => (
-                                <option key={d.id} value={d.id}>{d.fullName} ({d.pendingCount})</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <button
-                              type="button"
-                              className="btn btn--solid"
-                              style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
-                              disabled={!dispatcherReassignMap[booking.bookingId] || dispatcherReassignMap[booking.bookingId] === booking.assignedDriverId}
-                              onClick={() => handleDispatcherReassign(booking.bookingId)}
-                            >
-                              Reassign
-                            </button>
-                          </td>
+                          {!overviewOnly ? (
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <select
+                                value={dispatcherReassignMap[booking.bookingId] || ''}
+                                onChange={(e) => setDispatcherReassignMap((prev) => ({ ...prev, [booking.bookingId]: e.target.value }))}
+                                style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #ccc', fontSize: '0.85rem', maxWidth: '180px' }}
+                              >
+                                <option value="">Select driver...</option>
+                                {(dispatcherData.drivers || []).map((d) => (
+                                  <option key={d.id} value={d.id}>{d.fullName} ({d.pendingCount})</option>
+                                ))}
+                              </select>
+                            </td>
+                          ) : null}
+                          {!overviewOnly ? (
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                className="btn btn--solid"
+                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                                disabled={!dispatcherReassignMap[booking.bookingId] || dispatcherReassignMap[booking.bookingId] === booking.assignedDriverId}
+                                onClick={() => handleDispatcherReassign(booking.bookingId)}
+                              >
+                                Reassign
+                              </button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -4168,27 +4070,162 @@ function App() {
           </div>
         </section>
 
-        <section className="card" aria-live="polite">
-          <h2>{sectionMap[activeAdminSection].label} Workspace</h2>
-          <p className="section-intro">{selectedSectionData.length} record(s) in this section.</p>
+        {!overviewOnly ? (
+          <section className="card" aria-live="polite">
+            <h2>{sectionMap[activeAdminSection].label} Workspace</h2>
+            <p className="section-intro">{selectedSectionData.length} record(s) in this section.</p>
 
-          {selectedAdminItem ? (
-            <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
-              <p><strong>Selected:</strong> {selectedAdminItem.item.quoteId || selectedAdminItem.item.shipmentId || selectedAdminItem.item.requestId || selectedAdminItem.item.ticketId}</p>
-              <p><strong>Name:</strong> {selectedAdminItem.item.fullName || 'N/A'}</p>
-              <p><strong>Email:</strong> {selectedAdminItem.item.email || 'N/A'}</p>
-              <button
-                type="button"
-                className="btn btn--solid"
-                onClick={() => getAdminDetailAction(selectedAdminItem.item, selectedAdminItem.sectionKey).action()}
-              >
-                {getAdminDetailAction(selectedAdminItem.item, selectedAdminItem.sectionKey).label}
-              </button>
-            </div>
-          ) : (
-            <p className="section-intro">Select a card above to see context actions.</p>
-          )}
-        </section>
+            {selectedAdminItem ? (
+              <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
+                <p><strong>Selected:</strong> {selectedAdminItem.item.quoteId || selectedAdminItem.item.shipmentId || selectedAdminItem.item.requestId || selectedAdminItem.item.ticketId}</p>
+                <p><strong>Name:</strong> {selectedAdminItem.item.fullName || 'N/A'}</p>
+                <p><strong>Email:</strong> {selectedAdminItem.item.email || 'N/A'}</p>
+
+                {selectedAdminItem.sectionKey === 'rfqs' ? (
+                  <div className="admin-action-row">
+                    <button
+                      type="button"
+                      className="btn btn--solid"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
+                        body: { reviewStatus: 'Reviewed' },
+                        successMessage: `RFQ ${selectedAdminItem.item.quoteId} marked as reviewed.`
+                      })}
+                    >
+                      Mark Reviewed
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
+                        body: { reviewStatus: 'Needs Follow-up' },
+                        successMessage: `RFQ ${selectedAdminItem.item.quoteId} flagged for follow-up.`
+                      })}
+                    >
+                      Needs Follow-up
+                    </button>
+                  </div>
+                ) : null}
+
+                {selectedAdminItem.sectionKey === 'purchaseRequests' ? (
+                  <div className="admin-action-row">
+                    <button
+                      type="button"
+                      className="btn btn--solid"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/purchase-requests/${selectedAdminItem.item.requestId}/status`,
+                        body: { status: 'Approved' },
+                        successMessage: `Purchase request ${selectedAdminItem.item.requestId} approved.`
+                      })}
+                    >
+                      Approve Request
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/purchase-requests/${selectedAdminItem.item.requestId}/status`,
+                        body: { status: 'Rejected' },
+                        successMessage: `Purchase request ${selectedAdminItem.item.requestId} rejected.`
+                      })}
+                    >
+                      Reject Request
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/purchase-requests/${selectedAdminItem.item.requestId}/status`,
+                        body: { status: 'In Procurement' },
+                        successMessage: `Purchase request ${selectedAdminItem.item.requestId} moved to procurement.`
+                      })}
+                    >
+                      Move to Procurement
+                    </button>
+                  </div>
+                ) : null}
+
+                {selectedAdminItem.sectionKey === 'supportTickets' ? (
+                  <div className="admin-action-row">
+                    <button
+                      type="button"
+                      className="btn btn--solid"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/support/${selectedAdminItem.item.ticketId}/status`,
+                        body: { status: 'In Progress' },
+                        successMessage: `Ticket ${selectedAdminItem.item.ticketId} set to in progress.`
+                      })}
+                    >
+                      Start Handling
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/support/${selectedAdminItem.item.ticketId}/status`,
+                        body: { status: 'Resolved' },
+                        successMessage: `Ticket ${selectedAdminItem.item.ticketId} marked resolved.`
+                      })}
+                    >
+                      Mark Resolved
+                    </button>
+                  </div>
+                ) : null}
+
+                {selectedAdminItem.sectionKey === 'bookings' ? (
+                  <div className="admin-action-row">
+                    <button
+                      type="button"
+                      className="btn btn--solid"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
+                        body: { paymentStatus: 'paid' },
+                        successMessage: `Booking ${selectedAdminItem.item.bookingId} marked paid.`
+                      })}
+                    >
+                      Mark Paid
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      disabled={adminActionLoading}
+                      onClick={() => handleAdminRecordAction({
+                        endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
+                        body: { paymentStatus: 'pending' },
+                        successMessage: `Booking ${selectedAdminItem.item.bookingId} moved to pending payment.`
+                      })}
+                    >
+                      Set Pending
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      onClick={() => {
+                        if (selectedAdminItem.item.shipmentId) {
+                          setTrackingId(selectedAdminItem.item.shipmentId);
+                          navigate('/tracking');
+                        }
+                      }}
+                    >
+                      Open Tracking
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="section-intro">Select a card above to see admin actions.</p>
+            )}
+          </section>
+        ) : null}
           </>
         )}
       </>

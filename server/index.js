@@ -1091,6 +1091,137 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   });
 });
 
+app.post('/api/admin/rfqs/:quoteId/review', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const quoteId = String(req.params.quoteId || '').trim();
+  const reviewStatus = String(req.body?.reviewStatus || 'Reviewed').trim();
+  const note = String(req.body?.note || '').trim();
+  const allowedStatuses = new Set(['Reviewed', 'Needs Follow-up', 'Approved', 'Declined']);
+
+  if (!quoteId) {
+    return res.status(400).json({ error: 'quoteId is required.' });
+  }
+  if (!allowedStatuses.has(reviewStatus)) {
+    return res.status(400).json({ error: 'Invalid review status.' });
+  }
+
+  const data = await readData();
+  const quote = (data.quotes || []).find((q) => q.quoteId === quoteId);
+  if (!quote) {
+    return res.status(404).json({ error: 'RFQ not found.' });
+  }
+
+  quote.reviewStatus = reviewStatus;
+  quote.reviewedAt = new Date().toISOString();
+  quote.reviewedBy = req.user.fullName || req.user.email || 'admin';
+  if (note) quote.reviewNote = note;
+
+  await writeData(data);
+  return res.json({ ok: true, quoteId, reviewStatus, reviewedAt: quote.reviewedAt });
+});
+
+app.post('/api/admin/purchase-requests/:requestId/status', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const requestId = String(req.params.requestId || '').trim();
+  const status = String(req.body?.status || '').trim();
+  const note = String(req.body?.note || '').trim();
+  const allowedStatuses = new Set(['Needs Review', 'Approved', 'Rejected', 'In Procurement', 'Awaiting Customer', 'Received']);
+
+  if (!requestId) {
+    return res.status(400).json({ error: 'requestId is required.' });
+  }
+  if (!allowedStatuses.has(status)) {
+    return res.status(400).json({ error: 'Invalid purchase request status.' });
+  }
+
+  const data = await readData();
+  const request = (data.purchaseRequests || []).find((p) => p.requestId === requestId);
+  if (!request) {
+    return res.status(404).json({ error: 'Purchase request not found.' });
+  }
+
+  request.status = status;
+  request.reviewedAt = new Date().toISOString();
+  request.reviewedBy = req.user.fullName || req.user.email || 'admin';
+  if (note) request.reviewNote = note;
+
+  await writeData(data);
+  return res.json({ ok: true, requestId, status });
+});
+
+app.post('/api/admin/support/:ticketId/status', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const ticketId = String(req.params.ticketId || '').trim();
+  const status = String(req.body?.status || '').trim();
+  const note = String(req.body?.note || '').trim();
+  const allowedStatuses = new Set(['Open', 'In Progress', 'Waiting on Customer', 'Resolved', 'Closed']);
+
+  if (!ticketId) {
+    return res.status(400).json({ error: 'ticketId is required.' });
+  }
+  if (!allowedStatuses.has(status)) {
+    return res.status(400).json({ error: 'Invalid support ticket status.' });
+  }
+
+  const data = await readData();
+  const ticket = (data.supportTickets || []).find((t) => t.ticketId === ticketId);
+  if (!ticket) {
+    return res.status(404).json({ error: 'Support ticket not found.' });
+  }
+
+  ticket.status = status;
+  ticket.updatedAt = new Date().toISOString();
+  ticket.updatedBy = req.user.fullName || req.user.email || 'admin';
+  if (note) ticket.resolutionNote = note;
+
+  await writeData(data);
+  return res.json({ ok: true, ticketId, status });
+});
+
+app.post('/api/admin/bookings/:bookingId/payment', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const bookingId = String(req.params.bookingId || '').trim();
+  const paymentStatus = String(req.body?.paymentStatus || '').trim().toLowerCase();
+  const allowedStatuses = new Set(['pending', 'paid', 'refunded', 'waived']);
+
+  if (!bookingId) {
+    return res.status(400).json({ error: 'bookingId is required.' });
+  }
+  if (!allowedStatuses.has(paymentStatus)) {
+    return res.status(400).json({ error: 'Invalid payment status.' });
+  }
+
+  const data = await readData();
+  const booking = (data.bookings || []).find((b) => b.bookingId === bookingId);
+  if (!booking) {
+    return res.status(404).json({ error: 'Booking not found.' });
+  }
+
+  booking.paymentStatus = paymentStatus;
+  booking.paymentUpdatedAt = new Date().toISOString();
+  booking.paymentUpdatedBy = req.user.fullName || req.user.email || 'admin';
+
+  const shipment = (data.shipments || []).find((s) => s.shipmentId === booking.shipmentId);
+  if (shipment) {
+    shipment.paymentStatus = paymentStatus;
+  }
+
+  await writeData(data);
+  return res.json({ ok: true, bookingId, paymentStatus });
+});
+
 app.post('/api/quotes', async (req, res) => {
   const payload = req.body || {};
   const required = ['fullName', 'email', 'phone', 'cargoType', 'origin', 'destination', 'deliveryParish', 'itemCategory'];
