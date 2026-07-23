@@ -425,6 +425,32 @@ body {
   align-items: stretch;
 }
 
+.home-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.home-proof-strip__item {
+  padding: 0.95rem 1rem;
+  border: 1px solid #d5e7e2;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #f9fcfb 0%, #ffffff 100%);
+}
+
+.home-proof-strip__item strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--brand-dark);
+  font-size: 1rem;
+}
+
+.home-proof-strip__item span {
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
 .home-story-card__eyebrow {
   margin: 0 0 0.45rem;
   color: var(--brand-dark);

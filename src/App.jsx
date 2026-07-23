@@ -5,7 +5,7 @@ const API_BASE = 'http://localhost:8787/api';
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
-  { key: 'book-pickup', label: '🛢 Ship To Jamaica', isPrimary: true },
+  { key: 'book-pickup', label: 'Ship To Jamaica', isPrimary: true },
   { key: 'quote', label: 'Get a Quote' },
   { key: 'shop', label: 'Shop & Ship' },
   { key: 'tracking', label: 'Track Shipment' },
@@ -998,17 +998,28 @@ function App() {
           </button>
         </section>
 
+        <section className="card home-proof-strip">
+          <div className="home-proof-strip__item">
+            <strong>14 parishes</strong>
+            <span>Coverage across Jamaica</span>
+          </div>
+          <div className="home-proof-strip__item">
+            <strong>Live tracking</strong>
+            <span>Milestones stay visible</span>
+          </div>
+          <div className="home-proof-strip__item">
+            <strong>Help when needed</strong>
+            <span>FAQ, chat, and WhatsApp support</span>
+          </div>
+        </section>
+
         <section className="card card--split home-story-card">
           <div>
             <p className="home-story-card__eyebrow">Who We Are</p>
             <h2>Your freight partner for the USA to Jamaica lane</h2>
             <p className="section-intro">
-              Clear Logistics & Freight Services helps families, shoppers, and businesses move packages with clear pricing,
-              simple booking, and shipment visibility from pickup to delivery.
-            </p>
-            <p className="section-intro">
-              We built this portal to make shipping feel straightforward: book online, scan the pickup QR code, track milestones,
-              and get support when you need it.
+              Clear Logistics & Freight Services helps families, shoppers, and businesses move packages with simple booking,
+              clear pricing, and shipment visibility from pickup to delivery.
             </p>
           </div>
 
@@ -1051,15 +1062,23 @@ function App() {
         </section>
 
         <section className="card" style={{ textAlign: 'center', padding: '2rem', background: '#f0f7f6' }}>
-          <h2>Ready to Get Started?</h2>
-          <p style={{ marginBottom: '1.5rem' }}>Book your first shipment in minutes</p>
+          <h2>Need a Quote or Tracking Update?</h2>
+          <p style={{ marginBottom: '1.5rem' }}>Start with pricing or check where a shipment stands right now.</p>
           <button
             type="button"
             className="btn btn--solid"
-            onClick={() => navigate('/book-pickup')}
+            onClick={() => navigate('/quote')}
             style={{ fontSize: '1rem', padding: '0.8rem 2.5rem' }}
           >
-            Book Now
+            Get a Quote
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => navigate('/tracking')}
+            style={{ fontSize: '1rem', padding: '0.8rem 2.1rem' }}
+          >
+            Track Shipment
           </button>
         </section>
 
