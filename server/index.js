@@ -22,6 +22,10 @@ const DEFAULT_MILESTONES = [
   { label: 'Delivered', done: false }
 ];
 
+const DRIVER_DEMO_EMAIL = 'driver.demo@clearlogistics.test';
+const DRIVER_DEMO_PASSWORD = 'Driver123!';
+const DRIVER_DEMO_TOTAL_PICKUPS = 14;
+
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -294,6 +298,106 @@ async function notifyCustomer({ channel, to, message, metadata = {} }) {
   } catch (error) {
     console.log(`[customer-notification:${normalizedChannel}:error]`, error.message);
     return { delivered: false, mode: 'webhook', error: error.message };
+  }
+}
+
+function buildDemoPickup(index) {
+  const padded = String(index + 1).padStart(3, '0');
+  const shipmentId = `CLF-DRV-${padded}`;
+  const pickupDate = new Date(Date.now() + (index + 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const customerNames = [
+    'Alicia Brown', 'Kevon Morgan', 'Danielle Graham', 'Rashad Campbell',
+    'Tameka Stewart', 'Andre Watson', 'Natoya Russell', 'Jaden Ellis',
+    'Simone Blake', 'Jordan McKenzie', 'Kerry Fletcher', 'Monique Thompson',
+    'Tariq Lewis', 'Sade Williams'
+  ];
+  const cargoTypes = ['Box', 'Barrel', 'Pallet', 'Household Goods'];
+  const cities = ['Miami', 'Fort Lauderdale', 'Orlando', 'Kissimmee', 'Tampa'];
+  const neighborhoods = ['NW 7th Ave', 'Brickell Ave', 'Coral Way', 'Sunset Dr', 'Flagler St'];
+
+  const fullName = customerNames[index % customerNames.length];
+  const pickupCity = cities[index % cities.length];
+  const lane = neighborhoods[index % neighborhoods.length];
+  const cargoType = cargoTypes[index % cargoTypes.length];
+
+  return {
+    booking: {
+      bookingId: `BKG-DRV-${padded}`,
+      shipmentId,
+      fullName,
+      email: `customer${index + 1}@example.com`,
+      phone: `+1-305-555-${String(1200 + index).padStart(4, '0')}`,
+      pickupAddress: `${420 + index} ${lane}`,
+      pickupCity,
+      pickupZip: `33${String(100 + index).slice(-3)}`,
+      pickupDate,
+      cargoType,
+      quantity: String((index % 4) + 1),
+      weight: String(20 + index * 2),
+      jamaicaRecipient: `${fullName} Recipient`,
+      jamaicaLocation: index % 2 === 0 ? 'Kingston' : 'Montego Bay',
+      serviceLevel: index % 3 === 0 ? 'Premium' : index % 2 === 0 ? 'Standard' : 'Economy',
+      paymentStatus: index % 2 === 0 ? 'paid' : 'pending',
+      pickedUp: false,
+      createdAt: new Date(Date.now() - (index + 2) * 60 * 60 * 1000).toISOString(),
+    },
+    shipment: {
+      shipmentId,
+      fullName,
+      status: 'Pickup Scheduled',
+      cargoType,
+      quantity: String((index % 4) + 1),
+      unitType: cargoType,
+      milestones: DEFAULT_MILESTONES.map((m) => ({ ...m })),
+      paymentStatus: index % 2 === 0 ? 'paid' : 'pending',
+      createdAt: new Date(Date.now() - (index + 2) * 60 * 60 * 1000).toISOString(),
+    }
+  };
+}
+
+async function seedDriverDemoData() {
+  const data = await readData();
+  let hasChanges = false;
+
+  if (!Array.isArray(data.drivers)) data.drivers = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+
+  const existingDriver = data.drivers.find((d) => String(d.email || '').toLowerCase() === DRIVER_DEMO_EMAIL);
+  if (!existingDriver) {
+    const passwordHash = await bcrypt.hash(DRIVER_DEMO_PASSWORD, 10);
+    data.drivers.push({
+      id: 'driver-demo-001',
+      fullName: 'Demo Driver',
+      email: DRIVER_DEMO_EMAIL,
+      password: passwordHash,
+      phone: '+1-305-555-0110',
+      vehicle: 'Ford Transit 2022',
+      role: 'driver',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    });
+    hasChanges = true;
+  }
+
+  for (let i = 0; i < DRIVER_DEMO_TOTAL_PICKUPS; i += 1) {
+    const demo = buildDemoPickup(i);
+    const bookingExists = data.bookings.some((b) => b.shipmentId === demo.booking.shipmentId);
+    if (!bookingExists) {
+      data.bookings.push(demo.booking);
+      hasChanges = true;
+    }
+
+    const shipmentExists = data.shipments.some((s) => s.shipmentId === demo.shipment.shipmentId);
+    if (!shipmentExists) {
+      data.shipments.push(demo.shipment);
+      hasChanges = true;
+    }
+  }
+
+  if (hasChanges) {
+    await writeData(data);
+    console.log(`[seed] Driver demo account ready: ${DRIVER_DEMO_EMAIL} with ${DRIVER_DEMO_TOTAL_PICKUPS} sample pickups.`);
   }
 }
 
@@ -964,7 +1068,8 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
 });
 
 ensureDataFile()
-  .then(() => {
+  .then(async () => {
+    await seedDriverDemoData();
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
     });
