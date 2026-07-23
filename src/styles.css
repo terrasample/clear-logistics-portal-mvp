@@ -483,14 +483,110 @@ body {
   line-height: 1.5;
 }
 
+.mock-checkout-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.mock-checkout-shell__header {
+  max-width: 720px;
+}
+
+.mock-checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 1rem;
+}
+
 .mock-checkout {
   align-items: stretch;
 }
 
-.mock-checkout__panel {
+.mock-checkout--form {
   display: grid;
-  align-content: center;
   gap: 1rem;
+}
+
+.mock-checkout__wallets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.mock-wallet {
+  min-height: 48px;
+  border-radius: 0.9rem;
+  font-weight: 800;
+  font-size: 0.92rem;
+  border: 1px solid transparent;
+}
+
+.mock-wallet--dark {
+  background: #111827;
+  color: #ffffff;
+}
+
+.mock-wallet--light {
+  background: #f8fbfa;
+  color: var(--ink);
+  border-color: #dbe8e3;
+}
+
+.mock-checkout__divider {
+  position: relative;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.mock-checkout__divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid #dbe8e3;
+}
+
+.mock-checkout__divider span {
+  position: relative;
+  background: var(--surface);
+  padding: 0 0.75rem;
+}
+
+.mock-checkout__field-group {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mock-checkout__field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.mock-input {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #cdd9d4;
+  border-radius: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.mock-input--stacked {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mock-input small {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .mock-checkout__card {
@@ -520,8 +616,48 @@ body {
   opacity: 0.9;
 }
 
+.mock-checkout-summary {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.mock-checkout-summary__totals {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.mock-checkout-summary__totals div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.mock-checkout-summary__totals strong {
+  color: var(--ink);
+}
+
+.mock-checkout-summary__total {
+  padding-top: 0.8rem;
+  border-top: 1px dashed #dbe8e3;
+}
+
+.mock-checkout-summary__total span,
+.mock-checkout-summary__total strong {
+  color: var(--brand-dark);
+  font-size: 1rem;
+}
+
 .mock-checkout__actions {
   justify-content: flex-start;
+}
+
+.mock-checkout__footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
 }
 
 .card--wide .feature-grid {
@@ -1028,6 +1164,19 @@ body {
 @media (max-width: 900px) {
   .card--split {
     grid-template-columns: 1fr;
+  }
+
+  .mock-checkout-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mock-checkout__wallets {
+    grid-template-columns: 1fr;
+  }
+
+  .mock-checkout__actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .portal-nav {

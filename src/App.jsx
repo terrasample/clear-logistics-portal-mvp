@@ -1103,6 +1103,7 @@ function App() {
     const checkoutShipmentId = params.get('shipmentId') || shipmentId;
     const amountCents = Number(params.get('amount') || 2500);
     const amountUsd = (amountCents / 100).toFixed(2);
+    const customerEmail = currentUser?.email || bookingForm.email || 'customer@example.com';
 
     if (!checkoutShipmentId) {
       return (
@@ -1117,42 +1118,95 @@ function App() {
     }
 
     return (
-      <section className="card card--split mock-checkout">
-        <div>
+      <section className="mock-checkout-shell">
+        <div className="mock-checkout-shell__header">
           <p className="home-story-card__eyebrow">Mock Checkout</p>
-          <h2>Review and complete your payment</h2>
+          <h2>Complete your shipment payment</h2>
           <p className="section-intro">
-            Stripe is not configured in this environment, so this page simulates the checkout handoff you would normally see.
+            Stripe is not configured in this environment, so this page simulates a secure checkout experience before completing payment.
           </p>
-          <div className="booking-summary">
-            <p><strong>Shipment:</strong> {checkoutShipmentId}</p>
-            <p><strong>Deposit:</strong> ${amountUsd}</p>
-            <p><strong>Mode:</strong> Demo payment flow</p>
-          </div>
         </div>
 
-        <div className="mock-checkout__panel">
-          <div className="mock-checkout__card">
-            <p className="mock-checkout__card-label">Demo card</p>
-            <strong>4242 4242 4242 4242</strong>
-            <span>Expires 12/34</span>
-          </div>
-          <div className="booking-nav mock-checkout__actions">
-            <button
-              type="button"
-              className="btn btn--solid"
-              onClick={() => navigate(`/?payment=mock-success&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
-            >
-              Complete Payment
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => navigate(`/?payment=cancelled&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
-            >
-              Cancel
-            </button>
-          </div>
+        <div className="mock-checkout-layout">
+          <section className="card mock-checkout mock-checkout--form">
+            <div className="mock-checkout__wallets">
+              <button type="button" className="mock-wallet mock-wallet--dark">Link</button>
+              <button type="button" className="mock-wallet mock-wallet--light">Apple Pay</button>
+              <button type="button" className="mock-wallet mock-wallet--light">Cash App Pay</button>
+            </div>
+
+            <div className="mock-checkout__divider">
+              <span>Or pay with card</span>
+            </div>
+
+            <div className="mock-checkout__field-group">
+              <label className="mock-checkout__field">
+                Card information
+                <div className="mock-input mock-input--stacked">
+                  <span>4242 4242 4242 4242</span>
+                  <small>12 / 34&nbsp;&nbsp;&nbsp;CVC 123</small>
+                </div>
+              </label>
+
+              <label className="mock-checkout__field">
+                Cardholder name
+                <div className="mock-input">{currentUser?.fullName || bookingForm.fullName || 'Test Customer'}</div>
+              </label>
+
+              <label className="mock-checkout__field">
+                Email
+                <div className="mock-input">{customerEmail}</div>
+              </label>
+
+              <label className="mock-checkout__field">
+                Billing address
+                <div className="mock-input mock-input--stacked">
+                  <span>{bookingForm.pickupAddress || '123 Test Street'}</span>
+                  <small>{bookingForm.pickupCity || 'Jacksonville'}, {bookingForm.pickupZip || '32202'}</small>
+                </div>
+              </label>
+            </div>
+
+            <div className="booking-nav mock-checkout__actions">
+              <button
+                type="button"
+                className="btn btn--solid"
+                onClick={() => navigate(`/?payment=mock-success&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+              >
+                Pay ${amountUsd}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => navigate(`/?payment=cancelled&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p className="mock-checkout__footnote">Demo mode only. No real payment will be charged.</p>
+          </section>
+
+          <aside className="card mock-checkout-summary">
+            <div className="mock-checkout__card">
+              <p className="mock-checkout__card-label">Demo card</p>
+              <strong>4242 4242 4242 4242</strong>
+              <span>Expires 12/34</span>
+            </div>
+
+            <div className="booking-summary">
+              <p><strong>Shipment:</strong> {checkoutShipmentId}</p>
+              <p><strong>Customer:</strong> {currentUser?.fullName || bookingForm.fullName || 'Test Customer'}</p>
+              <p><strong>Delivery:</strong> {bookingForm.jamaicaLocation || 'Kingston'}, Jamaica</p>
+              <p><strong>Mode:</strong> Demo payment flow</p>
+            </div>
+
+            <div className="mock-checkout-summary__totals">
+              <div><span>Shipment deposit</span><strong>${amountUsd}</strong></div>
+              <div><span>Processing fee</span><strong>$0.00</strong></div>
+              <div className="mock-checkout-summary__total"><span>Total</span><strong>${amountUsd}</strong></div>
+            </div>
+          </aside>
         </div>
       </section>
     );
