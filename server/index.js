@@ -26,6 +26,7 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
+const uploadDir = path.resolve(process.cwd(), 'server', 'uploads');
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
 let dataWriteQueue = Promise.resolve();
 const adminEmails = new Set(
@@ -36,11 +37,13 @@ const adminEmails = new Set(
 );
 
 app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
+app.use('/uploads', express.static(uploadDir));
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 async function ensureDataFile() {
+  await fs.mkdir(uploadDir, { recursive: true });
   try {
     await fs.access(dataFile);
   } catch {
@@ -258,6 +261,42 @@ async function sendNotification(subject, body) {
   return { delivered: true, mode: 'smtp' };
 }
 
+async function notifyCustomer({ channel, to, message, metadata = {} }) {
+  const normalizedChannel = String(channel || '').toLowerCase();
+  const destination = String(to || '').trim();
+  if (!destination || !message) {
+    return { delivered: false, reason: 'missing-destination-or-message' };
+  }
+
+  const webhookUrl = normalizedChannel === 'whatsapp'
+    ? process.env.NOTIFY_WHATSAPP_WEBHOOK_URL
+    : normalizedChannel === 'sms'
+      ? process.env.NOTIFY_SMS_WEBHOOK_URL
+      : '';
+
+  if (!webhookUrl) {
+    console.log(`[customer-notification:${normalizedChannel}:mock]`, { to: destination, message, metadata });
+    return { delivered: false, mode: 'mock' };
+  }
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: normalizedChannel, to: destination, message, metadata }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Webhook status ${response.status}`);
+    }
+
+    return { delivered: true, mode: 'webhook' };
+  } catch (error) {
+    console.log(`[customer-notification:${normalizedChannel}:error]`, error.message);
+    return { delivered: false, mode: 'webhook', error: error.message };
+  }
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, stripe: Boolean(stripe), timestamp: new Date().toISOString() });
 });
@@ -398,6 +437,59 @@ app.post('/api/quotes', async (req, res) => {
   res.status(201).json({ quote, message: 'Quote request submitted.' });
 });
 
+app.post('/api/uploads/document', async (req, res) => {
+  const payload = req.body || {};
+  const fileName = String(payload.fileName || 'document').trim();
+  const mimeType = String(payload.mimeType || '').toLowerCase();
+  const dataBase64 = String(payload.dataBase64 || '').trim();
+
+  if (!dataBase64) {
+    return res.status(400).json({ error: 'dataBase64 is required.' });
+  }
+
+  const allowedMime = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+  if (mimeType && !allowedMime.has(mimeType)) {
+    return res.status(400).json({ error: 'Only PDF, JPG, PNG, and WEBP files are supported.' });
+  }
+
+  let buffer;
+  try {
+    buffer = Buffer.from(dataBase64, 'base64');
+  } catch {
+    return res.status(400).json({ error: 'Invalid base64 payload.' });
+  }
+
+  if (!buffer || !buffer.length) {
+    return res.status(400).json({ error: 'Uploaded file is empty.' });
+  }
+
+  if (buffer.length > 5 * 1024 * 1024) {
+    return res.status(400).json({ error: 'File exceeds 5MB limit.' });
+  }
+
+  const extMap = {
+    'application/pdf': '.pdf',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp'
+  };
+  const safeBase = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 60) || 'document';
+  const ext = extMap[mimeType] || path.extname(safeBase) || '.bin';
+  const storedName = `${Date.now()}-${randomUUID()}${ext}`;
+  const destination = path.join(uploadDir, storedName);
+
+  await fs.mkdir(uploadDir, { recursive: true });
+  await fs.writeFile(destination, buffer);
+
+  const publicUrl = `${req.protocol}://${req.get('host')}/uploads/${storedName}`;
+  return res.status(201).json({
+    fileName: safeBase,
+    mimeType: mimeType || 'application/octet-stream',
+    size: buffer.length,
+    url: publicUrl,
+  });
+});
+
 app.post('/api/purchase-requests', async (req, res) => {
   const payload = req.body || {};
   const required = ['fullName', 'email', 'phone', 'storeName', 'productLinks', 'budgetUsd'];
@@ -451,6 +543,11 @@ app.post('/api/purchase-requests', async (req, res) => {
     docsRequired,
     customsReady: Boolean(payload.customsReady),
     customsReadyScore: Number(payload.customsReadyScore || 0),
+    needsAdminReview: Boolean(payload.needsAdminReview || false),
+    notificationPreferences: {
+      whatsapp: Boolean(payload.notificationPreferences?.whatsapp),
+      sms: Boolean(payload.notificationPreferences?.sms),
+    },
     documents: {
       invoiceUrl: String(documents.invoiceUrl || '').trim(),
       idUrl: String(documents.idUrl || '').trim(),
@@ -459,13 +556,35 @@ app.post('/api/purchase-requests', async (req, res) => {
     },
     notes: payload.notes || '',
     createdAt: new Date().toISOString(),
-    status: 'Received',
+    status: Boolean(payload.needsAdminReview) ? 'Needs Review' : 'Received',
     paymentStatus: 'pending'
   };
 
   data.purchaseRequests.push(purchaseRequest);
   await writeData(data);
   await sendNotification('New Purchase Assistance Request', `Request ${purchaseRequest.requestId} from ${purchaseRequest.fullName}`);
+
+  if (purchaseRequest.customsReady) {
+    const alerts = [];
+    const message = `Clear Logistics update: your request ${purchaseRequest.requestId} is Customs Ready. Landed total: $${purchaseRequest.totalUsd.toFixed(2)}.`;
+    if (purchaseRequest.notificationPreferences.whatsapp) {
+      alerts.push(notifyCustomer({
+        channel: 'whatsapp',
+        to: purchaseRequest.phone,
+        message,
+        metadata: { event: 'customs_ready', requestId: purchaseRequest.requestId },
+      }));
+    }
+    if (purchaseRequest.notificationPreferences.sms) {
+      alerts.push(notifyCustomer({
+        channel: 'sms',
+        to: purchaseRequest.phone,
+        message,
+        metadata: { event: 'customs_ready', requestId: purchaseRequest.requestId },
+      }));
+    }
+    await Promise.all(alerts);
+  }
 
   res.status(201).json({ purchaseRequest, message: 'Purchase request received.' });
 });
@@ -605,6 +724,27 @@ app.post('/api/payments/confirm', async (req, res) => {
 
     await writeData(data);
     await sendNotification('Shop & Ship Payment Confirmed', `Purchase request ${referenceId} marked paid (${providerStatus || 'manual-confirm'}).`);
+
+    const paymentAlerts = [];
+    const paymentMessage = `Clear Logistics update: payment confirmed for request ${referenceId}. Our team is now processing your order.`;
+    if (purchaseRequest.notificationPreferences?.whatsapp) {
+      paymentAlerts.push(notifyCustomer({
+        channel: 'whatsapp',
+        to: purchaseRequest.phone,
+        message: paymentMessage,
+        metadata: { event: 'payment_confirmed', requestId: referenceId },
+      }));
+    }
+    if (purchaseRequest.notificationPreferences?.sms) {
+      paymentAlerts.push(notifyCustomer({
+        channel: 'sms',
+        to: purchaseRequest.phone,
+        message: paymentMessage,
+        metadata: { event: 'payment_confirmed', requestId: referenceId },
+      }));
+    }
+    await Promise.all(paymentAlerts);
+
     return res.json({ ok: true, referenceType: 'purchase_request', referenceId, paymentStatus: 'paid' });
   }
 

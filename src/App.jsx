@@ -358,6 +358,34 @@ function createEmptyShopItem() {
 
 const LUXURY_STORE_KEYWORDS = ['louis vuitton', 'gucci', 'dior', 'chanel', 'balenciaga', 'saks', 'neiman', 'bloomingdale'];
 
+function inferCategoryFromUrl(url) {
+  const lower = url.toLowerCase();
+  if (lower.includes('laptop') || lower.includes('phone') || lower.includes('camera') || lower.includes('electronics')) return 'Electronics';
+  if (lower.includes('dress') || lower.includes('shirt') || lower.includes('shoe') || lower.includes('fashion')) return 'Fashion';
+  if (lower.includes('beauty') || lower.includes('makeup') || lower.includes('skincare')) return 'Beauty';
+  if (lower.includes('furniture') || lower.includes('home')) return 'Home';
+  return 'General';
+}
+
+function inferDefaultPrice(category) {
+  if (category === 'Electronics') return 380;
+  if (category === 'Fashion') return 160;
+  if (category === 'Beauty') return 85;
+  if (category === 'Home') return 210;
+  return 120;
+}
+
+function getStoreNameFromUrl(url) {
+  try {
+    const host = new URL(url).hostname.replace('www.', '');
+    const match = POPULAR_STORES.find((store) => host.includes(new URL(store.url).hostname.replace('www.', '')));
+    if (match) return match.name;
+    return host.split('.')[0];
+  } catch {
+    return 'Online Store';
+  }
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -438,6 +466,8 @@ function App() {
     storeName: 'Amazon',
     sizeColorSpecs: '',
     notes: '',
+    notifyWhatsApp: true,
+    notifySms: false,
   });
   const [shopItems, setShopItems] = useState([createEmptyShopItem()]);
   const [shopDocs, setShopDocs] = useState({
@@ -446,6 +476,13 @@ function App() {
     importPermitUrl: '',
     declarationAccepted: false,
   });
+  const [shopDocUploadState, setShopDocUploadState] = useState({
+    invoiceUrl: { uploading: false, fileName: '', error: '' },
+    idUrl: { uploading: false, fileName: '', error: '' },
+    importPermitUrl: { uploading: false, fileName: '', error: '' },
+  });
+  const [estimatorLinks, setEstimatorLinks] = useState('');
+  const [estimatorResult, setEstimatorResult] = useState(null);
 
   const [trackingId, setTrackingId] = useState('');
   const [trackingResult, setTrackingResult] = useState(null);
@@ -526,8 +563,8 @@ function App() {
   }
 
   function handlePurchaseChange(event) {
-    const { name, value } = event.target;
-    setPurchaseForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    setPurchaseForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   }
 
   function handleShopDocChange(event) {
@@ -545,6 +582,141 @@ function App() {
 
   function removeShopItem(index) {
     setShopItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
+  }
+
+  async function fileToBase64(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(arrayBuffer);
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      const slice = bytes.subarray(i, i + chunk);
+      binary += String.fromCharCode(...slice);
+    }
+    return btoa(binary);
+  }
+
+  async function uploadShopDocument(file, fieldName) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setStatusMessage('Document exceeds 5MB limit. Please upload a smaller file.');
+      return;
+    }
+
+    setShopDocUploadState((prev) => ({
+      ...prev,
+      [fieldName]: { uploading: true, fileName: file.name, error: '' },
+    }));
+
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const response = await fetch(`${API_BASE}/uploads/document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type,
+          dataBase64,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to upload document.');
+
+      setShopDocs((prev) => ({ ...prev, [fieldName]: result.url }));
+      setShopDocUploadState((prev) => ({
+        ...prev,
+        [fieldName]: { uploading: false, fileName: file.name, error: '' },
+      }));
+    } catch (error) {
+      setShopDocUploadState((prev) => ({
+        ...prev,
+        [fieldName]: { uploading: false, fileName: file.name, error: error.message },
+      }));
+      setStatusMessage(error.message);
+    }
+  }
+
+  function handleShopDocFileChange(event, fieldName) {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadShopDocument(file, fieldName);
+    }
+  }
+
+  function runLinkEstimator() {
+    const links = estimatorLinks
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (!links.length) {
+      setStatusMessage('Paste at least one product or cart link to estimate landed cost.');
+      return;
+    }
+
+    const estimatedItems = links.map((link) => {
+      const category = inferCategoryFromUrl(link);
+      const inferredPrice = inferDefaultPrice(category);
+      const store = getStoreNameFromUrl(link);
+      return {
+        name: `${category} item`,
+        link,
+        quantity: 1,
+        unitPriceUsd: inferredPrice,
+        category,
+        store,
+      };
+    });
+
+    const subtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
+    const hasLuxury = estimatedItems.some((item) => LUXURY_STORE_KEYWORDS.some((k) => `${item.store} ${item.link}`.toLowerCase().includes(k)));
+    const customs = subtotal * (hasLuxury ? 0.24 : 0.16);
+    const brokerage = subtotal > 0 ? 35 : 0;
+    const processing = subtotal * 0.05;
+    const shipping = subtotal * 0.09;
+    const total = subtotal + customs + brokerage + processing + shipping;
+    const unknownCount = estimatedItems.filter((item) => item.category === 'General').length;
+    const confidence = Math.max(55, Math.min(92, Math.round(90 - unknownCount * 9 - (hasLuxury ? 8 : 0))));
+    const confidenceLabel = confidence >= 82 ? 'High' : confidence >= 68 ? 'Medium' : 'Low';
+
+    const missing = [];
+    if (unknownCount > 0) missing.push('Add exact product category for more accurate duty estimation.');
+    if (estimatedItems.some((item) => item.unitPriceUsd >= 300)) missing.push('Confirm actual store cart totals for high-value items.');
+    if (hasLuxury) missing.push('Luxury goods may require additional customs review and supporting invoice details.');
+
+    setEstimatorResult({
+      estimatedItems,
+      subtotal,
+      customs,
+      brokerage,
+      processing,
+      shipping,
+      total,
+      confidence,
+      confidenceLabel,
+      missing,
+      hasLuxury,
+    });
+    setStatusMessage(`Estimate generated with ${confidenceLabel} confidence.`);
+  }
+
+  function applyEstimatorToCart() {
+    if (!estimatorResult?.estimatedItems?.length) {
+      setStatusMessage('Run estimator first to create cart items.');
+      return;
+    }
+
+    const items = estimatorResult.estimatedItems.map((item) => ({
+      name: item.name,
+      link: item.link,
+      quantity: String(item.quantity),
+      unitPriceUsd: String(item.unitPriceUsd),
+    }));
+    setShopItems(items);
+    if (estimatorResult.estimatedItems[0]?.store) {
+      setPurchaseForm((prev) => ({ ...prev, storeName: estimatorResult.estimatedItems[0].store }));
+    }
+    setStatusMessage('Estimated cart imported. Review values before checkout.');
   }
 
   const normalizedShopItems = useMemo(() => (
@@ -690,6 +862,7 @@ function App() {
       }
 
       const amountCents = Math.round(landedTotalUsd * 100);
+      const needsAdminReview = hasLuxuryBrand || landedTotalUsd >= 1500 || (estimatorResult && estimatorResult.confidence < 70);
 
       const response = await fetch(`${API_BASE}/purchase-requests`, {
         method: 'POST',
@@ -704,6 +877,7 @@ function App() {
           brokerageFeeUsd,
           processingFeeUsd,
           totalUsd: landedTotalUsd,
+          needsAdminReview,
           docsRequired,
           customsReadyScore,
           customsReady: isCustomsReady,
@@ -712,6 +886,10 @@ function App() {
             idUrl: shopDocs.idUrl || '',
             importPermitUrl: shopDocs.importPermitUrl || '',
             declarationAccepted: shopDocs.declarationAccepted,
+          },
+          notificationPreferences: {
+            whatsapp: Boolean(purchaseForm.notifyWhatsApp),
+            sms: Boolean(purchaseForm.notifySms),
           },
         }),
       });
@@ -744,6 +922,8 @@ function App() {
         storeName: 'Amazon',
         sizeColorSpecs: '',
         notes: '',
+        notifyWhatsApp: true,
+        notifySms: false,
       });
       setShopItems([createEmptyShopItem()]);
       setShopDocs({
@@ -752,6 +932,13 @@ function App() {
         importPermitUrl: '',
         declarationAccepted: false,
       });
+      setShopDocUploadState({
+        invoiceUrl: { uploading: false, fileName: '', error: '' },
+        idUrl: { uploading: false, fileName: '', error: '' },
+        importPermitUrl: { uploading: false, fileName: '', error: '' },
+      });
+      setEstimatorLinks('');
+      setEstimatorResult(null);
       window.location.assign(checkoutResult.url);
     } catch (error) {
       setStatusMessage(error.message);
@@ -1611,6 +1798,45 @@ function App() {
                 <p className="section-intro">Signed in as {currentUser?.fullName || 'Customer'}. Your account can be used for follow-up and approvals.</p>
               )}
               <form className="form" onSubmit={handlePurchaseSubmit}>
+                <div className="shop-estimator card" style={{ marginBottom: '0.8rem' }}>
+                  <h3>AI Cart Link Estimator</h3>
+                  <p className="section-intro">Paste one or more cart/product links and we will estimate full landed shipping cost before checkout.</p>
+                  <label>
+                    Product/Cart Links (one per line)
+                    <textarea
+                      rows="4"
+                      value={estimatorLinks}
+                      onChange={(event) => setEstimatorLinks(event.target.value)}
+                      placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/..."
+                    />
+                  </label>
+                  <button type="button" className="btn btn--ghost" onClick={runLinkEstimator}>
+                    Estimate Full Shipping Cost
+                  </button>
+                  {estimatorResult && (
+                    <div className="booking-summary" style={{ marginTop: '0.65rem' }}>
+                      <p><strong>Confidence:</strong> {estimatorResult.confidenceLabel} ({estimatorResult.confidence}%)</p>
+                      <p><strong>Estimated Item Total:</strong> ${estimatorResult.subtotal.toFixed(2)}</p>
+                      <p><strong>Estimated Shipping:</strong> ${estimatorResult.shipping.toFixed(2)}</p>
+                      <p><strong>Estimated Duty:</strong> ${estimatorResult.customs.toFixed(2)}</p>
+                      <p><strong>Estimated Landed Total:</strong> ${estimatorResult.total.toFixed(2)}</p>
+                      {estimatorResult.missing.length > 0 && (
+                        <>
+                          <p><strong>Missing Info Prompts:</strong></p>
+                          <ul className="type-list">
+                            {estimatorResult.missing.map((msg) => (
+                              <li key={msg}>{msg}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      <button type="button" className="btn btn--solid" onClick={applyEstimatorToCart}>
+                        Use Estimate in Cart
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <label>
                   Full Name
                   <input name="fullName" value={purchaseForm.fullName} onChange={handlePurchaseChange} required />
@@ -1638,6 +1864,14 @@ function App() {
                 <label>
                   Additional Notes
                   <textarea name="notes" value={purchaseForm.notes} onChange={handlePurchaseChange} rows="3" />
+                </label>
+                <label className="checkbox-label">
+                  <input type="checkbox" name="notifyWhatsApp" checked={purchaseForm.notifyWhatsApp} onChange={handlePurchaseChange} />
+                  Send WhatsApp updates when customs-ready and payment is confirmed
+                </label>
+                <label className="checkbox-label">
+                  <input type="checkbox" name="notifySms" checked={purchaseForm.notifySms} onChange={handlePurchaseChange} />
+                  Send SMS updates when customs-ready and payment is confirmed
                 </label>
 
                 <div className="shop-cart">
@@ -1703,17 +1937,32 @@ function App() {
 
                 <div className="shop-docs card" style={{ marginTop: '0.6rem' }}>
                   <h3>Customs Ready Checklist</h3>
-                  <p className="section-intro">Upload document links before checkout. Required docs are enforced only when risk/value thresholds are triggered.</p>
+                  <p className="section-intro">Upload customer documents before checkout. Required docs are enforced only when risk/value thresholds are triggered.</p>
                   <label>
-                    Commercial Invoice URL {docsRequired ? '(Required)' : '(Optional)'}
+                    Upload Commercial Invoice {docsRequired ? '(Required)' : '(Optional)'}
+                    <input type="file" accept="application/pdf,image/*" onChange={(event) => handleShopDocFileChange(event, 'invoiceUrl')} />
+                    <small>{shopDocUploadState.invoiceUrl.uploading ? 'Uploading...' : shopDocUploadState.invoiceUrl.fileName ? `Uploaded: ${shopDocUploadState.invoiceUrl.fileName}` : 'Accepted: PDF, JPG, PNG (max 5MB)'}</small>
+                  </label>
+                  <label>
+                    Commercial Invoice Link (if already hosted)
                     <input type="url" name="invoiceUrl" value={shopDocs.invoiceUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." required={docsRequired} />
                   </label>
                   <label>
-                    Government ID URL {docsRequired ? '(Required)' : '(Optional)'}
+                    Upload Government ID {docsRequired ? '(Required)' : '(Optional)'}
+                    <input type="file" accept="application/pdf,image/*" onChange={(event) => handleShopDocFileChange(event, 'idUrl')} />
+                    <small>{shopDocUploadState.idUrl.uploading ? 'Uploading...' : shopDocUploadState.idUrl.fileName ? `Uploaded: ${shopDocUploadState.idUrl.fileName}` : 'Accepted: PDF, JPG, PNG (max 5MB)'}</small>
+                  </label>
+                  <label>
+                    Government ID Link (if already hosted)
                     <input type="url" name="idUrl" value={shopDocs.idUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." required={docsRequired} />
                   </label>
                   <label>
-                    Import Permit URL (Optional)
+                    Upload Import Permit (Optional)
+                    <input type="file" accept="application/pdf,image/*" onChange={(event) => handleShopDocFileChange(event, 'importPermitUrl')} />
+                    <small>{shopDocUploadState.importPermitUrl.uploading ? 'Uploading...' : shopDocUploadState.importPermitUrl.fileName ? `Uploaded: ${shopDocUploadState.importPermitUrl.fileName}` : 'Accepted: PDF, JPG, PNG (max 5MB)'}</small>
+                  </label>
+                  <label>
+                    Import Permit Link (Optional)
                     <input type="url" name="importPermitUrl" value={shopDocs.importPermitUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." />
                   </label>
                   <label className="checkbox-label">
@@ -2221,6 +2470,8 @@ function App() {
                   <p><strong>Store:</strong> {request.storeName}</p>
                   <p><strong>Landed Total:</strong> ${request.totalUsd || request.budgetUsd || 'N/A'}</p>
                   <p><strong>Customs Ready:</strong> {request.customsReady ? 'Yes' : 'No'} ({request.customsReadyScore || 0}%)</p>
+                  <p><strong>Review:</strong> {request.needsAdminReview ? 'Needs Admin Review' : 'Standard'}</p>
+                  <p><strong>Alerts:</strong> {request.notificationPreferences?.whatsapp ? 'WhatsApp ' : ''}{request.notificationPreferences?.sms ? 'SMS' : ''}{!request.notificationPreferences?.whatsapp && !request.notificationPreferences?.sms ? 'None' : ''}</p>
                 </div>
               ))}
               {!adminOverview?.purchaseRequests?.length && <p className="section-intro">No purchase requests yet.</p>}
