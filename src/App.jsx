@@ -280,11 +280,13 @@ const SITE_MAP = [
 ];
 
 const WHATSAPP_PHONE = '13055550100';
+const BOOKING_TAB_LABEL = 'Services';
+const BOOKING_PAGE_LABEL = 'Book Pickup';
 
 const CHATBOT_PROMPTS = [
   {
     label: 'How do I book a shipment?',
-    answer: 'Click Ship To Jamaica, complete the 5 booking steps, then log in to finalize shipment and payment.'
+    answer: `Click ${BOOKING_TAB_LABEL}, open ${BOOKING_PAGE_LABEL}, complete the 5 booking steps, then log in to finalize shipment and payment.`
   },
   {
     label: 'What shipment IDs can I demo?',
@@ -315,7 +317,7 @@ function getChatbotReply(message) {
   }
 
   if (normalized.includes('book') || normalized.includes('shipment')) {
-    return 'To book, click Ship To Jamaica, complete the 5 steps, then log in to finalize shipment and payment.';
+    return `To book, click ${BOOKING_TAB_LABEL}, open ${BOOKING_PAGE_LABEL}, complete the 5 steps, then log in to finalize shipment and payment.`;
   }
 
   if (normalized.includes('track') || normalized.includes('status') || normalized.includes('shipment id')) {
@@ -384,6 +386,57 @@ function getStoreNameFromUrl(url) {
     return host.split('.')[0];
   } catch {
     return 'Online Store';
+  }
+}
+
+function extractProductNameFromUrl(url) {
+  const toTitleCase = (value) => value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  const cleanSlug = (slug) => {
+    const tokens = String(slug || '').split('-').filter(Boolean);
+    const filtered = tokens.filter((token) => {
+      const lower = token.toLowerCase();
+      if (/^s\d+[a-z]*$/.test(lower)) return false;
+      if (lower.startsWith('nvprod')) return false;
+      if (/^[a-z]{1,2}\d{4,}[a-z0-9]*$/i.test(token)) return false;
+      return true;
+    });
+    return filtered.join(' ').trim();
+  };
+
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    
+    // Extract product name from common URL patterns
+    // Pattern 1: /products/product-name (Shopify, etc.)
+    const productMatch = pathname.match(/\/products?\/([\w-]+)/);
+    if (productMatch) {
+      const cleaned = cleanSlug(productMatch[1]);
+      return cleaned ? toTitleCase(cleaned) : null;
+    }
+    
+    // Pattern 2: Look in query parameters (some stores)
+    const searchParams = urlObj.searchParams;
+    if (searchParams.has('title')) return searchParams.get('title');
+    
+    // Pattern 3: Last segment of URL path (Amazon, etc.)
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length > 0) {
+      const lastSegment = segments[segments.length - 1];
+      // Clean up - remove IDs, codes, etc.
+      let cleaned = decodeURIComponent(lastSegment);
+      cleaned = cleaned.replace(/-?([a-z0-9]{10,}|[A-Z0-9]{5,}|\/.*)/g, '').trim();
+      if (cleaned.length > 3) return toTitleCase(cleaned.replace(/-/g, ' '));
+    }
+    
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -682,9 +735,11 @@ function App() {
       const category = inferCategoryFromUrl(link);
       const inferredPrice = inferDefaultPrice(category);
       const store = getStoreNameFromUrl(link);
+      const extractedName = extractProductNameFromUrl(link);
+      const name = extractedName || `${category} item` || `Item ${index + 1}`;
 
       return {
-        name: `${category} item` || `Item ${index + 1}`,
+        name,
         link,
         quantity: 1,
         unitPriceUsd: inferredPrice,
@@ -2326,8 +2381,8 @@ function App() {
     return (
       <section className="card card--split">
         <div>
-          <p className="section-context-label" aria-label="Current booking context">You are viewing: Services > Ship To Jamaica</p>
-          <h2>Ship To Jamaica</h2>
+          <p className="section-context-label" aria-label={`${BOOKING_TAB_LABEL} - ${BOOKING_PAGE_LABEL}`}>You are viewing: {BOOKING_TAB_LABEL} &gt; {BOOKING_PAGE_LABEL}</p>
+          <h2>{BOOKING_PAGE_LABEL}</h2>
           <p className="section-intro">Complete the booking in 5 steps. No hidden fees.</p>
           <div className="booking-steps">
             {stepLabels.map((label, idx) => (
@@ -2560,7 +2615,26 @@ function App() {
     }, [trackingResult]);
 
     return (
-      <section className="card card--split">
+      <>
+        {/* Breadcrumb Navigation */}
+        <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--brand)',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+              font: 'inherit'
+            }}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+        <section className="card card--split">
         <div>
           <h2>Track Shipment</h2>
           <label className="inline-label">
@@ -2608,6 +2682,7 @@ function App() {
           )}
         </div>
       </section>
+      </>
     );
   }
 
@@ -2689,7 +2764,18 @@ function App() {
             <button
               type="button"
               className="btn btn--ghost"
-              onClick={() => navigate('/tracking')}
+              onClick={() => {
+                setTrackingId(activeShipment.shipmentId);
+                setTrackingResult({
+                  shipmentId: activeShipment.shipmentId,
+                  status: activeShipment.status,
+                  milestones: activeShipment.steps.map((step) => ({
+                    label: step.label,
+                    done: step.done,
+                  })),
+                });
+                navigate('/tracking');
+              }}
               style={{ marginTop: '1.5rem', width: '100%' }}
             >
               View Full Tracking Details
@@ -3740,6 +3826,9 @@ function App() {
               <div className="nav-badge" aria-label="Signed in customer">
                 Signed in as {currentUser?.fullName || 'Customer'}
               </div>
+              <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
+                Dashboard
+              </button>
               {currentUser?.role === 'admin' && (
                 <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>
                   Admin
