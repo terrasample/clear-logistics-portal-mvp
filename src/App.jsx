@@ -332,6 +332,15 @@ function getChatbotReply(message) {
   return 'I can help with booking, tracking, payment, FAQs, demo IDs, and support contact. Try one of the suggested questions.';
 }
 
+function createEmptyShopItem() {
+  return {
+    name: '',
+    link: '',
+    quantity: 1,
+    unitPriceUsd: '',
+  };
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -410,11 +419,10 @@ function App() {
     email: '',
     phone: '',
     storeName: 'Amazon',
-    productLinks: '',
     sizeColorSpecs: '',
-    budgetUsd: '',
     notes: '',
   });
+  const [shopItems, setShopItems] = useState([createEmptyShopItem()]);
 
   const [trackingId, setTrackingId] = useState('');
   const [trackingResult, setTrackingResult] = useState(null);
@@ -497,6 +505,18 @@ function App() {
   function handlePurchaseChange(event) {
     const { name, value } = event.target;
     setPurchaseForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleShopItemChange(index, field, value) {
+    setShopItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
+  }
+
+  function addShopItem() {
+    setShopItems((prev) => [...prev, createEmptyShopItem()]);
+  }
+
+  function removeShopItem(index) {
+    setShopItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
   }
 
   function sendChatMessage(rawMessage) {
@@ -589,30 +609,73 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const normalizedItems = shopItems
+        .map((item) => ({
+          name: String(item.name || '').trim(),
+          link: String(item.link || '').trim(),
+          quantity: Math.max(1, Number(item.quantity || 1)),
+          unitPriceUsd: Math.max(0, Number(item.unitPriceUsd || 0)),
+        }))
+        .filter((item) => item.name && item.link);
+
+      if (!normalizedItems.length) {
+        throw new Error('Add at least one cart item with product name and link.');
+      }
+
+      const subtotalUsd = normalizedItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0);
+      if (subtotalUsd <= 0) {
+        throw new Error('Enter a unit price for at least one item to continue to checkout.');
+      }
+
+      const serviceFeeUsd = Number((subtotalUsd * 0.08).toFixed(2));
+      const checkoutTotalUsd = Number((subtotalUsd + serviceFeeUsd).toFixed(2));
+      const amountCents = Math.round(checkoutTotalUsd * 100);
+
       const response = await fetch(`${API_BASE}/purchase-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...purchaseForm,
-          productLinks: purchaseForm.productLinks
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean),
+          productLinks: normalizedItems.map((item) => item.link),
+          items: normalizedItems,
+          budgetUsd: checkoutTotalUsd,
+          cartSubtotalUsd: subtotalUsd,
+          serviceFeeUsd,
+          totalUsd: checkoutTotalUsd,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to submit purchase request.');
-      setStatusMessage(`Purchase request submitted: ${result.purchaseRequest.requestId}.`);
+
+      const requestId = result.purchaseRequest?.requestId;
+      if (!requestId) {
+        throw new Error('Purchase request created, but missing request ID for checkout.');
+      }
+
+      const checkoutResponse = await fetch(`${API_BASE}/payments/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amountCents,
+          referenceType: 'purchase_request',
+          referenceId: requestId,
+        }),
+      });
+      const checkoutResult = await checkoutResponse.json();
+      if (!checkoutResponse.ok) throw new Error(checkoutResult.error || 'Unable to start checkout.');
+      if (!checkoutResult.url) throw new Error('Checkout setup failed. Missing checkout URL.');
+
+      setStatusMessage(`Purchase request submitted: ${requestId}. Redirecting to checkout.`);
       setPurchaseForm({
         fullName: '',
         email: '',
         phone: '',
         storeName: 'Amazon',
-        productLinks: '',
         sizeColorSpecs: '',
-        budgetUsd: '',
         notes: '',
       });
+      setShopItems([createEmptyShopItem()]);
+      window.location.assign(checkoutResult.url);
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -989,26 +1052,45 @@ function App() {
     const params = new URLSearchParams(location.search);
     const payment = params.get('payment');
     const paidShipmentId = params.get('shipmentId');
+    const referenceType = params.get('referenceType');
+    const referenceId = params.get('referenceId');
+    const effectiveShipmentId = paidShipmentId || (referenceType === 'shipment' ? referenceId : '');
 
     if (!payment) {
       return;
     }
 
     if (payment === 'success' || payment === 'mock-success') {
-      if (paidShipmentId) {
-        setTrackingId(paidShipmentId);
+      if (referenceType === 'purchase_request' && referenceId) {
         fetch(`${API_BASE}/payments/confirm`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shipmentId: paidShipmentId, providerStatus: payment }),
+          body: JSON.stringify({ referenceType, referenceId, providerStatus: payment }),
+        }).catch(() => undefined);
+        setStatusMessage(`Shop & Ship payment successful for ${referenceId}. We will confirm your purchase and shipping timeline.`);
+        navigate('/shop', { replace: true });
+        return;
+      }
+
+      if (effectiveShipmentId) {
+        setTrackingId(effectiveShipmentId);
+        fetch(`${API_BASE}/payments/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shipmentId: effectiveShipmentId, providerStatus: payment }),
         }).catch(() => undefined);
       }
-      setStatusMessage(`Payment successful for ${paidShipmentId || 'shipment'}. You can now track your cargo.`);
+      setStatusMessage(`Payment successful for ${effectiveShipmentId || 'shipment'}. You can now track your cargo.`);
       navigate('/tracking', { replace: true });
       return;
     }
 
     if (payment === 'cancelled') {
+      if (referenceType === 'purchase_request') {
+        setStatusMessage('Shop & Ship payment was cancelled. Your request is saved and can be resumed.');
+        navigate('/shop', { replace: true });
+        return;
+      }
       setStatusMessage('Payment was cancelled. Your shipment is saved; you can resume payment anytime.');
       navigate('/book-pickup', { replace: true });
     }
@@ -1131,17 +1213,22 @@ function App() {
   function MockCheckoutPage() {
     const params = new URLSearchParams(location.search);
     const checkoutShipmentId = params.get('shipmentId') || shipmentId;
+    const referenceType = params.get('referenceType') || 'shipment';
+    const referenceId = params.get('referenceId') || '';
     const amountCents = Number(params.get('amount') || 2500);
     const amountUsd = (amountCents / 100).toFixed(2);
     const customerEmail = currentUser?.email || bookingForm.email || 'customer@example.com';
+    const checkoutRefId = referenceType === 'purchase_request' ? referenceId : checkoutShipmentId;
+    const checkoutTitle = referenceType === 'purchase_request' ? 'Complete your Shop & Ship payment' : 'Complete your shipment payment';
+    const checkoutBackPath = referenceType === 'purchase_request' ? '/shop' : '/book-pickup';
 
-    if (!checkoutShipmentId) {
+    if (!checkoutRefId) {
       return (
         <section className="card">
           <h2>Mock Checkout</h2>
-          <p className="section-intro">No shipment is attached to this checkout session.</p>
-          <button type="button" className="btn btn--solid" onClick={() => navigate('/book-pickup')}>
-            Back to Booking
+          <p className="section-intro">No checkout reference is attached to this checkout session.</p>
+          <button type="button" className="btn btn--solid" onClick={() => navigate(checkoutBackPath)}>
+            Back
           </button>
         </section>
       );
@@ -1151,7 +1238,7 @@ function App() {
       <section className="mock-checkout-shell">
         <div className="mock-checkout-shell__header">
           <p className="home-story-card__eyebrow">Mock Checkout</p>
-          <h2>Complete your shipment payment</h2>
+          <h2>{checkoutTitle}</h2>
           <p className="section-intro">
             Stripe is not configured in this environment, so this page simulates a secure checkout experience before completing payment.
           </p>
@@ -1201,14 +1288,26 @@ function App() {
               <button
                 type="button"
                 className="btn btn--solid"
-                onClick={() => navigate(`/?payment=mock-success&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+                onClick={() => {
+                  if (referenceType === 'purchase_request') {
+                    navigate(`/?payment=mock-success&referenceType=purchase_request&referenceId=${encodeURIComponent(checkoutRefId)}`);
+                    return;
+                  }
+                  navigate(`/?payment=mock-success&shipmentId=${encodeURIComponent(checkoutRefId)}`);
+                }}
               >
                 Pay ${amountUsd}
               </button>
               <button
                 type="button"
                 className="btn btn--ghost"
-                onClick={() => navigate(`/?payment=cancelled&shipmentId=${encodeURIComponent(checkoutShipmentId)}`)}
+                onClick={() => {
+                  if (referenceType === 'purchase_request') {
+                    navigate(`/?payment=cancelled&referenceType=purchase_request&referenceId=${encodeURIComponent(checkoutRefId)}`);
+                    return;
+                  }
+                  navigate(`/?payment=cancelled&shipmentId=${encodeURIComponent(checkoutRefId)}`);
+                }}
               >
                 Cancel
               </button>
@@ -1225,10 +1324,10 @@ function App() {
             </div>
 
             <div className="booking-summary">
-              <p><strong>Shipment:</strong> {checkoutShipmentId}</p>
+              <p><strong>{referenceType === 'purchase_request' ? 'Request' : 'Shipment'}:</strong> {checkoutRefId}</p>
               <p><strong>Customer:</strong> {currentUser?.fullName || bookingForm.fullName || 'Test Customer'}</p>
               <p><strong>Delivery:</strong> {bookingForm.jamaicaLocation || 'Kingston'}, Jamaica</p>
-              <p><strong>Mode:</strong> Demo payment flow</p>
+              <p><strong>Mode:</strong> {referenceType === 'purchase_request' ? 'Shop & Ship checkout' : 'Shipment checkout'}</p>
             </div>
 
             <div className="mock-checkout-summary__totals">
@@ -1456,22 +1555,77 @@ function App() {
                   </select>
                 </label>
                 <label>
-                  Product Links (one per line)
-                  <textarea name="productLinks" value={purchaseForm.productLinks} onChange={handlePurchaseChange} rows="4" required />
-                </label>
-                <label>
                   Size/Color Specs
                   <textarea name="sizeColorSpecs" value={purchaseForm.sizeColorSpecs} onChange={handlePurchaseChange} rows="3" />
-                </label>
-                <label>
-                  Budget (USD)
-                  <input type="number" name="budgetUsd" value={purchaseForm.budgetUsd} onChange={handlePurchaseChange} min="1" required />
                 </label>
                 <label>
                   Additional Notes
                   <textarea name="notes" value={purchaseForm.notes} onChange={handlePurchaseChange} rows="3" />
                 </label>
-                <button type="submit" className="btn btn--solid" disabled={isLoading}>Submit Purchase Request</button>
+
+                <div className="shop-cart">
+                  <h3>Cart Items</h3>
+                  {shopItems.map((item, index) => (
+                    <div key={`shop-item-${index}`} className="shop-cart__item">
+                      <label>
+                        Product Name
+                        <input
+                          value={item.name}
+                          onChange={(event) => handleShopItemChange(index, 'name', event.target.value)}
+                          placeholder="Wireless headset"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Product Link
+                        <input
+                          type="url"
+                          value={item.link}
+                          onChange={(event) => handleShopItemChange(index, 'link', event.target.value)}
+                          placeholder="https://www.amazon.com/..."
+                          required
+                        />
+                      </label>
+                      <div className="input-row">
+                        <label>
+                          Qty
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(event) => handleShopItemChange(index, 'quantity', event.target.value)}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Unit Price (USD)
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={item.unitPriceUsd}
+                            onChange={(event) => handleShopItemChange(index, 'unitPriceUsd', event.target.value)}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <button type="button" className="btn btn--ghost" onClick={() => removeShopItem(index)}>
+                        Remove Item
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn--ghost" onClick={addShopItem}>
+                    + Add Another Item
+                  </button>
+                </div>
+
+                <div className="booking-summary">
+                  <p><strong>Cart Subtotal:</strong> ${shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0).toFixed(2)}</p>
+                  <p><strong>Service Fee (8%):</strong> ${(shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0) * 0.08).toFixed(2)}</p>
+                  <p><strong>Total to Checkout:</strong> ${(shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0) * 1.08).toFixed(2)}</p>
+                </div>
+
+                <button type="submit" className="btn btn--solid" disabled={isLoading}>Continue to Checkout</button>
               </form>
             </>
           )}
@@ -2586,9 +2740,6 @@ function App() {
               <div className="nav-badge" aria-label="Signed in customer">
                 Signed in as {currentUser?.fullName || 'Customer'}
               </div>
-              <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
-                Dashboard
-              </button>
               {currentUser?.role === 'admin' && (
                 <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>
                   Admin

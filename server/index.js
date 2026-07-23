@@ -427,11 +427,16 @@ app.post('/api/purchase-requests', async (req, res) => {
     phone: payload.phone,
     storeName: payload.storeName,
     productLinks: links,
+    items: Array.isArray(payload.items) ? payload.items : [],
     sizeColorSpecs: payload.sizeColorSpecs || '',
     budgetUsd: Number(payload.budgetUsd),
+    cartSubtotalUsd: Number(payload.cartSubtotalUsd || 0),
+    serviceFeeUsd: Number(payload.serviceFeeUsd || 0),
+    totalUsd: Number(payload.totalUsd || payload.budgetUsd || 0),
     notes: payload.notes || '',
     createdAt: new Date().toISOString(),
-    status: 'Received'
+    status: 'Received',
+    paymentStatus: 'pending'
   };
 
   data.purchaseRequests.push(purchaseRequest);
@@ -515,12 +520,14 @@ app.post('/api/support', async (req, res) => {
 
 app.post('/api/payments/checkout', async (req, res) => {
   const amount = Number(req.body?.amount || 2500);
-  const shipmentId = req.body?.shipmentId || 'TBD';
+  const referenceType = String(req.body?.referenceType || 'shipment');
+  const referenceId = String(req.body?.referenceId || req.body?.shipmentId || 'TBD').trim() || 'TBD';
+  const checkoutLabel = referenceType === 'purchase_request' ? `Shop & Ship ${referenceId}` : `Shipment Deposit ${referenceId}`;
 
   if (!stripe) {
     return res.json({
       mode: 'mock',
-      url: `${frontendUrl}/mock-checkout?shipmentId=${encodeURIComponent(shipmentId)}&amount=${amount}`,
+      url: `${frontendUrl}/mock-checkout?referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}&amount=${amount}`,
       message: 'Stripe key not configured. Using mock checkout URL.'
     });
   }
@@ -533,15 +540,15 @@ app.post('/api/payments/checkout', async (req, res) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Shipment Deposit ${shipmentId}`
+              name: checkoutLabel
             },
             unit_amount: amount
           },
           quantity: 1
         }
       ],
-      success_url: `${frontendUrl}/?payment=success&shipmentId=${encodeURIComponent(shipmentId)}`,
-      cancel_url: `${frontendUrl}/?payment=cancelled&shipmentId=${encodeURIComponent(shipmentId)}`
+      success_url: `${frontendUrl}/?payment=success&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`,
+      cancel_url: `${frontendUrl}/?payment=cancelled&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`
     });
 
     res.json({ mode: 'stripe', url: session.url });
@@ -552,7 +559,30 @@ app.post('/api/payments/checkout', async (req, res) => {
 
 app.post('/api/payments/confirm', async (req, res) => {
   const shipmentId = String(req.body?.shipmentId || '').trim();
+  const referenceType = String(req.body?.referenceType || '').trim();
+  const referenceId = String(req.body?.referenceId || '').trim();
   const providerStatus = String(req.body?.providerStatus || '').trim();
+
+  if (referenceType === 'purchase_request') {
+    if (!referenceId) {
+      return res.status(400).json({ error: 'referenceId is required for purchase_request confirmation.' });
+    }
+
+    const data = await readData();
+    const purchaseRequest = data.purchaseRequests.find((p) => p.requestId === referenceId);
+    if (!purchaseRequest) {
+      return res.status(404).json({ error: 'Purchase request not found for payment confirmation.' });
+    }
+
+    purchaseRequest.paymentStatus = 'paid';
+    if (purchaseRequest.status === 'Received') {
+      purchaseRequest.status = 'Paid';
+    }
+
+    await writeData(data);
+    await sendNotification('Shop & Ship Payment Confirmed', `Purchase request ${referenceId} marked paid (${providerStatus || 'manual-confirm'}).`);
+    return res.json({ ok: true, referenceType: 'purchase_request', referenceId, paymentStatus: 'paid' });
+  }
 
   if (!shipmentId) {
     return res.status(400).json({ error: 'shipmentId is required.' });
