@@ -8,6 +8,15 @@
       "phone": "+1-555-0100",
       "address": "123 Test Street, New York, NY 10001",
       "createdAt": "2026-07-23T00:27:49.270Z"
+    },
+    {
+      "id": "business-user-001",
+      "fullName": "Island Imports Ltd",
+      "email": "business@example.com",
+      "passwordHash": "$2b$10$VnzjMCFtAKbn0p9VGeh/8uYokzpVYPt/nWskBzyAVhQEro6PjZuE.",
+      "phone": "+1-305-555-0199",
+      "address": "900 Commerce Blvd, Orlando, FL 32801",
+      "createdAt": "2026-07-23T00:35:49.270Z"
     }
   ],
   "drivers": [],
@@ -57,6 +66,29 @@
       "estimatedRangeUsd": { "low": 392, "high": 525 },
       "quotedPriceUsd": null,
       "createdAt": "2026-07-23T00:28:49.270Z"
+    },
+    {
+      "quoteId": "Q-10057",
+      "fullName": "Island Imports Ltd",
+      "email": "business@example.com",
+      "phone": "+1-305-555-0199",
+      "cargoType": "Commercial Freight",
+      "serviceLevel": "Premium",
+      "itemCategory": "Store Fixtures",
+      "origin": "Atlanta, GA",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "Kingston",
+      "declaredValueUsd": "6200",
+      "weight": "1200",
+      "dontKnowWeight": false,
+      "quantity": "1",
+      "dimensionsLength": "96",
+      "dimensionsWidth": "48",
+      "dimensionsHeight": "84",
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 4230,
+      "createdAt": "2026-07-23T00:35:49.270Z"
     }
   ],
   "bookings": [
@@ -111,6 +143,58 @@
       "agreementAccepted": true,
       "paymentStatus": "paid",
       "createdAt": "2026-07-23T00:28:49.270Z"
+    },
+    {
+      "bookingId": "B-10003",
+      "shipmentId": "CLF-10120",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "pickupDate": "2026-07-26",
+      "pickupAddress": "123 Test Street, New York, NY 10001",
+      "pickupCity": "Orlando",
+      "pickupZip": "32801",
+      "weightPerUnit": "22",
+      "jamaicaRecipient": "Beverly Grant",
+      "jamaicaAddress": "8 Church Street",
+      "jamaicaLocation": "Mandeville",
+      "deliveryParish": "Manchester",
+      "serviceLevel": "Standard",
+      "estimatedValue": "280",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-23T00:35:49.270Z"
+    },
+    {
+      "bookingId": "B-10004",
+      "shipmentId": "CLF-10133",
+      "userId": "business-user-001",
+      "fullName": "Island Imports Ltd",
+      "email": "business@example.com",
+      "phone": "+1-305-555-0199",
+      "cargoType": "Commercial Freight",
+      "quantity": "1",
+      "unitType": "Commercial Freight",
+      "pickupDate": "2026-07-29",
+      "pickupAddress": "900 Commerce Blvd, Orlando, FL 32801",
+      "pickupCity": "Orlando",
+      "pickupZip": "32801",
+      "weightPerUnit": "1200",
+      "jamaicaRecipient": "Island Imports Kingston Hub",
+      "jamaicaAddress": "2 Port Royal Street",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Premium",
+      "estimatedValue": "6200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T00:35:49.270Z"
     }
   ],
   "purchaseRequests": [
@@ -139,6 +223,19 @@
       "notes": "Bulk school supplies and small appliance demo.",
       "createdAt": "2026-07-23T00:28:49.270Z",
       "status": "Received"
+    },
+    {
+      "requestId": "PR-10003",
+      "fullName": "Island Imports Ltd",
+      "email": "business@example.com",
+      "phone": "+1-305-555-0199",
+      "storeName": "Home Depot",
+      "productLinks": ["https://www.homedepot.com/p/TEST-STORE-FIXTURES"],
+      "sizeColorSpecs": "Commercial shelving, palletized",
+      "budgetUsd": 2500,
+      "notes": "Restock fixtures for Kingston retail demo.",
+      "createdAt": "2026-07-23T00:35:49.270Z",
+      "status": "Received"
     }
   ],
   "supportTickets": [
@@ -157,6 +254,22 @@
       "shipmentId": "CLF-10102",
       "message": "Customs hold - requesting document review and update.",
       "createdAt": "2026-07-23T00:28:49.270Z"
+    },
+    {
+      "ticketId": "T-10003",
+      "fullName": "Island Imports Ltd",
+      "email": "business@example.com",
+      "shipmentId": "CLF-10133",
+      "message": "Delivery rescheduled due to warehouse receiving delay. Please update ETA.",
+      "createdAt": "2026-07-23T00:35:49.270Z"
+    },
+    {
+      "ticketId": "T-10004",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "shipmentId": "CLF-10120",
+      "message": "Payment failed on first attempt. Please retry checkout link.",
+      "createdAt": "2026-07-23T00:35:49.270Z"
     }
   ],
   "shipments": [
@@ -378,6 +491,135 @@
       "shipmentId": "CLF-10109",
       "fullName": "Marcus Wilson",
       "status": "Recipient Unavailable",
+      "cargoType": "Barrel",
+      "quantity": "1",
+      "unitType": "Barrel",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": true
+        },
+        {
+          "label": "Out for Delivery",
+          "done": true
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10120",
+      "fullName": "Test Customer",
+      "status": "Payment Failed - Retry Required",
+      "cargoType": "Box",
+      "quantity": "2",
+      "unitType": "Box",
+      "paymentStatus": "failed",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10133",
+      "fullName": "Island Imports Ltd",
+      "status": "Delivery Rescheduled",
+      "cargoType": "Commercial Freight",
+      "quantity": "1",
+      "unitType": "Commercial Freight",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": true
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10147",
+      "fullName": "Sarah Brown",
+      "status": "Damage Claim Review",
       "cargoType": "Barrel",
       "quantity": "1",
       "unitType": "Barrel",
