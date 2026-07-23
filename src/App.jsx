@@ -162,6 +162,16 @@ const SUPPLY_CATALOG = [
   },
 ];
 
+const BOX_PRESETS = [
+  { key: 'small', label: 'Small (16 x 12 x 12)', length: 16, width: 12, height: 12 },
+  { key: 'medium', label: 'Medium (18 x 18 x 16)', length: 18, width: 18, height: 16 },
+  { key: 'large', label: 'Large (24 x 18 x 18)', length: 24, width: 18, height: 18 },
+  { key: 'xl', label: 'XL (24 x 24 x 24)', length: 24, width: 24, height: 24 },
+  { key: 'custom', label: 'Custom size', length: '', width: '', height: '' },
+];
+
+const BOOKING_DRAFT_KEY = 'clf_booking_draft_v1';
+
 const DEMO_DASHBOARD_SHIPMENTS = [
   {
     shipmentId: 'CLF-10025',
@@ -529,6 +539,8 @@ function App() {
     dimensionsWidth: '',
     dimensionsHeight: '',
     weightPerUnit: '',
+    boxMode: 'standardized',
+    boxPreset: 'medium',
     notes: '',
     jamaicaRecipient: '',
     jamaicaAddress: '',
@@ -543,6 +555,8 @@ function App() {
     packingDeclaration: false,
     agreementAccepted: false,
   });
+  const [bookingBoxItems, setBookingBoxItems] = useState([]);
+  const [lastSavedQuoteId, setLastSavedQuoteId] = useState('');
 
   const [bookingStep, setBookingStep] = useState(1);
   const [shipmentId, setShipmentId] = useState('');
@@ -751,7 +765,28 @@ function App() {
 
   function handleBookingChange(event) {
     const { name, value, type, checked } = event.target;
-    setBookingForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setBookingForm((prev) => {
+      const next = { ...prev, [name]: type === 'checkbox' ? checked : value };
+
+      if (name === 'cargoType' && value !== 'Box') {
+        next.boxMode = 'standardized';
+      }
+
+      if (name === 'boxPreset') {
+        const preset = BOX_PRESETS.find((item) => item.key === value);
+        if (preset && value !== 'custom') {
+          next.dimensionsLength = String(preset.length);
+          next.dimensionsWidth = String(preset.width);
+          next.dimensionsHeight = String(preset.height);
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function handleBookingBoxItemChange(index, field, value) {
+    setBookingBoxItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
   }
 
   function getSupplyAddons(formLike) {
@@ -771,13 +806,157 @@ function App() {
     return getSupplyAddons(formLike).reduce((sum, item) => sum + item.totalUsd, 0);
   }
 
-  function calculateBookingServicePrice(formLike) {
-    if (!formLike?.weightPerUnit) return 0;
-    const weight = Math.max(0, Number(formLike.weightPerUnit || 0));
-    const quantity = Math.max(1, Number(formLike.quantity || 1));
-    const baseCost = weight * quantity * 1.25;
+  function getBookingTotalWeight(formLike, boxItems = []) {
+    if (formLike?.cargoType === 'Box' && formLike?.boxMode === 'mixed') {
+      return boxItems.reduce((sum, item) => sum + Math.max(0, Number(item.weight || 0)), 0);
+    }
+
+    const quantity = Math.max(1, Number(formLike?.quantity || 1));
+    const weightPerUnit = Math.max(0, Number(formLike?.weightPerUnit || 0));
+    return quantity * weightPerUnit;
+  }
+
+  function calculateBookingServicePrice(formLike, boxItems = []) {
+    const totalWeight = getBookingTotalWeight(formLike, boxItems);
+    if (!totalWeight) return 0;
+    const baseCost = totalWeight * 1.25;
     const serviceMult = SERVICE_TIERS.find((t) => t.name === formLike.serviceLevel)?.multiplier || 1;
     return Math.round(baseCost * serviceMult);
+  }
+
+  function normalizeBookingBoxItems(items) {
+    return (items || []).map((item, idx) => ({
+      label: item.label || `Box ${idx + 1}`,
+      weight: String(item.weight || ''),
+      length: String(item.length || ''),
+      width: String(item.width || ''),
+      height: String(item.height || ''),
+    }));
+  }
+
+  useEffect(() => {
+    if (bookingForm.cargoType !== 'Box' || bookingForm.boxMode !== 'mixed') {
+      return;
+    }
+
+    const targetQty = Math.max(1, Number(bookingForm.quantity || 1));
+    setBookingBoxItems((prev) => {
+      const next = [...prev];
+
+      while (next.length < targetQty) {
+        next.push({
+          label: `Box ${next.length + 1}`,
+          weight: bookingForm.weightPerUnit || '',
+          length: bookingForm.dimensionsLength || '',
+          width: bookingForm.dimensionsWidth || '',
+          height: bookingForm.dimensionsHeight || '',
+        });
+      }
+
+      return next.slice(0, targetQty);
+    });
+  }, [bookingForm.cargoType, bookingForm.boxMode, bookingForm.quantity, bookingForm.weightPerUnit, bookingForm.dimensionsLength, bookingForm.dimensionsWidth, bookingForm.dimensionsHeight]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(BOOKING_DRAFT_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed?.bookingForm) {
+        setBookingForm((prev) => ({ ...prev, ...parsed.bookingForm }));
+      }
+      if (Array.isArray(parsed?.bookingBoxItems)) {
+        setBookingBoxItems(parsed.bookingBoxItems);
+      }
+      if (parsed?.bookingStep && Number(parsed.bookingStep) >= 1 && Number(parsed.bookingStep) <= 5) {
+        setBookingStep(Number(parsed.bookingStep));
+      }
+    } catch {
+      // Ignore malformed drafts.
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload = {
+      bookingForm,
+      bookingBoxItems,
+      bookingStep: Math.min(5, bookingStep),
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      window.localStorage.setItem(BOOKING_DRAFT_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore localStorage limitations.
+    }
+  }, [bookingForm, bookingBoxItems, bookingStep]);
+
+  async function handleSaveQuoteFromBooking() {
+    const requiredDraftFields = ['fullName', 'email', 'phone', 'cargoType', 'quantity'];
+    const missing = requiredDraftFields.filter((field) => !bookingForm[field]);
+    if (missing.length) {
+      setStatusMessage('Draft saved locally. Add name, email, phone, cargo type, and quantity to save an official quote.');
+      return;
+    }
+
+    const totalWeight = getBookingTotalWeight(bookingForm, bookingBoxItems);
+    const hasDimensions = bookingForm.dimensionsLength && bookingForm.dimensionsWidth && bookingForm.dimensionsHeight;
+    if (!totalWeight && !hasDimensions) {
+      setStatusMessage('Draft saved locally. Add weight or dimensions so we can generate a quote ID.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const supplyAddons = getSupplyAddons(bookingForm);
+      const supplyAddonsTotalUsd = calculateSupplyAddonsTotal(bookingForm);
+      const quotePayload = {
+        fullName: bookingForm.fullName,
+        email: bookingForm.email,
+        phone: bookingForm.phone,
+        cargoType: bookingForm.cargoType,
+        serviceLevel: bookingForm.serviceLevel || 'Standard',
+        itemCategory: bookingForm.cargoType,
+        origin: `${bookingForm.pickupCity || 'Miami'}, FL`,
+        destination: `${bookingForm.jamaicaLocation || 'Kingston'}, Jamaica`,
+        deliveryParish: bookingForm.deliveryParish || 'Kingston',
+        declaredValueUsd: bookingForm.estimatedValue || '',
+        quantity: bookingForm.quantity,
+        dontKnowWeight: totalWeight <= 0,
+        weight: totalWeight > 0 ? String(totalWeight) : '',
+        dimensionsLength: bookingForm.dimensionsLength || '',
+        dimensionsWidth: bookingForm.dimensionsWidth || '',
+        dimensionsHeight: bookingForm.dimensionsHeight || '',
+        addonBarrels: bookingForm.addonBarrels || '0',
+        addonBoxes: bookingForm.addonBoxes || '0',
+        addonContainers: bookingForm.addonContainers || '0',
+        addonPackingKits: bookingForm.addonPackingKits || '0',
+        supplyAddons,
+        supplyAddonsTotalUsd,
+        bookingDraft: true,
+        boxMode: bookingForm.boxMode,
+        boxPreset: bookingForm.boxPreset,
+        boxItems: bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed'
+          ? normalizeBookingBoxItems(bookingBoxItems)
+          : [],
+      };
+
+      const response = await fetch(`${API_BASE}/quotes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quotePayload),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to save quote.');
+
+      setLastSavedQuoteId(result.quote?.quoteId || '');
+      setStatusMessage(`Quote saved: ${result.quote?.quoteId || 'saved'}. You can continue booking and pay later.`);
+    } catch (error) {
+      setStatusMessage(error.message || 'Unable to save quote right now. Your draft is still saved locally.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function handleAccountChange(event) {
@@ -1283,6 +1462,19 @@ function App() {
         setStatusMessage('Please provide valid shipment details before continuing.');
         return false;
       }
+
+      if (bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed') {
+        const hasInvalidBox = bookingBoxItems.some((box) => {
+          const hasWeight = Number(box.weight || 0) > 0;
+          const dimsBlank = !box.length && !box.width && !box.height;
+          const hasPartialDims = [box.length, box.width, box.height].some(Boolean) && ![box.length, box.width, box.height].every(Boolean);
+          return !hasWeight || hasPartialDims || dimsBlank;
+        });
+        if (hasInvalidBox) {
+          setStatusMessage('For mixed boxes, add weight for each box and either fill all dimensions or leave all dimensions blank.');
+          return false;
+        }
+      }
     }
 
     if (step === 3) {
@@ -1351,6 +1543,10 @@ function App() {
         body: JSON.stringify({
           ...bookingForm,
           unitType: bookingForm.cargoType,
+          totalWeight: getBookingTotalWeight(bookingForm, bookingBoxItems),
+          boxItems: bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed'
+            ? normalizeBookingBoxItems(bookingBoxItems)
+            : [],
           supplyAddons: bookingSupplyAddons,
           supplyAddonsTotalUsd: bookingSupplyAddonsTotalUsd,
         }),
@@ -1878,7 +2074,7 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
-      const serviceTotalUsd = calculateBookingServicePrice(bookingForm);
+      const serviceTotalUsd = calculateBookingServicePrice(bookingForm, bookingBoxItems);
       const suppliesTotalUsd = calculateSupplyAddonsTotal(bookingForm);
       const checkoutTotalUsd = Math.max(0, serviceTotalUsd + suppliesTotalUsd);
       const amountCents = Math.max(100, Math.round(checkoutTotalUsd * 100));
@@ -2855,10 +3051,11 @@ function App() {
   }
 
   function BookingPage() {
-    const estimatedPrice = useMemo(() => calculateBookingServicePrice(bookingForm), [bookingForm]);
+    const estimatedPrice = useMemo(() => calculateBookingServicePrice(bookingForm, bookingBoxItems), [bookingForm, bookingBoxItems]);
     const bookingSupplyAddons = useMemo(() => getSupplyAddons(bookingForm), [bookingForm]);
     const bookingSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(bookingForm), [bookingForm]);
     const bookingCheckoutTotalUsd = useMemo(() => estimatedPrice + bookingSupplyAddonsTotalUsd, [estimatedPrice, bookingSupplyAddonsTotalUsd]);
+    const bookingTotalWeightLbs = useMemo(() => getBookingTotalWeight(bookingForm, bookingBoxItems), [bookingForm, bookingBoxItems]);
 
     const stepLabels = ['Pickup Info', 'Shipment Details', 'Jamaica Delivery', 'Choose Service', 'Confirm & Pay'];
 
@@ -2932,18 +3129,84 @@ function App() {
                   Quantity
                   <input id="book-quantity" type="number" name="quantity" value={bookingForm.quantity} onChange={handleBookingChange} min="1" required />
                 </label>
+                {bookingForm.cargoType === 'Box' && (
+                  <>
+                    <label htmlFor="book-boxMode">
+                      Box Details Mode
+                      <select id="book-boxMode" name="boxMode" value={bookingForm.boxMode} onChange={handleBookingChange}>
+                        <option value="standardized">All boxes same size/weight</option>
+                        <option value="mixed">Each box is different</option>
+                      </select>
+                    </label>
+                    {bookingForm.boxMode === 'standardized' && (
+                      <label htmlFor="book-boxPreset">
+                        Box Size Preset
+                        <select id="book-boxPreset" name="boxPreset" value={bookingForm.boxPreset} onChange={handleBookingChange}>
+                          {BOX_PRESETS.map((preset) => (
+                            <option key={preset.key} value={preset.key}>{preset.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </>
+                )}
                 <label htmlFor="book-weightPerUnit">
-                  Weight per Unit (lbs)
+                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' ? 'Default Weight per Box (lbs)' : 'Weight per Unit (lbs)'}
                   <input id="book-weightPerUnit" type="number" name="weightPerUnit" value={bookingForm.weightPerUnit} onChange={handleBookingChange} min="1" required />
                 </label>
                 <label htmlFor="book-dimensionsLength">
-                  Dimensions (L x W x H in inches) — optional
+                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed'
+                    ? 'Default Dimensions (L x W x H in inches) — optional'
+                    : 'Dimensions (L x W x H in inches) — optional'}
                   <div className="input-row">
                     <input id="book-dimensionsLength" type="number" name="dimensionsLength" placeholder="Length" value={bookingForm.dimensionsLength} onChange={handleBookingChange} min="1" />
                     <input id="book-dimensionsWidth" type="number" name="dimensionsWidth" placeholder="Width" value={bookingForm.dimensionsWidth} onChange={handleBookingChange} min="1" />
                     <input id="book-dimensionsHeight" type="number" name="dimensionsHeight" placeholder="Height" value={bookingForm.dimensionsHeight} onChange={handleBookingChange} min="1" />
                   </div>
                 </label>
+                {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' && (
+                  <div className="booking-summary" style={{ padding: '0.75rem', border: '1px solid #d9e5df', background: '#f7fbf9' }}>
+                    <p style={{ marginBottom: '0.5rem' }}><strong>Per-Box Details</strong></p>
+                    {bookingBoxItems.map((box, index) => (
+                      <div key={`box-item-${index}`} style={{ marginBottom: '0.65rem', borderBottom: '1px dashed #d9e5df', paddingBottom: '0.65rem' }}>
+                        <p style={{ marginBottom: '0.35rem' }}><strong>{box.label || `Box ${index + 1}`}</strong></p>
+                        <div className="input-row">
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Weight (lbs)"
+                            value={box.weight}
+                            onChange={(event) => handleBookingBoxItemChange(index, 'weight', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Length"
+                            value={box.length}
+                            onChange={(event) => handleBookingBoxItemChange(index, 'length', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Width"
+                            value={box.width}
+                            onChange={(event) => handleBookingBoxItemChange(index, 'width', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Height"
+                            value={box.height}
+                            onChange={(event) => handleBookingBoxItemChange(index, 'height', event.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <p className="section-intro" style={{ marginBottom: 0 }}>
+                      Tip: leave all 3 dimensions blank for a box if only actual weight is known.
+                    </p>
+                  </div>
+                )}
                 <label htmlFor="book-estimatedValue">
                   Estimated Value (USD)
                   <input id="book-estimatedValue" type="number" name="estimatedValue" value={bookingForm.estimatedValue} onChange={handleBookingChange} min="0" />
@@ -3033,7 +3296,11 @@ function App() {
                 <h3>Confirm Your Shipment</h3>
                 <div className="booking-summary">
                   <p><strong>Pickup:</strong> {bookingForm.pickupDate} at {bookingForm.pickupAddress}, {bookingForm.pickupCity}</p>
-                  <p><strong>Shipment:</strong> {bookingForm.quantity} {bookingForm.cargoType}(s), ~{bookingForm.weightPerUnit} lbs each</p>
+                  <p><strong>Shipment:</strong> {bookingForm.quantity} {bookingForm.cargoType}(s){bookingForm.boxMode === 'mixed' && bookingForm.cargoType === 'Box' ? '' : `, ~${bookingForm.weightPerUnit} lbs each`}</p>
+                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' && (
+                    <p><strong>Box Breakdown:</strong> {bookingBoxItems.map((box, idx) => `Box ${idx + 1}: ${box.weight || '?'} lbs`).join(' | ')}</p>
+                  )}
+                  <p><strong>Total Weight:</strong> {bookingTotalWeightLbs.toFixed(1)} lbs</p>
                   <p><strong>Delivery:</strong> {bookingForm.jamaicaRecipient}, {bookingForm.jamaicaLocation}, Jamaica</p>
                   <p><strong>Service:</strong> {bookingForm.serviceLevel} — ${estimatedPrice}</p>
                   {bookingSupplyAddons.length > 0 && (
@@ -3075,6 +3342,9 @@ function App() {
                     Back
                   </button>
                 )}
+                <button type="button" className="btn btn--ghost" onClick={handleSaveQuoteFromBooking} disabled={isLoading}>
+                  Save Quote
+                </button>
                 {bookingStep < 5 && (
                   <button type="button" className="btn btn--solid" onClick={handleBookingStepNext} disabled={isLoading}>
                     Next
@@ -3086,6 +3356,11 @@ function App() {
                   </button>
                 )}
               </div>
+            )}
+            {lastSavedQuoteId && bookingStep < 6 && (
+              <p className="section-intro" style={{ marginTop: '0.5rem' }}>
+                Latest saved quote ID: {lastSavedQuoteId}
+              </p>
             )}
           </form>
         </div>
