@@ -3518,10 +3518,117 @@ function App() {
   }
 
   function DashboardPage() {
+    const isAdminUser = currentUser?.role === 'admin';
     const activeShipment = DEMO_DASHBOARD_SHIPMENTS[0];
     const activeShipmentProgress = activeShipment?.steps?.length
       ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
       : 0;
+
+    if (isAdminUser) {
+      const counts = adminOverview?.counts || {};
+
+      return (
+        <>
+          <section className="card dashboard-welcome admin-dashboard-welcome" style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '2rem' }}>
+              <div>
+                <h2>Operations overview, {currentUser?.fullName || 'Admin'}.</h2>
+                <p className="section-intro">This dashboard is your command snapshot. Open the Admin tab for full triage and dispatch actions.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn--solid"
+                  onClick={() => navigate('/admin')}
+                  style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+                >
+                  Open Admin Workspace
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => fetchAdminOverview(authToken)}
+                  disabled={adminLoading}
+                  style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+                >
+                  {adminLoading ? 'Refreshing...' : 'Refresh Ops Data'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="admin-metrics" aria-label="Admin dashboard quick metrics">
+            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
+              <strong>{counts.rfqs ?? 0}</strong>
+              <span>Open RFQs</span>
+            </button>
+            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
+              <strong>{counts.bookings ?? 0}</strong>
+              <span>Recent Bookings</span>
+            </button>
+            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
+              <strong>{counts.purchaseRequests ?? 0}</strong>
+              <span>Purchase Requests</span>
+            </button>
+            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
+              <strong>{counts.supportTickets ?? 0}</strong>
+              <span>Support Tickets</span>
+            </button>
+            <button type="button" className="card admin-metric-card admin-metric-card--interactive" onClick={() => navigate('/admin')}>
+              <strong>{counts.scanEvents ?? 0}</strong>
+              <span>Recent Scans</span>
+            </button>
+          </section>
+
+          <section className="card" style={{ marginTop: '2rem' }}>
+            <h2 style={{ marginBottom: '1rem' }}>Customer View Tools</h2>
+            <p className="section-intro">Need to simulate a customer workflow? Use these tools without leaving your session.</p>
+            <div className="quick-actions-grid">
+              <button
+                type="button"
+                className="quick-action-card"
+                onClick={() => navigate('/book-pickup')}
+                aria-label="Create a booking as customer"
+              >
+                <div className="quick-action-icon">📦</div>
+                <h3>Create Booking</h3>
+                <p>Walk through customer booking flow</p>
+              </button>
+              <button
+                type="button"
+                className="quick-action-card"
+                onClick={() => navigate('/tracking')}
+                aria-label="Check customer tracking journey"
+              >
+                <div className="quick-action-icon">📍</div>
+                <h3>Track Shipment</h3>
+                <p>Preview customer tracking experience</p>
+              </button>
+              <button
+                type="button"
+                className="quick-action-card"
+                onClick={() => navigate('/support')}
+                aria-label="Open support workflow"
+              >
+                <div className="quick-action-icon">💬</div>
+                <h3>Support View</h3>
+                <p>Review how customers submit issues</p>
+              </button>
+              <button
+                type="button"
+                className="quick-action-card"
+                onClick={() => navigate('/shop')}
+                aria-label="Open shop and ship flow"
+              >
+                <div className="quick-action-icon">🛍️</div>
+                <h3>Shop & Ship</h3>
+                <p>Validate estimator and shop workflows</p>
+              </button>
+            </div>
+          </section>
+        </>
+      );
+    }
 
     return (
       <>
@@ -4866,7 +4973,7 @@ function App() {
                 Signed in as {currentUser?.fullName || 'Customer'}
               </div>
               <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
-                Dashboard
+                {currentUser?.role === 'admin' ? 'Customer View' : 'Dashboard'}
               </button>
               {currentUser?.role === 'admin' && (
                 <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>

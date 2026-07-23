@@ -1740,6 +1740,11 @@ body {
   box-shadow: 0 2px 8px rgba(11, 107, 97, 0.08);
 }
 
+.admin-dashboard-welcome {
+  background: linear-gradient(135deg, rgba(11, 107, 97, 0.12) 0%, rgba(242, 184, 75, 0.12) 100%);
+  border: 1px solid rgba(11, 107, 97, 0.2);
+}
+
 .dashboard-shipment {
   border: 2px solid rgba(11, 107, 97, 0.15);
   border-radius: 12px;
