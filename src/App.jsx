@@ -356,6 +356,8 @@ function createEmptyShopItem() {
   };
 }
 
+const LUXURY_STORE_KEYWORDS = ['louis vuitton', 'gucci', 'dior', 'chanel', 'balenciaga', 'saks', 'neiman', 'bloomingdale'];
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -438,6 +440,12 @@ function App() {
     notes: '',
   });
   const [shopItems, setShopItems] = useState([createEmptyShopItem()]);
+  const [shopDocs, setShopDocs] = useState({
+    invoiceUrl: '',
+    idUrl: '',
+    importPermitUrl: '',
+    declarationAccepted: false,
+  });
 
   const [trackingId, setTrackingId] = useState('');
   const [trackingResult, setTrackingResult] = useState(null);
@@ -522,6 +530,11 @@ function App() {
     setPurchaseForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function handleShopDocChange(event) {
+    const { name, value, type, checked } = event.target;
+    setShopDocs((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  }
+
   function handleShopItemChange(index, field, value) {
     setShopItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
   }
@@ -533,6 +546,46 @@ function App() {
   function removeShopItem(index) {
     setShopItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
   }
+
+  const normalizedShopItems = useMemo(() => (
+    shopItems
+      .map((item) => ({
+        name: String(item.name || '').trim(),
+        link: String(item.link || '').trim(),
+        quantity: Math.max(1, Number(item.quantity || 1)),
+        unitPriceUsd: Math.max(0, Number(item.unitPriceUsd || 0)),
+      }))
+      .filter((item) => item.name && item.link)
+  ), [shopItems]);
+
+  const cartSubtotalUsd = useMemo(() => (
+    normalizedShopItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0)
+  ), [normalizedShopItems]);
+
+  const hasLuxuryBrand = useMemo(() => {
+    const joined = `${purchaseForm.storeName} ${normalizedShopItems.map((item) => item.name).join(' ')}`.toLowerCase();
+    return LUXURY_STORE_KEYWORDS.some((keyword) => joined.includes(keyword));
+  }, [purchaseForm.storeName, normalizedShopItems]);
+
+  const customsDutyUsd = useMemo(() => Number((cartSubtotalUsd * (hasLuxuryBrand ? 0.24 : 0.16)).toFixed(2)), [cartSubtotalUsd, hasLuxuryBrand]);
+  const brokerageFeeUsd = useMemo(() => Number((cartSubtotalUsd > 0 ? 35 : 0).toFixed(2)), [cartSubtotalUsd]);
+  const processingFeeUsd = useMemo(() => Number((cartSubtotalUsd * 0.05).toFixed(2)), [cartSubtotalUsd]);
+  const landedTotalUsd = useMemo(() => Number((cartSubtotalUsd + customsDutyUsd + brokerageFeeUsd + processingFeeUsd).toFixed(2)), [cartSubtotalUsd, customsDutyUsd, brokerageFeeUsd, processingFeeUsd]);
+
+  const docsRequired = useMemo(() => cartSubtotalUsd >= 500 || hasLuxuryBrand, [cartSubtotalUsd, hasLuxuryBrand]);
+  const requiredDocCount = docsRequired ? 2 : 0;
+  const uploadedRequiredDocs = [shopDocs.invoiceUrl, shopDocs.idUrl].filter(Boolean).length;
+  const customsReadyScore = useMemo(() => {
+    const base = docsRequired ? Math.round((uploadedRequiredDocs / requiredDocCount) * 75) : 75;
+    const declarationPoints = shopDocs.declarationAccepted ? 25 : 0;
+    return Math.min(100, base + declarationPoints);
+  }, [docsRequired, uploadedRequiredDocs, requiredDocCount, shopDocs.declarationAccepted]);
+
+  const isCustomsReady = useMemo(() => {
+    if (!shopDocs.declarationAccepted) return false;
+    if (!docsRequired) return true;
+    return uploadedRequiredDocs >= requiredDocCount;
+  }, [docsRequired, uploadedRequiredDocs, requiredDocCount, shopDocs.declarationAccepted]);
 
   function sendChatMessage(rawMessage) {
     const message = String(rawMessage || '').trim();
@@ -624,39 +677,42 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
-      const normalizedItems = shopItems
-        .map((item) => ({
-          name: String(item.name || '').trim(),
-          link: String(item.link || '').trim(),
-          quantity: Math.max(1, Number(item.quantity || 1)),
-          unitPriceUsd: Math.max(0, Number(item.unitPriceUsd || 0)),
-        }))
-        .filter((item) => item.name && item.link);
-
-      if (!normalizedItems.length) {
+      if (!normalizedShopItems.length) {
         throw new Error('Add at least one cart item with product name and link.');
       }
 
-      const subtotalUsd = normalizedItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0);
-      if (subtotalUsd <= 0) {
+      if (cartSubtotalUsd <= 0) {
         throw new Error('Enter a unit price for at least one item to continue to checkout.');
       }
 
-      const serviceFeeUsd = Number((subtotalUsd * 0.08).toFixed(2));
-      const checkoutTotalUsd = Number((subtotalUsd + serviceFeeUsd).toFixed(2));
-      const amountCents = Math.round(checkoutTotalUsd * 100);
+      if (!isCustomsReady) {
+        throw new Error('Complete the Customs Ready checklist before checkout.');
+      }
+
+      const amountCents = Math.round(landedTotalUsd * 100);
 
       const response = await fetch(`${API_BASE}/purchase-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...purchaseForm,
-          productLinks: normalizedItems.map((item) => item.link),
-          items: normalizedItems,
-          budgetUsd: checkoutTotalUsd,
-          cartSubtotalUsd: subtotalUsd,
-          serviceFeeUsd,
-          totalUsd: checkoutTotalUsd,
+          productLinks: normalizedShopItems.map((item) => item.link),
+          items: normalizedShopItems,
+          budgetUsd: landedTotalUsd,
+          cartSubtotalUsd,
+          customsDutyUsd,
+          brokerageFeeUsd,
+          processingFeeUsd,
+          totalUsd: landedTotalUsd,
+          docsRequired,
+          customsReadyScore,
+          customsReady: isCustomsReady,
+          documents: {
+            invoiceUrl: shopDocs.invoiceUrl || '',
+            idUrl: shopDocs.idUrl || '',
+            importPermitUrl: shopDocs.importPermitUrl || '',
+            declarationAccepted: shopDocs.declarationAccepted,
+          },
         }),
       });
       const result = await response.json();
@@ -690,6 +746,12 @@ function App() {
         notes: '',
       });
       setShopItems([createEmptyShopItem()]);
+      setShopDocs({
+        invoiceUrl: '',
+        idUrl: '',
+        importPermitUrl: '',
+        declarationAccepted: false,
+      });
       window.location.assign(checkoutResult.url);
     } catch (error) {
       setStatusMessage(error.message);
@@ -1346,7 +1408,7 @@ function App() {
             </div>
 
             <div className="mock-checkout-summary__totals">
-              <div><span>Shipment deposit</span><strong>${amountUsd}</strong></div>
+              <div><span>{referenceType === 'purchase_request' ? 'Landed cost lock total' : 'Shipment deposit'}</span><strong>${amountUsd}</strong></div>
               <div><span>Processing fee</span><strong>$0.00</strong></div>
               <div className="mock-checkout-summary__total"><span>Total</span><strong>${amountUsd}</strong></div>
             </div>
@@ -1635,12 +1697,40 @@ function App() {
                 </div>
 
                 <div className="booking-summary">
-                  <p><strong>Cart Subtotal:</strong> ${shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0).toFixed(2)}</p>
-                  <p><strong>Service Fee (8%):</strong> ${(shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0) * 0.08).toFixed(2)}</p>
-                  <p><strong>Total to Checkout:</strong> ${(shopItems.reduce((sum, item) => sum + (Math.max(1, Number(item.quantity || 1)) * Math.max(0, Number(item.unitPriceUsd || 0))), 0) * 1.08).toFixed(2)}</p>
+                  <p><strong>Customs Ready:</strong> <span style={{ color: isCustomsReady ? '#0b6b61' : '#b45309', fontWeight: 700 }}>{isCustomsReady ? 'READY' : 'ACTION NEEDED'}</span> ({customsReadyScore}%)</p>
+                  <p><strong>Rule Trigger:</strong> {docsRequired ? 'Required due to high-value/luxury items' : 'Standard flow, declaration only'}</p>
                 </div>
 
-                <button type="submit" className="btn btn--solid" disabled={isLoading}>Continue to Checkout</button>
+                <div className="shop-docs card" style={{ marginTop: '0.6rem' }}>
+                  <h3>Customs Ready Checklist</h3>
+                  <p className="section-intro">Upload document links before checkout. Required docs are enforced only when risk/value thresholds are triggered.</p>
+                  <label>
+                    Commercial Invoice URL {docsRequired ? '(Required)' : '(Optional)'}
+                    <input type="url" name="invoiceUrl" value={shopDocs.invoiceUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." required={docsRequired} />
+                  </label>
+                  <label>
+                    Government ID URL {docsRequired ? '(Required)' : '(Optional)'}
+                    <input type="url" name="idUrl" value={shopDocs.idUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." required={docsRequired} />
+                  </label>
+                  <label>
+                    Import Permit URL (Optional)
+                    <input type="url" name="importPermitUrl" value={shopDocs.importPermitUrl} onChange={handleShopDocChange} placeholder="https://drive.google.com/..." />
+                  </label>
+                  <label className="checkbox-label">
+                    <input type="checkbox" name="declarationAccepted" checked={shopDocs.declarationAccepted} onChange={handleShopDocChange} required />
+                    I confirm product values and item descriptions are accurate for customs declaration.
+                  </label>
+                </div>
+
+                <div className="booking-summary">
+                  <p><strong>Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
+                  <p><strong>Estimated Customs Duty:</strong> ${customsDutyUsd.toFixed(2)}</p>
+                  <p><strong>Brokerage Fee:</strong> ${brokerageFeeUsd.toFixed(2)}</p>
+                  <p><strong>Processing Fee:</strong> ${processingFeeUsd.toFixed(2)}</p>
+                  <p><strong>Landed Cost Lock Total:</strong> ${landedTotalUsd.toFixed(2)}</p>
+                </div>
+
+                <button type="submit" className="btn btn--solid" disabled={isLoading || !isCustomsReady}>Continue to Checkout</button>
               </form>
             </>
           )}
@@ -2129,7 +2219,8 @@ function App() {
                 <div key={request.requestId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
                   <p><strong>{request.requestId}</strong> - {request.fullName}</p>
                   <p><strong>Store:</strong> {request.storeName}</p>
-                  <p><strong>Budget:</strong> ${request.budgetUsd || 'N/A'}</p>
+                  <p><strong>Landed Total:</strong> ${request.totalUsd || request.budgetUsd || 'N/A'}</p>
+                  <p><strong>Customs Ready:</strong> {request.customsReady ? 'Yes' : 'No'} ({request.customsReadyScore || 0}%)</p>
                 </div>
               ))}
               {!adminOverview?.purchaseRequests?.length && <p className="section-intro">No purchase requests yet.</p>}

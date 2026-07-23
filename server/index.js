@@ -415,6 +415,18 @@ app.post('/api/purchase-requests', async (req, res) => {
     return res.status(400).json({ error: 'At least one product link is required.' });
   }
 
+  const docsRequired = Boolean(payload.docsRequired);
+  const documents = payload.documents || {};
+  if (docsRequired) {
+    const missingDocs = [];
+    if (!String(documents.invoiceUrl || '').trim()) missingDocs.push('invoiceUrl');
+    if (!String(documents.idUrl || '').trim()) missingDocs.push('idUrl');
+    if (!documents.declarationAccepted) missingDocs.push('declarationAccepted');
+    if (missingDocs.length) {
+      return res.status(400).json({ error: `Missing required customs documents: ${missingDocs.join(', ')}` });
+    }
+  }
+
   const data = await readData();
   if (!Array.isArray(data.purchaseRequests)) {
     data.purchaseRequests = [];
@@ -431,8 +443,20 @@ app.post('/api/purchase-requests', async (req, res) => {
     sizeColorSpecs: payload.sizeColorSpecs || '',
     budgetUsd: Number(payload.budgetUsd),
     cartSubtotalUsd: Number(payload.cartSubtotalUsd || 0),
+    customsDutyUsd: Number(payload.customsDutyUsd || 0),
+    brokerageFeeUsd: Number(payload.brokerageFeeUsd || 0),
     serviceFeeUsd: Number(payload.serviceFeeUsd || 0),
+    processingFeeUsd: Number(payload.processingFeeUsd || 0),
     totalUsd: Number(payload.totalUsd || payload.budgetUsd || 0),
+    docsRequired,
+    customsReady: Boolean(payload.customsReady),
+    customsReadyScore: Number(payload.customsReadyScore || 0),
+    documents: {
+      invoiceUrl: String(documents.invoiceUrl || '').trim(),
+      idUrl: String(documents.idUrl || '').trim(),
+      importPermitUrl: String(documents.importPermitUrl || '').trim(),
+      declarationAccepted: Boolean(documents.declarationAccepted),
+    },
     notes: payload.notes || '',
     createdAt: new Date().toISOString(),
     status: 'Received',
