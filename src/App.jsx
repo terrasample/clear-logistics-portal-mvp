@@ -965,9 +965,38 @@ function App() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
   }
 
+  function focusFirstInvalidField(fieldNames) {
+    for (const fieldName of fieldNames) {
+      const element = document.querySelector(`[name="${fieldName}"]`);
+      if (!element) {
+        continue;
+      }
+
+      const isCheckbox = element.type === 'checkbox';
+      const isInvalid = isCheckbox ? !element.checked : !element.value;
+
+      if (isInvalid) {
+        element.focus();
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   function validateBookingStep(step) {
+    const stepFieldMap = {
+      1: ['fullName', 'email', 'phone', 'pickupAddress', 'pickupCity', 'pickupZip', 'pickupDate'],
+      2: ['cargoType', 'quantity', 'weightPerUnit'],
+      3: ['jamaicaRecipient', 'jamaicaAddress', 'jamaicaLocation', 'deliveryParish'],
+      4: ['serviceLevel'],
+      5: ['packingDeclaration', 'agreementAccepted'],
+    };
+
     if (step === 1) {
       if (!bookingForm.fullName || !bookingForm.email || !bookingForm.phone || !bookingForm.pickupAddress || !bookingForm.pickupCity || !bookingForm.pickupZip || !bookingForm.pickupDate) {
+        focusFirstInvalidField(stepFieldMap[1]);
         setStatusMessage('Please complete all pickup fields before continuing.');
         return false;
       }
@@ -975,6 +1004,7 @@ function App() {
 
     if (step === 2) {
       if (!bookingForm.cargoType || !bookingForm.quantity || Number(bookingForm.quantity) < 1 || !bookingForm.weightPerUnit || Number(bookingForm.weightPerUnit) < 1) {
+        focusFirstInvalidField(stepFieldMap[2]);
         setStatusMessage('Please provide valid shipment details before continuing.');
         return false;
       }
@@ -982,6 +1012,7 @@ function App() {
 
     if (step === 3) {
       if (!bookingForm.jamaicaRecipient || !bookingForm.jamaicaAddress || !bookingForm.jamaicaLocation || !bookingForm.deliveryParish) {
+        focusFirstInvalidField(stepFieldMap[3]);
         setStatusMessage('Please complete all Jamaica delivery details before continuing.');
         return false;
       }
@@ -989,6 +1020,7 @@ function App() {
 
     if (step === 4) {
       if (!bookingForm.serviceLevel) {
+        focusFirstInvalidField(stepFieldMap[4]);
         setStatusMessage('Please select a service level before continuing.');
         return false;
       }
@@ -996,6 +1028,7 @@ function App() {
 
     if (step === 5) {
       if (!bookingForm.packingDeclaration || !bookingForm.agreementAccepted) {
+        focusFirstInvalidField(stepFieldMap[5]);
         setStatusMessage('Please accept both declarations before creating your shipment.');
         return false;
       }
@@ -1434,7 +1467,7 @@ function App() {
             onClick={() => navigate('/book-pickup')}
             style={{ fontSize: '1.1rem', padding: '1rem 3rem' }}
           >
-            📦 Book Shipment
+            📦 Book My Shipment Now
           </button>
         </section>
 
@@ -1444,8 +1477,8 @@ function App() {
           <form onSubmit={handleInstantQuoteSubmit} className="instant-quote-form">
             <div className="instant-quote-row">
               <div className="instant-quote-field">
-                <label>Pickup Location</label>
-                <select name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
+                <label htmlFor="quote-origin">Pickup Location</label>
+                <select id="quote-origin" name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
                   <option>Miami, FL</option>
                   <option>Jacksonville, FL</option>
                   <option>Atlanta, GA</option>
@@ -1454,16 +1487,16 @@ function App() {
                 </select>
               </div>
               <div className="instant-quote-field">
-                <label>Destination</label>
-                <select name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
+                <label htmlFor="quote-destination">Destination</label>
+                <select id="quote-destination" name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
                   <option>Kingston, Jamaica</option>
                   <option>Montego Bay, Jamaica</option>
                   <option>Other Jamaica Location</option>
                 </select>
               </div>
               <div className="instant-quote-field">
-                <label>What Type?</label>
-                <select name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
+                <label htmlFor="quote-cargo">What Type?</label>
+                <select id="quote-cargo" name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
                   <option>Box</option>
                   <option>Barrel</option>
                   <option>Furniture</option>
@@ -1472,8 +1505,9 @@ function App() {
                 </select>
               </div>
               <div className="instant-quote-field">
-                <label>Weight (lbs)</label>
+                <label htmlFor="quote-weight">Weight (lbs)</label>
                 <input
+                  id="quote-weight"
                   type="number"
                   name="weight"
                   value={instantQuoteForm.weight}
@@ -1485,7 +1519,7 @@ function App() {
             </div>
 
             <button type="submit" className="btn btn--solid" style={{ width: '100%', marginTop: '1rem' }}>
-              Get Estimate
+              Calculate My Total Cost
             </button>
 
             {instantQuoteResult && !instantQuoteResult.error && (
@@ -1504,7 +1538,7 @@ function App() {
                   onClick={() => navigate('/book-pickup')}
                   style={{ width: '100%', marginTop: '1rem' }}
                 >
-                  Book This Shipment
+                  Book This Shipment Now
                 </button>
               </div>
             )}
@@ -1578,7 +1612,7 @@ function App() {
             onClick={() => navigate('/book-pickup')}
             style={{ fontSize: '1rem', padding: '0.8rem 2.5rem', marginRight: '1rem' }}
           >
-            Book Shipment
+            Book My Package Now
           </button>
           <button
             type="button"
@@ -1586,7 +1620,7 @@ function App() {
             onClick={() => navigate('/tracking')}
             style={{ fontSize: '1rem', padding: '0.8rem 2.1rem' }}
           >
-            Track Shipment
+            Check Status
           </button>
         </section>
 
@@ -1739,63 +1773,64 @@ function App() {
         <div>
           <h2>Request a Shipping Quote</h2>
           <form className="form" onSubmit={handleQuoteSubmit}>
-            <label>
+            <label htmlFor="quote-fullName">
               Full Name
-              <input name="fullName" value={quoteForm.fullName} onChange={handleQuoteChange} required />
+              <input id="quote-fullName" name="fullName" value={quoteForm.fullName} onChange={handleQuoteChange} required />
             </label>
-            <label>
+            <label htmlFor="quote-email">
               Email
-              <input type="email" name="email" value={quoteForm.email} onChange={handleQuoteChange} required />
+              <input id="quote-email" type="email" name="email" value={quoteForm.email} onChange={handleQuoteChange} required />
             </label>
-            <label>
+            <label htmlFor="quote-phone">
               Phone
-              <input type="tel" name="phone" value={quoteForm.phone} onChange={handleQuoteChange} required />
+              <input id="quote-phone" type="tel" name="phone" value={quoteForm.phone} onChange={handleQuoteChange} required />
             </label>
-            <label>
+            <label htmlFor="quote-cargoType">
               Cargo Type
-              <select name="cargoType" value={quoteForm.cargoType} onChange={handleQuoteChange} required>
+              <select id="quote-cargoType" name="cargoType" value={quoteForm.cargoType} onChange={handleQuoteChange} required>
                 <option>Box</option>
                 <option>Barrel</option>
                 <option>Pallet</option>
                 <option>Commercial Freight</option>
               </select>
             </label>
-            <label>
+            <label htmlFor="quote-serviceLevel">
               Service Level
-              <select name="serviceLevel" value={quoteForm.serviceLevel} onChange={handleQuoteChange}>
+              <select id="quote-serviceLevel" name="serviceLevel" value={quoteForm.serviceLevel} onChange={handleQuoteChange}>
                 <option>Standard</option>
                 <option>Priority</option>
                 <option>Express</option>
               </select>
             </label>
-            <label>
+            <label htmlFor="quote-itemCategory">
               Item Category
-              <input name="itemCategory" value={quoteForm.itemCategory} onChange={handleQuoteChange} placeholder="Clothing, Electronics, Household, etc." required />
+              <input id="quote-itemCategory" name="itemCategory" value={quoteForm.itemCategory} onChange={handleQuoteChange} placeholder="Clothing, Electronics, Household, etc." required />
             </label>
-            <label>
+            <label htmlFor="quote-origin-form">
               Origin
-              <input name="origin" value={quoteForm.origin} onChange={handleQuoteChange} required />
+              <input id="quote-origin-form" name="origin" value={quoteForm.origin} onChange={handleQuoteChange} required />
             </label>
-            <label>
+            <label htmlFor="quote-destination-form">
               Destination
-              <input name="destination" value={quoteForm.destination} onChange={handleQuoteChange} required />
+              <input id="quote-destination-form" name="destination" value={quoteForm.destination} onChange={handleQuoteChange} required />
             </label>
-            <label>
+            <label htmlFor="quote-deliveryParish">
               Delivery Parish (Jamaica)
-              <select name="deliveryParish" value={quoteForm.deliveryParish} onChange={handleQuoteChange} required>
+              <select id="quote-deliveryParish" name="deliveryParish" value={quoteForm.deliveryParish} onChange={handleQuoteChange} required>
                 <option value="">Select a parish</option>
                 {JAMAICA_PARISHES.map(parish => (
                   <option key={parish} value={parish}>{parish}</option>
                 ))}
               </select>
             </label>
-            <label>
+            <label htmlFor="quote-declaredValueUsd">
               Declared Value (USD)
-              <input type="number" name="declaredValueUsd" value={quoteForm.declaredValueUsd} onChange={handleQuoteChange} min="0" placeholder="Optional but recommended" />
+              <input id="quote-declaredValueUsd" type="number" name="declaredValueUsd" value={quoteForm.declaredValueUsd} onChange={handleQuoteChange} min="0" placeholder="Optional but recommended" />
             </label>
-            <label>
+            <label htmlFor="quote-weight-form">
               Weight (lbs)
               <input
+                id="quote-weight-form"
                 type="number"
                 name="weight"
                 value={quoteForm.weight}
@@ -1806,8 +1841,9 @@ function App() {
                 placeholder={quoteForm.dontKnowWeight ? 'Skip when unknown' : ''}
               />
             </label>
-            <label className="checkbox-label">
+            <label htmlFor="quote-dontKnowWeight" className="checkbox-label">
               <input
+                id="quote-dontKnowWeight"
                 type="checkbox"
                 name="dontKnowWeight"
                 checked={quoteForm.dontKnowWeight}
@@ -1817,22 +1853,22 @@ function App() {
             </label>
             {quoteForm.dontKnowWeight && (
               <>
-                <label>
+                <label htmlFor="quote-quantity">
                   Quantity
-                  <input type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
+                  <input id="quote-quantity" type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
                 </label>
-                <label>
+                <label htmlFor="quote-dimensionsLength">
                   Dimensions (L x W x H in inches)
                   <div className="input-row">
-                    <input type="number" name="dimensionsLength" placeholder="Length" value={quoteForm.dimensionsLength} onChange={handleQuoteChange} min="1" required />
-                    <input type="number" name="dimensionsWidth" placeholder="Width" value={quoteForm.dimensionsWidth} onChange={handleQuoteChange} min="1" required />
-                    <input type="number" name="dimensionsHeight" placeholder="Height" value={quoteForm.dimensionsHeight} onChange={handleQuoteChange} min="1" required />
+                    <input id="quote-dimensionsLength" type="number" name="dimensionsLength" placeholder="Length" value={quoteForm.dimensionsLength} onChange={handleQuoteChange} min="1" required />
+                    <input id="quote-dimensionsWidth" type="number" name="dimensionsWidth" placeholder="Width" value={quoteForm.dimensionsWidth} onChange={handleQuoteChange} min="1" required />
+                    <input id="quote-dimensionsHeight" type="number" name="dimensionsHeight" placeholder="Height" value={quoteForm.dimensionsHeight} onChange={handleQuoteChange} min="1" required />
                   </div>
                 </label>
                 <p className="section-intro">We will provide an estimated quote range and confirm final pricing after warehouse weigh-in.</p>
               </>
             )}
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>Submit Quote Request</button>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Quote Request'}</button>
           </form>
         </div>
 
@@ -2264,35 +2300,35 @@ function App() {
             {bookingStep === 1 && (
               <>
                 <h3>Where should we pick up your shipment?</h3>
-                <label>
+                <label htmlFor="book-fullName">
                   Full Name
-                  <input name="fullName" value={bookingForm.fullName} onChange={handleBookingChange} required />
+                  <input id="book-fullName" name="fullName" value={bookingForm.fullName} onChange={handleBookingChange} required />
                 </label>
-                <label>
+                <label htmlFor="book-email">
                   Email
-                  <input type="email" name="email" value={bookingForm.email} onChange={handleBookingChange} required />
+                  <input id="book-email" type="email" name="email" value={bookingForm.email} onChange={handleBookingChange} required />
                 </label>
-                <label>
+                <label htmlFor="book-phone">
                   Phone
-                  <input type="tel" name="phone" value={bookingForm.phone} onChange={handleBookingChange} required />
+                  <input id="book-phone" type="tel" name="phone" value={bookingForm.phone} onChange={handleBookingChange} required />
                 </label>
-                <label>
+                <label htmlFor="book-address">
                   Street Address
-                  <input name="pickupAddress" placeholder="123 Main Street" value={bookingForm.pickupAddress} onChange={handleBookingChange} required />
+                  <input id="book-address" name="pickupAddress" placeholder="123 Main Street" value={bookingForm.pickupAddress} onChange={handleBookingChange} required />
                 </label>
                 <div className="input-row">
-                  <label>
+                  <label htmlFor="book-city">
                     City
-                    <input name="pickupCity" value={bookingForm.pickupCity} onChange={handleBookingChange} required />
+                    <input id="book-city" name="pickupCity" value={bookingForm.pickupCity} onChange={handleBookingChange} required />
                   </label>
-                  <label>
+                  <label htmlFor="book-zip">
                     ZIP
-                    <input name="pickupZip" value={bookingForm.pickupZip} onChange={handleBookingChange} required />
+                    <input id="book-zip" name="pickupZip" value={bookingForm.pickupZip} onChange={handleBookingChange} required />
                   </label>
                 </div>
-                <label>
+                <label htmlFor="book-date">
                   Pickup Date
-                  <input type="date" name="pickupDate" value={bookingForm.pickupDate} onChange={handleBookingChange} min={new Date().toISOString().split('T')[0]} required />
+                  <input id="book-date" type="date" name="pickupDate" value={bookingForm.pickupDate} onChange={handleBookingChange} min={new Date().toISOString().split('T')[0]} required />
                 </label>
               </>
             )}
@@ -2301,34 +2337,34 @@ function App() {
             {bookingStep === 2 && (
               <>
                 <h3>What are you sending?</h3>
-                <label>
+                <label htmlFor="book-cargoType">
                   Cargo Type
-                  <select name="cargoType" value={bookingForm.cargoType} onChange={handleBookingChange} required>
+                  <select id="book-cargoType" name="cargoType" value={bookingForm.cargoType} onChange={handleBookingChange} required>
                     <option>Barrel</option>
                     <option>Box</option>
                     <option>Pallet</option>
                     <option>Household Goods</option>
                   </select>
                 </label>
-                <label>
+                <label htmlFor="book-quantity">
                   Quantity
-                  <input type="number" name="quantity" value={bookingForm.quantity} onChange={handleBookingChange} min="1" required />
+                  <input id="book-quantity" type="number" name="quantity" value={bookingForm.quantity} onChange={handleBookingChange} min="1" required />
                 </label>
-                <label>
+                <label htmlFor="book-weightPerUnit">
                   Weight per Unit (lbs)
-                  <input type="number" name="weightPerUnit" value={bookingForm.weightPerUnit} onChange={handleBookingChange} min="1" required />
+                  <input id="book-weightPerUnit" type="number" name="weightPerUnit" value={bookingForm.weightPerUnit} onChange={handleBookingChange} min="1" required />
                 </label>
-                <label>
+                <label htmlFor="book-dimensionsLength">
                   Dimensions (L x W x H in inches) — optional
                   <div className="input-row">
-                    <input type="number" name="dimensionsLength" placeholder="Length" value={bookingForm.dimensionsLength} onChange={handleBookingChange} min="1" />
-                    <input type="number" name="dimensionsWidth" placeholder="Width" value={bookingForm.dimensionsWidth} onChange={handleBookingChange} min="1" />
-                    <input type="number" name="dimensionsHeight" placeholder="Height" value={bookingForm.dimensionsHeight} onChange={handleBookingChange} min="1" />
+                    <input id="book-dimensionsLength" type="number" name="dimensionsLength" placeholder="Length" value={bookingForm.dimensionsLength} onChange={handleBookingChange} min="1" />
+                    <input id="book-dimensionsWidth" type="number" name="dimensionsWidth" placeholder="Width" value={bookingForm.dimensionsWidth} onChange={handleBookingChange} min="1" />
+                    <input id="book-dimensionsHeight" type="number" name="dimensionsHeight" placeholder="Height" value={bookingForm.dimensionsHeight} onChange={handleBookingChange} min="1" />
                   </div>
                 </label>
-                <label>
+                <label htmlFor="book-estimatedValue">
                   Estimated Value (USD)
-                  <input type="number" name="estimatedValue" value={bookingForm.estimatedValue} onChange={handleBookingChange} min="0" />
+                  <input id="book-estimatedValue" type="number" name="estimatedValue" value={bookingForm.estimatedValue} onChange={handleBookingChange} min="0" />
                 </label>
               </>
             )}
@@ -2337,26 +2373,27 @@ function App() {
             {bookingStep === 3 && (
               <>
                 <h3>Where in Jamaica are we delivering?</h3>
-                <label>
+                <label htmlFor="book-jamaicaRecipient">
                   Recipient Name
-                  <input name="jamaicaRecipient" value={bookingForm.jamaicaRecipient} onChange={handleBookingChange} required />
+                  <input id="book-jamaicaRecipient" name="jamaicaRecipient" value={bookingForm.jamaicaRecipient} onChange={handleBookingChange} required />
                 </label>
-                <label>
+                <label htmlFor="book-jamaicaAddress">
                   Delivery Address
-                  <input name="jamaicaAddress" placeholder="Street address" value={bookingForm.jamaicaAddress} onChange={handleBookingChange} required />
+                  <input id="book-jamaicaAddress" name="jamaicaAddress" placeholder="Street address" value={bookingForm.jamaicaAddress} onChange={handleBookingChange} required />
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <label>
+                  <label htmlFor="book-jamaicaLocation">
                     Jamaica City/Area
-                    <select name="jamaicaLocation" value={bookingForm.jamaicaLocation} onChange={handleBookingChange} required>
+                    <select id="book-jamaicaLocation" name="jamaicaLocation" value={bookingForm.jamaicaLocation} onChange={handleBookingChange} required>
                       {JAMAICA_LOCATIONS_WITH_PARISHES.map(loc => (
                         <option key={loc.city} value={loc.city}>{loc.city}</option>
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label htmlFor="book-parish">
                     Parish
-                    <select 
+                    <select
+                      id="book-parish"
                       name="deliveryParish" 
                       value={bookingForm.deliveryParish || ''} 
                       onChange={handleBookingChange}
@@ -2401,12 +2438,12 @@ function App() {
                   <p><strong>Delivery:</strong> {bookingForm.jamaicaRecipient}, {bookingForm.jamaicaLocation}, Jamaica</p>
                   <p><strong>Service:</strong> {bookingForm.serviceLevel} — ${estimatedPrice}</p>
                 </div>
-                <label className="checkbox-label">
-                  <input type="checkbox" name="packingDeclaration" checked={bookingForm.packingDeclaration} onChange={handleBookingChange} required />
+                <label htmlFor="book-packingDeclaration" className="checkbox-label">
+                  <input id="book-packingDeclaration" type="checkbox" name="packingDeclaration" checked={bookingForm.packingDeclaration} onChange={handleBookingChange} required />
                   I declare the contents and certify no prohibited items
                 </label>
-                <label className="checkbox-label">
-                  <input type="checkbox" name="agreementAccepted" checked={bookingForm.agreementAccepted} onChange={handleBookingChange} required />
+                <label htmlFor="book-agreement" className="checkbox-label">
+                  <input id="book-agreement" type="checkbox" name="agreementAccepted" checked={bookingForm.agreementAccepted} onChange={handleBookingChange} required />
                   I agree to Clear Logistics & Freight Services terms
                 </label>
               </>
@@ -2591,9 +2628,9 @@ function App() {
             </div>
 
             {/* Milestone Timeline */}
-            <div className="milestone-timeline">
+            <ol className="milestone-timeline" aria-label="Active shipment milestones">
               {activeShipment.steps.map((step, idx) => (
-                <div key={step.label} className={`milestone-step ${step.done ? 'completed' : 'pending'}`}>
+                <li key={step.label} className={`milestone-step ${step.done ? 'completed' : 'pending'}`} aria-current={step.done ? undefined : 'step'}>
                   <div className="milestone-indicator">
                     <div className="milestone-dot">{step.done ? '✔' : ''}</div>
                     {idx < activeShipment.steps.length - 1 && <div className="milestone-line" />}
@@ -2602,9 +2639,9 @@ function App() {
                     <p className="milestone-title">{step.label}</p>
                     {step.done && <p className="milestone-date">Completed</p>}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
 
             <button
               type="button"
@@ -2659,6 +2696,7 @@ function App() {
               type="button"
               className="quick-action-card"
               onClick={() => navigate('/quote')}
+              aria-label="Get a shipping quote"
             >
               <div className="quick-action-icon">💰</div>
               <h3>Get a Quote</h3>
@@ -2668,6 +2706,7 @@ function App() {
               type="button"
               className="quick-action-card"
               onClick={() => navigate('/tracking')}
+              aria-label="Track your shipment"
             >
               <div className="quick-action-icon">📍</div>
               <h3>Track Shipment</h3>
@@ -2677,6 +2716,7 @@ function App() {
               type="button"
               className="quick-action-card"
               onClick={() => navigate('/shop')}
+              aria-label="Open Shop and Ship"
             >
               <div className="quick-action-icon">🛍️</div>
               <h3>Shop & Ship</h3>
@@ -2686,6 +2726,7 @@ function App() {
               type="button"
               className="quick-action-card"
               onClick={() => navigate('/support')}
+              aria-label="Contact support"
             >
               <div className="quick-action-icon">💬</div>
               <h3>Contact Support</h3>
