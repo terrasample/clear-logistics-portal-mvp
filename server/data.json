@@ -54,7 +54,9 @@
       "pricingMode": "weight-based",
       "estimatedRangeUsd": null,
       "quotedPriceUsd": 158,
-      "createdAt": "2026-07-23T00:27:49.270Z"
+      "createdAt": "2026-07-23T00:27:49.270Z",
+      "nudgesStoppedReason": "booked",
+      "nudgesStoppedAt": "2026-07-23T16:33:03.944Z"
     },
     {
       "quoteId": "Q-10034",
@@ -80,7 +82,15 @@
         "high": 525
       },
       "quotedPriceUsd": null,
-      "createdAt": "2026-07-23T00:28:49.270Z"
+      "createdAt": "2026-07-23T00:28:49.270Z",
+      "nudgesSent": [
+        {
+          "stepIndex": 0,
+          "sentAt": "2026-07-23T16:33:05.171Z",
+          "subject": "Still planning your shipment? (Q-10034)"
+        }
+      ],
+      "lastNudgedAt": "2026-07-23T16:33:05.171Z"
     },
     {
       "quoteId": "Q-10057",
@@ -103,7 +113,9 @@
       "pricingMode": "weight-based",
       "estimatedRangeUsd": null,
       "quotedPriceUsd": 4230,
-      "createdAt": "2026-07-23T00:35:49.270Z"
+      "createdAt": "2026-07-23T00:35:49.270Z",
+      "nudgesStoppedReason": "booked",
+      "nudgesStoppedAt": "2026-07-23T16:33:05.171Z"
     },
     {
       "quoteId": "Q-1784776720099",
@@ -126,7 +138,123 @@
       "pricingMode": "weight-based",
       "estimatedRangeUsd": null,
       "quotedPriceUsd": 123,
-      "createdAt": "2026-07-23T03:18:40.099Z"
+      "createdAt": "2026-07-23T03:18:40.099Z",
+      "nudgesSent": [
+        {
+          "stepIndex": 0,
+          "sentAt": "2026-07-23T16:33:06.195Z",
+          "subject": "Still planning your shipment? (Q-1784776720099)"
+        }
+      ],
+      "lastNudgedAt": "2026-07-23T16:33:06.195Z"
+    },
+    {
+      "quoteId": "Q-1784817960324",
+      "fullName": "Test Man",
+      "email": "terrasample@yahoo.com",
+      "phone": "3305062669",
+      "cargoType": "Barrel",
+      "serviceLevel": "Standard",
+      "itemCategory": "Clothing, Electronics, Vapes",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "St. Catherine",
+      "declaredValueUsd": "750",
+      "weight": "",
+      "dontKnowWeight": true,
+      "quantity": "1",
+      "dimensionsLength": "50",
+      "dimensionsWidth": "15",
+      "dimensionsHeight": "50",
+      "pricingMode": "estimated",
+      "estimatedRangeUsd": {
+        "low": 509,
+        "high": 682
+      },
+      "quotedPriceUsd": null,
+      "createdAt": "2026-07-23T14:46:00.324Z",
+      "nudgesSent": [
+        {
+          "stepIndex": 0,
+          "sentAt": "2026-07-23T16:33:07.118Z",
+          "subject": "Still planning your shipment? (Q-1784817960324)"
+        }
+      ],
+      "lastNudgedAt": "2026-07-23T16:33:07.118Z"
+    },
+    {
+      "quoteId": "Q-1784822659368",
+      "fullName": "Test User",
+      "email": "test@example.com",
+      "phone": "5551234567",
+      "cargoType": "Box",
+      "serviceLevel": "Standard",
+      "itemCategory": "Electronics",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "Kingston",
+      "declaredValueUsd": "500",
+      "weight": "25",
+      "dontKnowWeight": false,
+      "quantity": "1",
+      "dimensionsLength": "",
+      "dimensionsWidth": "",
+      "dimensionsHeight": "",
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 49,
+      "createdAt": "2026-07-23T16:04:19.368Z",
+      "nudgesSent": [
+        {
+          "stepIndex": 0,
+          "sentAt": "2026-07-23T17:08:35.765Z",
+          "subject": "Still planning your shipment? (Q-1784822659368)"
+        }
+      ],
+      "lastNudgedAt": "2026-07-23T17:08:35.765Z"
+    },
+    {
+      "quoteId": "Q-1784825455730",
+      "fullName": "Premium Test User",
+      "email": "clearpathja@gmail.com",
+      "phone": "8765551234",
+      "cargoType": "Barrel",
+      "serviceLevel": "Priority",
+      "itemCategory": "Household",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "Kingston",
+      "declaredValueUsd": "350",
+      "weight": "65",
+      "barrelPurchaseQty": "2",
+      "needsPackingSupplies": true,
+      "vipConcierge": true,
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 133,
+      "nudgesSent": [],
+      "nudgesOptOutAt": null,
+      "createdAt": "2026-07-23T16:50:55.730Z"
+    },
+    {
+      "quoteId": "Q-1784825706832",
+      "fullName": "SLA Test User",
+      "email": "clearpathja@gmail.com",
+      "phone": "8761112222",
+      "cargoType": "Box",
+      "serviceLevel": "Express",
+      "itemCategory": "Electronics",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "Kingston",
+      "weight": "22",
+      "vipConcierge": true,
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 43,
+      "nudgesSent": [],
+      "nudgesOptOutAt": null,
+      "createdAt": "2026-07-23T16:55:06.832Z"
     }
   ],
   "bookings": [
@@ -154,7 +282,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "pending",
-      "createdAt": "2026-07-23T00:27:49.270Z"
+      "createdAt": "2026-07-23T00:27:49.270Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-10002",
@@ -211,7 +343,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "pending",
-      "createdAt": "2026-07-23T00:35:49.270Z"
+      "createdAt": "2026-07-23T00:35:49.270Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-10004",
@@ -237,7 +373,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T00:35:49.270Z"
+      "createdAt": "2026-07-23T00:35:49.270Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-1784773326600",
@@ -302,7 +442,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T02:35:21.267Z"
+      "createdAt": "2026-07-23T02:35:21.267Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-1784774515018",
@@ -366,7 +510,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T02:53:44.405Z"
+      "createdAt": "2026-07-23T02:53:44.405Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-1784775276674",
@@ -396,7 +544,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T02:54:36.674Z"
+      "createdAt": "2026-07-23T02:54:36.674Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "B-1784775513331",
@@ -426,7 +578,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "pending",
-      "createdAt": "2026-07-23T02:58:33.331Z"
+      "createdAt": "2026-07-23T02:58:33.331Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-001",
@@ -446,7 +602,14 @@
       "serviceLevel": "Premium",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-23T02:49:29.324Z"
+      "createdAt": "2026-07-23T02:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto",
+      "lastScannedAt": "2026-07-23T17:45:08.687Z",
+      "lastScannedBy": "Demo Driver",
+      "lastScanSource": "manual-input"
     },
     {
       "bookingId": "BKG-DRV-002",
@@ -466,7 +629,11 @@
       "serviceLevel": "Economy",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-23T01:49:29.324Z"
+      "createdAt": "2026-07-23T01:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-003",
@@ -486,7 +653,11 @@
       "serviceLevel": "Standard",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-23T00:49:29.324Z"
+      "createdAt": "2026-07-23T00:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-004",
@@ -506,7 +677,11 @@
       "serviceLevel": "Premium",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T23:49:29.324Z"
+      "createdAt": "2026-07-22T23:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-005",
@@ -526,7 +701,11 @@
       "serviceLevel": "Standard",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-22T22:49:29.324Z"
+      "createdAt": "2026-07-22T22:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-006",
@@ -546,7 +725,11 @@
       "serviceLevel": "Economy",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T21:49:29.324Z"
+      "createdAt": "2026-07-22T21:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-007",
@@ -566,7 +749,11 @@
       "serviceLevel": "Premium",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-22T20:49:29.324Z"
+      "createdAt": "2026-07-22T20:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-008",
@@ -586,7 +773,11 @@
       "serviceLevel": "Economy",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T19:49:29.324Z"
+      "createdAt": "2026-07-22T19:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-009",
@@ -606,7 +797,11 @@
       "serviceLevel": "Standard",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-22T18:49:29.324Z"
+      "createdAt": "2026-07-22T18:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-010",
@@ -626,7 +821,11 @@
       "serviceLevel": "Premium",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T17:49:29.324Z"
+      "createdAt": "2026-07-22T17:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-011",
@@ -646,7 +845,11 @@
       "serviceLevel": "Standard",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-22T16:49:29.324Z"
+      "createdAt": "2026-07-22T16:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-012",
@@ -666,7 +869,11 @@
       "serviceLevel": "Economy",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T15:49:29.324Z"
+      "createdAt": "2026-07-22T15:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-013",
@@ -686,7 +893,11 @@
       "serviceLevel": "Premium",
       "paymentStatus": "paid",
       "pickedUp": false,
-      "createdAt": "2026-07-22T14:49:29.324Z"
+      "createdAt": "2026-07-22T14:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     },
     {
       "bookingId": "BKG-DRV-014",
@@ -706,7 +917,11 @@
       "serviceLevel": "Economy",
       "paymentStatus": "pending",
       "pickedUp": false,
-      "createdAt": "2026-07-22T13:49:29.324Z"
+      "createdAt": "2026-07-22T13:49:29.324Z",
+      "assignedDriverId": "driver-demo-001",
+      "assignedDriverName": "Demo Driver",
+      "assignedAt": "2026-07-23T16:33:18.757Z",
+      "assignmentMode": "auto"
     }
   ],
   "purchaseRequests": [
@@ -2131,6 +2346,101 @@
       ],
       "paymentStatus": "pending",
       "createdAt": "2026-07-22T13:49:29.324Z"
+    }
+  ],
+  "routes": [
+    {
+      "routeId": "RTE-1784824409911",
+      "driverId": "driver-demo-001",
+      "driverName": "Demo Driver",
+      "status": "active",
+      "startedAt": "2026-07-23T16:33:29.911Z",
+      "completedAt": null,
+      "stops": [
+        {
+          "order": 1,
+          "shipmentId": "CLF-DRV-001",
+          "pickupAddress": "420 NW 7th Ave",
+          "pickupCity": "Miami",
+          "pickupZip": "33100",
+          "pickupDate": "2026-07-24",
+          "status": "completed",
+          "completedAt": "2026-07-23T16:33:31.284Z"
+        },
+        {
+          "order": 2,
+          "shipmentId": "CLF-DRV-002",
+          "pickupAddress": "421 Brickell Ave",
+          "pickupCity": "Fort Lauderdale",
+          "pickupZip": "33101",
+          "pickupDate": "2026-07-25",
+          "status": "pending",
+          "completedAt": null
+        },
+        {
+          "order": 3,
+          "shipmentId": "CLF-10025",
+          "pickupAddress": "123 Test Street, New York, NY 10001",
+          "pickupCity": "Jacksonville",
+          "pickupZip": "32202",
+          "pickupDate": "2026-07-25",
+          "status": "pending",
+          "completedAt": null
+        }
+      ],
+      "progress": {
+        "total": 3,
+        "completed": 1,
+        "pending": 2
+      },
+      "locationTrail": [],
+      "startedFrom": {
+        "lat": null,
+        "lng": null
+      },
+      "lastCompletedShipmentId": "CLF-DRV-001",
+      "lastUpdatedAt": "2026-07-23T16:33:31.284Z"
+    }
+  ],
+  "scanEvents": [
+    {
+      "scanId": "SCAN-1784828241994-357",
+      "shipmentId": "CLF-DRV-001",
+      "bookingId": "BKG-DRV-001",
+      "driverId": "driver-demo-001",
+      "driverName": "Demo Driver",
+      "source": "manual-input",
+      "createdAt": "2026-07-23T17:37:21.994Z"
+    },
+    {
+      "scanId": "SCAN-1784828276910-490",
+      "shipmentId": "CLF-DRV-001",
+      "bookingId": "BKG-DRV-001",
+      "driverId": "driver-demo-001",
+      "driverName": "Demo Driver",
+      "source": "manual-input",
+      "createdAt": "2026-07-23T17:37:56.910Z"
+    },
+    {
+      "scanId": "SCAN-1784828706058-333",
+      "shipmentId": "CLF-DRV-999999",
+      "driverId": "driver-demo-001",
+      "driverName": "Demo Driver",
+      "source": "manual-input",
+      "createdAt": "2026-07-23T17:45:06.058Z",
+      "status": "rejected",
+      "reason": "shipment-not-found"
+    },
+    {
+      "scanId": "SCAN-1784828708687-88",
+      "shipmentId": "CLF-DRV-001",
+      "driverId": "driver-demo-001",
+      "driverName": "Demo Driver",
+      "source": "manual-input",
+      "createdAt": "2026-07-23T17:45:08.687Z",
+      "bookingId": "BKG-DRV-001",
+      "status": "accepted",
+      "reason": null
     }
   ]
 }

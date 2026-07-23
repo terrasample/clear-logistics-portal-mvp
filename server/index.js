@@ -42,6 +42,8 @@ const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
 let dataWriteQueue = Promise.resolve();
 let quoteNudgeWorkerTimer = null;
 let quoteNudgeTickInProgress = false;
+let scanAlertWorkerTimer = null;
+let scanAlertTickInProgress = false;
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || 'business@example.com')
     .split(',')
@@ -61,6 +63,11 @@ const quoteNudgeStepsMs = [
   Number(process.env.NUDGE_QUOTE_STEP_2_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[1]),
   Number(process.env.NUDGE_QUOTE_STEP_3_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[2]),
 ].filter((ms) => Number.isFinite(ms) && ms > 0);
+const scanAlertsEnabled = String(process.env.SCAN_ALERTS_ENABLED || 'true').toLowerCase() === 'true';
+const scanAlertIntervalMs = Math.max(60 * 1000, Number(process.env.SCAN_ALERT_INTERVAL_MS || 5 * 60 * 1000));
+const scanRepeatWindowMs = Math.max(60 * 1000, Number(process.env.SCAN_REPEAT_WINDOW_MINUTES || 10) * 60 * 1000);
+const scanRepeatThreshold = Math.max(2, Number(process.env.SCAN_REPEAT_THRESHOLD || 3));
+const scanNoScanCutoffHour = Math.min(23, Math.max(0, Number(process.env.SCAN_NO_SCAN_CUTOFF_HOUR || 14)));
 
 async function ensureDataFile() {
   await fs.mkdir(uploadDir, { recursive: true });
@@ -446,6 +453,24 @@ function toMillis(value) {
   return Number.isFinite(t) ? t : null;
 }
 
+function toDateKey(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function pickupDateKey(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.includes('T')) {
+    const parsed = new Date(raw);
+    return Number.isFinite(parsed.getTime()) ? toDateKey(parsed) : raw.slice(0, 10);
+  }
+  return raw.slice(0, 10);
+}
+
 function isQuoteAlreadyBooked(quote, data) {
   const quoteId = String(quote?.quoteId || '').trim();
   const quoteCreatedAtMs = toMillis(quote?.createdAt);
@@ -628,6 +653,80 @@ function startQuoteNudgeWorker() {
   }
 
   console.log(`[quote-nudges] enabled with ${quoteNudgeStepsMs.length} steps, interval ${quoteNudgeIntervalMs}ms`);
+}
+
+async function runScanAlertsTick() {
+  if (!scanAlertsEnabled || scanAlertTickInProgress) {
+    return;
+  }
+
+  scanAlertTickInProgress = true;
+  try {
+    const now = new Date();
+    if (now.getHours() < scanNoScanCutoffHour) {
+      return;
+    }
+
+    const data = await readData();
+    if (!Array.isArray(data.bookings)) data.bookings = [];
+    if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
+
+    const todayKey = toDateKey(now);
+    const scannedToday = new Set(
+      data.scanEvents
+        .filter((event) => toDateKey(event?.createdAt) === todayKey)
+        .map((event) => String(event.shipmentId || '').trim())
+        .filter(Boolean)
+    );
+
+    let changed = false;
+    for (const booking of data.bookings) {
+      if (!booking || booking.pickedUp) continue;
+      const shipmentId = String(booking.shipmentId || '').trim();
+      if (!shipmentId) continue;
+      if (pickupDateKey(booking.pickupDate) !== todayKey) continue;
+      if (scannedToday.has(shipmentId)) continue;
+      if (booking.noScanAlertDate === todayKey) continue;
+
+      await sendNotification(
+        'Scan Exception: No Scan by Cutoff',
+        `Shipment ${shipmentId} (${booking.fullName || 'unknown customer'}) has pickup date ${todayKey} but no scan event by ${scanNoScanCutoffHour}:00.`
+      );
+
+      booking.noScanAlertDate = todayKey;
+      changed = true;
+    }
+
+    if (changed) {
+      await writeData(data);
+    }
+  } catch (error) {
+    console.error('[scan-alerts:error]', error?.message || error);
+  } finally {
+    scanAlertTickInProgress = false;
+  }
+}
+
+function startScanAlertWorker() {
+  if (!scanAlertsEnabled || scanAlertWorkerTimer) {
+    return;
+  }
+
+  runScanAlertsTick().catch((error) => {
+    console.error('[scan-alerts:start-error]', error?.message || error);
+  });
+
+  scanAlertWorkerTimer = setInterval(() => {
+    runScanAlertsTick().catch((error) => {
+      console.error('[scan-alerts:interval-error]', error?.message || error);
+    });
+  }, scanAlertIntervalMs);
+
+  if (typeof scanAlertWorkerTimer.unref === 'function') {
+    scanAlertWorkerTimer.unref();
+  }
+
+  console.log(`[scan-alerts] enabled, interval ${scanAlertIntervalMs}ms, repeat window ${scanRepeatWindowMs}ms, threshold ${scanRepeatThreshold}, cutoff hour ${scanNoScanCutoffHour}`);
 }
 
 async function notifyCustomer({ channel, to, message, metadata = {} }) {
@@ -1683,23 +1782,54 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
 
+  const nowIso = new Date().toISOString();
+  const baseEvent = {
+    scanId: `SCAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    shipmentId,
+    driverId: req.user.sub,
+    driverName: req.user.fullName,
+    source,
+    createdAt: nowIso,
+  };
+
   const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
   if (!booking) {
+    data.scanEvents.push({ ...baseEvent, status: 'rejected', reason: 'shipment-not-found' });
+    await writeData(data);
+    await sendNotification('Scan Exception: Unknown Shipment', `Shipment ${shipmentId} scanned by ${req.user.fullName} via ${source}, but shipment was not found.`);
     return res.status(404).json({ error: 'Shipment not found.' });
   }
 
   if (booking.assignedDriverId && booking.assignedDriverId !== req.user.sub) {
+    data.scanEvents.push({
+      ...baseEvent,
+      bookingId: booking.bookingId,
+      status: 'rejected',
+      reason: 'assigned-to-different-driver',
+      assignedDriverId: booking.assignedDriverId,
+      assignedDriverName: booking.assignedDriverName || null,
+    });
+    await writeData(data);
+    await sendNotification(
+      'Scan Exception: Wrong Driver Assignment',
+      `Shipment ${shipmentId} scanned by ${req.user.fullName}, but assigned to ${booking.assignedDriverName || booking.assignedDriverId || 'another driver'}.`
+    );
     return res.status(403).json({ error: 'This shipment is assigned to a different driver.' });
   }
 
+  const recentSameShipmentScans = data.scanEvents.filter((event) => {
+    if (String(event?.shipmentId || '').trim() !== shipmentId) return false;
+    if (event?.status === 'rejected') return false;
+    const eventMs = toMillis(event?.createdAt);
+    const nowMs = toMillis(nowIso) || Date.now();
+    return eventMs !== null && nowMs - eventMs <= scanRepeatWindowMs;
+  });
+
   const scanEvent = {
-    scanId: `SCAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    shipmentId,
+    ...baseEvent,
     bookingId: booking.bookingId,
-    driverId: req.user.sub,
-    driverName: req.user.fullName,
-    source,
-    createdAt: new Date().toISOString(),
+    status: 'accepted',
+    reason: null,
   };
 
   booking.lastScannedAt = scanEvent.createdAt;
@@ -1709,6 +1839,13 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
 
   await writeData(data);
   await sendNotification('Barcode Scanned', `Shipment ${shipmentId} scanned by ${req.user.fullName} via ${source}.`);
+
+  if (recentSameShipmentScans.length + 1 === scanRepeatThreshold) {
+    await sendNotification(
+      'Scan Exception: Repeated Scans',
+      `Shipment ${shipmentId} was scanned ${scanRepeatThreshold} times within ${Math.round(scanRepeatWindowMs / 60000)} minutes.`
+    );
+  }
 
   return res.status(201).json({
     ok: true,
@@ -2139,6 +2276,7 @@ ensureDataFile()
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
       startQuoteNudgeWorker();
+      startScanAlertWorker();
     });
   })
   .catch((error) => {
