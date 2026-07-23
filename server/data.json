@@ -11,10 +11,154 @@
     }
   ],
   "drivers": [],
-  "quotes": [],
-  "bookings": [],
-  "purchaseRequests": [],
-  "supportTickets": [],
+  "quotes": [
+    {
+      "quoteId": "Q-10021",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Barrel",
+      "serviceLevel": "Standard",
+      "itemCategory": "Household Goods",
+      "origin": "Miami, FL",
+      "destination": "Kingston, Jamaica",
+      "deliveryParish": "Kingston",
+      "declaredValueUsd": "450",
+      "weight": "95",
+      "dontKnowWeight": false,
+      "quantity": "1",
+      "dimensionsLength": "24",
+      "dimensionsWidth": "24",
+      "dimensionsHeight": "36",
+      "pricingMode": "weight-based",
+      "estimatedRangeUsd": null,
+      "quotedPriceUsd": 158,
+      "createdAt": "2026-07-23T00:27:49.270Z"
+    },
+    {
+      "quoteId": "Q-10034",
+      "fullName": "Sarah Brown",
+      "email": "sarah.brown@example.com",
+      "phone": "+1-305-555-0144",
+      "cargoType": "Pallet",
+      "serviceLevel": "Priority",
+      "itemCategory": "Commercial Freight",
+      "origin": "Orlando, FL",
+      "destination": "Montego Bay, Jamaica",
+      "deliveryParish": "Saint James",
+      "declaredValueUsd": "1800",
+      "weight": "",
+      "dontKnowWeight": true,
+      "quantity": "2",
+      "dimensionsLength": "48",
+      "dimensionsWidth": "40",
+      "dimensionsHeight": "60",
+      "pricingMode": "estimated",
+      "estimatedRangeUsd": { "low": 392, "high": 525 },
+      "quotedPriceUsd": null,
+      "createdAt": "2026-07-23T00:28:49.270Z"
+    }
+  ],
+  "bookings": [
+    {
+      "bookingId": "B-10001",
+      "shipmentId": "CLF-10025",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Box",
+      "quantity": "3",
+      "unitType": "Box",
+      "pickupDate": "2026-07-25",
+      "pickupAddress": "123 Test Street, New York, NY 10001",
+      "pickupCity": "Jacksonville",
+      "pickupZip": "32202",
+      "weightPerUnit": "35",
+      "jamaicaRecipient": "John Brown",
+      "jamaicaAddress": "12 Hope Road",
+      "jamaicaLocation": "Kingston",
+      "deliveryParish": "Kingston",
+      "serviceLevel": "Standard",
+      "estimatedValue": "450",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-23T00:27:49.270Z"
+    },
+    {
+      "bookingId": "B-10002",
+      "shipmentId": "CLF-10041",
+      "userId": "test-user-001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "pickupDate": "2026-07-24",
+      "pickupAddress": "123 Test Street, New York, NY 10001",
+      "pickupCity": "Miami",
+      "pickupZip": "33101",
+      "weightPerUnit": "95",
+      "jamaicaRecipient": "Sarah Brown",
+      "jamaicaAddress": "41 Harbour Street",
+      "jamaicaLocation": "Montego Bay",
+      "deliveryParish": "Saint James",
+      "serviceLevel": "Premium",
+      "estimatedValue": "1200",
+      "packingDeclaration": true,
+      "agreementAccepted": true,
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T00:28:49.270Z"
+    }
+  ],
+  "purchaseRequests": [
+    {
+      "requestId": "PR-10001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "phone": "+1-555-0100",
+      "storeName": "Amazon",
+      "productLinks": ["https://www.amazon.com/dp/B000TEST1"],
+      "sizeColorSpecs": "Black / Medium",
+      "budgetUsd": 180,
+      "notes": "Demo purchase request for household items.",
+      "createdAt": "2026-07-23T00:27:49.270Z",
+      "status": "Received"
+    },
+    {
+      "requestId": "PR-10002",
+      "fullName": "Sarah Brown",
+      "email": "sarah.brown@example.com",
+      "phone": "+1-305-555-0144",
+      "storeName": "Walmart",
+      "productLinks": ["https://www.walmart.com/ip/000TEST2"],
+      "sizeColorSpecs": "White / Large",
+      "budgetUsd": 320,
+      "notes": "Bulk school supplies and small appliance demo.",
+      "createdAt": "2026-07-23T00:28:49.270Z",
+      "status": "Received"
+    }
+  ],
+  "supportTickets": [
+    {
+      "ticketId": "T-10001",
+      "fullName": "Test Customer",
+      "email": "test@example.com",
+      "shipmentId": "CLF-10025",
+      "message": "Please confirm pickup window for demo shipment.",
+      "createdAt": "2026-07-23T00:27:49.270Z"
+    },
+    {
+      "ticketId": "T-10002",
+      "fullName": "Sarah Brown",
+      "email": "sarah.brown@example.com",
+      "shipmentId": "CLF-10102",
+      "message": "Customs hold - requesting document review and update.",
+      "createdAt": "2026-07-23T00:28:49.270Z"
+    }
+  ],
   "shipments": [
     {
       "shipmentId": "CLF-10025",
@@ -180,6 +324,92 @@
         {
           "label": "Out for Delivery",
           "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10102",
+      "fullName": "Sarah Brown",
+      "status": "Customs Hold - Documents Required",
+      "cargoType": "Box",
+      "quantity": "4",
+      "unitType": "Box",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ]
+    },
+    {
+      "shipmentId": "CLF-10109",
+      "fullName": "Marcus Wilson",
+      "status": "Recipient Unavailable",
+      "cargoType": "Barrel",
+      "quantity": "1",
+      "unitType": "Barrel",
+      "paymentStatus": "paid",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": true
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": true
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": true
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": true
+        },
+        {
+          "label": "Customs Clearance",
+          "done": true
+        },
+        {
+          "label": "Out for Delivery",
+          "done": true
         },
         {
           "label": "Delivered",
