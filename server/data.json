@@ -19,7 +19,19 @@
       "createdAt": "2026-07-23T00:35:49.270Z"
     }
   ],
-  "drivers": [],
+  "drivers": [
+    {
+      "id": "driver-demo-001",
+      "fullName": "Demo Driver",
+      "email": "driver.demo@clearlogistics.test",
+      "password": "$2b$10$m8i2En/Poi1fA8/CkeQ.GeoSrMqKosGWUrFQ0rOvvzG6LMduVjTCO",
+      "phone": "+1-305-555-0110",
+      "vehicle": "Ford Transit 2022",
+      "role": "driver",
+      "status": "active",
+      "createdAt": "2026-07-23T04:49:29.322Z"
+    }
+  ],
   "quotes": [
     {
       "quoteId": "Q-10021",
@@ -168,7 +180,12 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T00:28:49.270Z"
+      "createdAt": "2026-07-23T00:28:49.270Z",
+      "pickedUp": true,
+      "pickedUpAt": "2026-07-23T04:53:34.056Z",
+      "pickedUpBy": "Demo Driver",
+      "pickupNotes": "",
+      "pickupPhotoUrl": ""
     },
     {
       "bookingId": "B-10003",
@@ -250,7 +267,12 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T02:22:06.600Z"
+      "createdAt": "2026-07-23T02:22:06.600Z",
+      "pickedUp": true,
+      "pickedUpAt": "2026-07-23T04:53:43.638Z",
+      "pickedUpBy": "Demo Driver",
+      "pickupNotes": "",
+      "pickupPhotoUrl": ""
     },
     {
       "bookingId": "B-1784774121267",
@@ -310,7 +332,11 @@
       "packingDeclaration": true,
       "agreementAccepted": true,
       "paymentStatus": "paid",
-      "createdAt": "2026-07-23T02:41:55.018Z"
+      "createdAt": "2026-07-23T02:41:55.018Z",
+      "pickedUp": true,
+      "pickedUpAt": "2026-07-23T04:57:37.416Z",
+      "pickedUpBy": "Demo Driver",
+      "pickupNotes": "Live confirm test"
     },
     {
       "bookingId": "B-1784775224405",
@@ -401,6 +427,286 @@
       "agreementAccepted": true,
       "paymentStatus": "pending",
       "createdAt": "2026-07-23T02:58:33.331Z"
+    },
+    {
+      "bookingId": "BKG-DRV-001",
+      "shipmentId": "CLF-DRV-001",
+      "fullName": "Alicia Brown",
+      "email": "customer1@example.com",
+      "phone": "+1-305-555-1200",
+      "pickupAddress": "420 NW 7th Ave",
+      "pickupCity": "Miami",
+      "pickupZip": "33100",
+      "pickupDate": "2026-07-24",
+      "cargoType": "Box",
+      "quantity": "1",
+      "weight": "20",
+      "jamaicaRecipient": "Alicia Brown Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Premium",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-23T02:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-002",
+      "shipmentId": "CLF-DRV-002",
+      "fullName": "Kevon Morgan",
+      "email": "customer2@example.com",
+      "phone": "+1-305-555-1201",
+      "pickupAddress": "421 Brickell Ave",
+      "pickupCity": "Fort Lauderdale",
+      "pickupZip": "33101",
+      "pickupDate": "2026-07-25",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "weight": "22",
+      "jamaicaRecipient": "Kevon Morgan Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Economy",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-23T01:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-003",
+      "shipmentId": "CLF-DRV-003",
+      "fullName": "Danielle Graham",
+      "email": "customer3@example.com",
+      "phone": "+1-305-555-1202",
+      "pickupAddress": "422 Coral Way",
+      "pickupCity": "Orlando",
+      "pickupZip": "33102",
+      "pickupDate": "2026-07-26",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "weight": "24",
+      "jamaicaRecipient": "Danielle Graham Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Standard",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-23T00:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-004",
+      "shipmentId": "CLF-DRV-004",
+      "fullName": "Rashad Campbell",
+      "email": "customer4@example.com",
+      "phone": "+1-305-555-1203",
+      "pickupAddress": "423 Sunset Dr",
+      "pickupCity": "Kissimmee",
+      "pickupZip": "33103",
+      "pickupDate": "2026-07-27",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "weight": "26",
+      "jamaicaRecipient": "Rashad Campbell Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Premium",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T23:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-005",
+      "shipmentId": "CLF-DRV-005",
+      "fullName": "Tameka Stewart",
+      "email": "customer5@example.com",
+      "phone": "+1-305-555-1204",
+      "pickupAddress": "424 Flagler St",
+      "pickupCity": "Tampa",
+      "pickupZip": "33104",
+      "pickupDate": "2026-07-28",
+      "cargoType": "Box",
+      "quantity": "1",
+      "weight": "28",
+      "jamaicaRecipient": "Tameka Stewart Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Standard",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T22:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-006",
+      "shipmentId": "CLF-DRV-006",
+      "fullName": "Andre Watson",
+      "email": "customer6@example.com",
+      "phone": "+1-305-555-1205",
+      "pickupAddress": "425 NW 7th Ave",
+      "pickupCity": "Miami",
+      "pickupZip": "33105",
+      "pickupDate": "2026-07-29",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "weight": "30",
+      "jamaicaRecipient": "Andre Watson Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Economy",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T21:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-007",
+      "shipmentId": "CLF-DRV-007",
+      "fullName": "Natoya Russell",
+      "email": "customer7@example.com",
+      "phone": "+1-305-555-1206",
+      "pickupAddress": "426 Brickell Ave",
+      "pickupCity": "Fort Lauderdale",
+      "pickupZip": "33106",
+      "pickupDate": "2026-07-30",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "weight": "32",
+      "jamaicaRecipient": "Natoya Russell Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Premium",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T20:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-008",
+      "shipmentId": "CLF-DRV-008",
+      "fullName": "Jaden Ellis",
+      "email": "customer8@example.com",
+      "phone": "+1-305-555-1207",
+      "pickupAddress": "427 Coral Way",
+      "pickupCity": "Orlando",
+      "pickupZip": "33107",
+      "pickupDate": "2026-07-31",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "weight": "34",
+      "jamaicaRecipient": "Jaden Ellis Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Economy",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T19:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-009",
+      "shipmentId": "CLF-DRV-009",
+      "fullName": "Simone Blake",
+      "email": "customer9@example.com",
+      "phone": "+1-305-555-1208",
+      "pickupAddress": "428 Sunset Dr",
+      "pickupCity": "Kissimmee",
+      "pickupZip": "33108",
+      "pickupDate": "2026-08-01",
+      "cargoType": "Box",
+      "quantity": "1",
+      "weight": "36",
+      "jamaicaRecipient": "Simone Blake Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Standard",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T18:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-010",
+      "shipmentId": "CLF-DRV-010",
+      "fullName": "Jordan McKenzie",
+      "email": "customer10@example.com",
+      "phone": "+1-305-555-1209",
+      "pickupAddress": "429 Flagler St",
+      "pickupCity": "Tampa",
+      "pickupZip": "33109",
+      "pickupDate": "2026-08-02",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "weight": "38",
+      "jamaicaRecipient": "Jordan McKenzie Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Premium",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T17:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-011",
+      "shipmentId": "CLF-DRV-011",
+      "fullName": "Kerry Fletcher",
+      "email": "customer11@example.com",
+      "phone": "+1-305-555-1210",
+      "pickupAddress": "430 NW 7th Ave",
+      "pickupCity": "Miami",
+      "pickupZip": "33110",
+      "pickupDate": "2026-08-03",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "weight": "40",
+      "jamaicaRecipient": "Kerry Fletcher Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Standard",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T16:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-012",
+      "shipmentId": "CLF-DRV-012",
+      "fullName": "Monique Thompson",
+      "email": "customer12@example.com",
+      "phone": "+1-305-555-1211",
+      "pickupAddress": "431 Brickell Ave",
+      "pickupCity": "Fort Lauderdale",
+      "pickupZip": "33111",
+      "pickupDate": "2026-08-04",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "weight": "42",
+      "jamaicaRecipient": "Monique Thompson Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Economy",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T15:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-013",
+      "shipmentId": "CLF-DRV-013",
+      "fullName": "Tariq Lewis",
+      "email": "customer13@example.com",
+      "phone": "+1-305-555-1212",
+      "pickupAddress": "432 Coral Way",
+      "pickupCity": "Orlando",
+      "pickupZip": "33112",
+      "pickupDate": "2026-08-05",
+      "cargoType": "Box",
+      "quantity": "1",
+      "weight": "44",
+      "jamaicaRecipient": "Tariq Lewis Recipient",
+      "jamaicaLocation": "Kingston",
+      "serviceLevel": "Premium",
+      "paymentStatus": "paid",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T14:49:29.324Z"
+    },
+    {
+      "bookingId": "BKG-DRV-014",
+      "shipmentId": "CLF-DRV-014",
+      "fullName": "Sade Williams",
+      "email": "customer14@example.com",
+      "phone": "+1-305-555-1213",
+      "pickupAddress": "433 Sunset Dr",
+      "pickupCity": "Kissimmee",
+      "pickupZip": "33113",
+      "pickupDate": "2026-08-06",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "weight": "46",
+      "jamaicaRecipient": "Sade Williams Recipient",
+      "jamaicaLocation": "Montego Bay",
+      "serviceLevel": "Economy",
+      "paymentStatus": "pending",
+      "pickedUp": false,
+      "createdAt": "2026-07-22T13:49:29.324Z"
     }
   ],
   "purchaseRequests": [
@@ -448,6 +754,87 @@
       "notes": "Restock fixtures for Kingston retail demo.",
       "createdAt": "2026-07-23T00:35:49.270Z",
       "status": "Received"
+    },
+    {
+      "requestId": "PR-1784780836270",
+      "fullName": "Flow Test",
+      "email": "flow@example.com",
+      "phone": "5551234567",
+      "storeName": "Amazon",
+      "productLinks": [
+        "https://www.amazon.com/dp/B000TEST"
+      ],
+      "items": [
+        {
+          "name": "Wireless Headset",
+          "link": "https://www.amazon.com/dp/B000TEST",
+          "quantity": 2,
+          "unitPriceUsd": 49.99
+        }
+      ],
+      "sizeColorSpecs": "",
+      "budgetUsd": 107.98,
+      "cartSubtotalUsd": 99.98,
+      "serviceFeeUsd": 8,
+      "totalUsd": 107.98,
+      "notes": "",
+      "createdAt": "2026-07-23T04:27:16.270Z",
+      "status": "Paid",
+      "paymentStatus": "paid"
+    },
+    {
+      "requestId": "PR-1784781288608",
+      "fullName": "Customs Test",
+      "email": "customs@test.com",
+      "phone": "5559876543",
+      "storeName": "Amazon",
+      "productLinks": [
+        "https://www.gucci.com/us/en/pr/123"
+      ],
+      "items": [
+        {
+          "name": "Gucci bag",
+          "link": "https://www.gucci.com/us/en/pr/123",
+          "quantity": 1,
+          "unitPriceUsd": 1200
+        }
+      ],
+      "sizeColorSpecs": "",
+      "budgetUsd": 1583,
+      "cartSubtotalUsd": 1200,
+      "serviceFeeUsd": 0,
+      "totalUsd": 1583,
+      "notes": "",
+      "createdAt": "2026-07-23T04:34:48.608Z",
+      "status": "Received",
+      "paymentStatus": "pending"
+    },
+    {
+      "requestId": "PR-1784781309523",
+      "fullName": "Final Flow Test",
+      "email": "final@test.com",
+      "phone": "5551112222",
+      "storeName": "Amazon",
+      "productLinks": [
+        "https://www.chanel.com/us/fashion/p/abc/"
+      ],
+      "items": [
+        {
+          "name": "Chanel bag",
+          "link": "https://www.chanel.com/us/fashion/p/abc/",
+          "quantity": 1,
+          "unitPriceUsd": 950
+        }
+      ],
+      "sizeColorSpecs": "",
+      "budgetUsd": 1260.5,
+      "cartSubtotalUsd": 950,
+      "serviceFeeUsd": 0,
+      "totalUsd": 1260.5,
+      "notes": "",
+      "createdAt": "2026-07-23T04:35:09.523Z",
+      "status": "Received",
+      "paymentStatus": "pending"
     }
   ],
   "supportTickets": [
@@ -530,7 +917,7 @@
     {
       "shipmentId": "CLF-10041",
       "fullName": "Sarah Brown",
-      "status": "Out for Delivery",
+      "status": "Picked Up",
       "cargoType": "Barrel",
       "quantity": "2",
       "unitType": "Barrel",
@@ -874,7 +1261,7 @@
     {
       "shipmentId": "CLF-10005",
       "fullName": "Test",
-      "status": "Payment Received",
+      "status": "Picked Up",
       "cargoType": "Box",
       "quantity": "1",
       "unitType": "Box",
@@ -886,7 +1273,7 @@
         },
         {
           "label": "Picked Up",
-          "done": false
+          "done": true
         },
         {
           "label": "At Miami Warehouse",
@@ -960,7 +1347,7 @@
     {
       "shipmentId": "CLF-10007",
       "fullName": "Test",
-      "status": "Payment Received",
+      "status": "Picked Up",
       "cargoType": "Box",
       "quantity": "1",
       "unitType": "Box",
@@ -972,7 +1359,7 @@
         },
         {
           "label": "Picked Up",
-          "done": false
+          "done": true
         },
         {
           "label": "At Miami Warehouse",
@@ -1128,6 +1515,622 @@
           "done": false
         }
       ]
+    },
+    {
+      "shipmentId": "CLF-DRV-001",
+      "fullName": "Alicia Brown",
+      "status": "Pickup Scheduled",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T02:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-002",
+      "fullName": "Kevon Morgan",
+      "status": "Pickup Scheduled",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-23T01:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-003",
+      "fullName": "Danielle Graham",
+      "status": "Pickup Scheduled",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "unitType": "Pallet",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-23T00:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-004",
+      "fullName": "Rashad Campbell",
+      "status": "Pickup Scheduled",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "unitType": "Household Goods",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T23:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-005",
+      "fullName": "Tameka Stewart",
+      "status": "Pickup Scheduled",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-22T22:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-006",
+      "fullName": "Andre Watson",
+      "status": "Pickup Scheduled",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T21:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-007",
+      "fullName": "Natoya Russell",
+      "status": "Pickup Scheduled",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "unitType": "Pallet",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-22T20:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-008",
+      "fullName": "Jaden Ellis",
+      "status": "Pickup Scheduled",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "unitType": "Household Goods",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T19:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-009",
+      "fullName": "Simone Blake",
+      "status": "Pickup Scheduled",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-22T18:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-010",
+      "fullName": "Jordan McKenzie",
+      "status": "Pickup Scheduled",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T17:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-011",
+      "fullName": "Kerry Fletcher",
+      "status": "Pickup Scheduled",
+      "cargoType": "Pallet",
+      "quantity": "3",
+      "unitType": "Pallet",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-22T16:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-012",
+      "fullName": "Monique Thompson",
+      "status": "Pickup Scheduled",
+      "cargoType": "Household Goods",
+      "quantity": "4",
+      "unitType": "Household Goods",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T15:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-013",
+      "fullName": "Tariq Lewis",
+      "status": "Pickup Scheduled",
+      "cargoType": "Box",
+      "quantity": "1",
+      "unitType": "Box",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "paid",
+      "createdAt": "2026-07-22T14:49:29.324Z"
+    },
+    {
+      "shipmentId": "CLF-DRV-014",
+      "fullName": "Sade Williams",
+      "status": "Pickup Scheduled",
+      "cargoType": "Barrel",
+      "quantity": "2",
+      "unitType": "Barrel",
+      "milestones": [
+        {
+          "label": "Pickup Scheduled",
+          "done": true
+        },
+        {
+          "label": "Picked Up",
+          "done": false
+        },
+        {
+          "label": "At Miami Warehouse",
+          "done": false
+        },
+        {
+          "label": "Loaded on Vessel",
+          "done": false
+        },
+        {
+          "label": "Arrived in Kingston",
+          "done": false
+        },
+        {
+          "label": "Customs Clearance",
+          "done": false
+        },
+        {
+          "label": "Out for Delivery",
+          "done": false
+        },
+        {
+          "label": "Delivered",
+          "done": false
+        }
+      ],
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-22T13:49:29.324Z"
     }
   ]
 }

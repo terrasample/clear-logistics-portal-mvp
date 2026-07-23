@@ -1418,3 +1418,201 @@ body {
 .footer p {
   margin: 0.5rem 0;
 }
+
+/* Phase 1: Instant Quote Card */
+.home-instant-quote {
+  margin: 2rem auto;
+  max-width: 100%;
+  background: linear-gradient(135deg, rgba(11, 107, 97, 0.05) 0%, rgba(242, 184, 75, 0.05) 100%);
+  border: 2px solid rgba(11, 107, 97, 0.2);
+}
+
+.instant-quote-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.instant-quote-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.instant-quote-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.instant-quote-field label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.instant-quote-field input,
+.instant-quote-field select {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  color: var(--ink);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.instant-quote-field input:focus,
+.instant-quote-field select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(11, 107, 97, 0.1);
+}
+
+.instant-quote-result {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  border-left: 4px solid var(--brand);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.05rem;
+}
+
+.result-item span {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.result-item strong {
+  color: var(--brand);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+/* Phase 1: How It Works Pipeline */
+.how-it-works-pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+  padding: 1.5rem 0;
+}
+
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  padding: 1.5rem 1rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 107, 97, 0.1);
+  transition: all 0.3s ease;
+}
+
+.pipeline-step:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 12px rgba(11, 107, 97, 0.1);
+  transform: translateY(-2px);
+}
+
+.step-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.pipeline-step h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--brand);
+}
+
+.pipeline-step p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.step-arrow {
+  position: absolute;
+  bottom: -2rem;
+  font-size: 1.5rem;
+  color: var(--brand);
+  display: none;
+}
+
+/* Show arrows on larger screens */
+@media (min-width: 768px) {
+  .how-it-works-pipeline {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .pipeline-step:not(:last-child) .step-arrow {
+    display: block;
+  }
+}
+
+/* Phase 1: Trust Badges */
+.trust-badges-section {
+  margin: 2rem auto;
+}
+
+.trust-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.trust-badge {
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--ink);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.trust-badge:hover {
+  border-color: var(--brand);
+  background: rgba(11, 107, 97, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .instant-quote-row {
+    grid-template-columns: 1fr;
+  }
+
+  .how-it-works-pipeline {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .step-arrow {
+    display: none !important;
+  }
+
+  .trust-badges-grid {
+    grid-template-columns: 1fr;
+  }
+}

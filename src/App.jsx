@@ -4,13 +4,12 @@ import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 're
 const API_BASE = import.meta.env.VITE_API_BASE || `${window.location.origin}/api`;
 
 const NAV_ITEMS = [
-  { key: 'home', label: 'Home' },
-  { key: 'book-pickup', label: 'Ship To Jamaica', isPrimary: true },
-  { key: 'quote', label: 'Get a Quote' },
+  { key: 'book-pickup', label: 'Services', isPrimary: true },
+  { key: 'quote', label: 'Pricing' },
+  { key: 'tracking', label: 'Track' },
   { key: 'shop', label: 'Shop & Ship' },
   { key: 'cart-estimator', label: 'AI Estimator' },
-  { key: 'tracking', label: 'Track Shipment' },
-  { key: 'support', label: 'Contact Support' },
+  { key: 'support', label: 'Support' },
 ];
 
 const JAMAICA_LOCATIONS_WITH_PARISHES = [
@@ -54,76 +53,34 @@ const SERVICE_TIERS = [
 
 const HOW_IT_WORKS = [
   {
-    key: 'book-your-shipment',
-    title: 'Book Your Shipment',
-    summary: 'Submit your shipment details and preferred pickup date in minutes.',
-    details: [
-      'Choose cargo type, quantity, and unit type.',
-      'Add pickup address and a suitable pickup date.',
-      'Include dimensions and weight for faster processing.',
-    ],
-    ctaLabel: 'Start Booking',
-    ctaPath: '/booking',
+    key: 'book-online',
+    title: 'Book Online',
+    summary: 'Tell us what you\'re shipping and when we should pick it up.',
+    icon: '📦',
   },
   {
-    key: 'we-pick-it-up',
+    key: 'pickup',
     title: 'We Pick It Up',
-    summary: 'Our dispatch team coordinates and confirms your pickup window.',
-    details: [
-      'Pickup is scheduled and assigned to a driver.',
-      'You receive shipment ID confirmation.',
-      'Driver follows your notes for smooth handoff.',
-    ],
-    ctaLabel: 'Book Pickup',
-    ctaPath: '/booking',
+    summary: 'Our drivers arrive at your location and collect your shipment.',
+    icon: '🚚',
   },
   {
-    key: 'we-prepare-it',
-    title: 'We Prepare It',
-    summary: 'Your shipment is checked, labeled, and prepared for export handling.',
-    details: [
-      'Warehouse intake and basic condition checks.',
-      'Consolidation and lane readiness preparation.',
-      'Shipment milestones update in the portal.',
-    ],
-    ctaLabel: 'Track Progress',
-    ctaPath: '/tracking',
-  },
-  {
-    key: 'we-ship-it',
+    key: 'ship',
     title: 'We Ship It',
-    summary: 'Freight is loaded and dispatched to Jamaica on the assigned lane.',
-    details: [
-      'Cargo moves from warehouse to ocean/air carrier.',
-      'Milestones reflect departure and transit phases.',
-      'Support stays available for transit questions.',
-    ],
-    ctaLabel: 'View Tracking',
-    ctaPath: '/tracking',
+    summary: 'Your cargo is prepared, loaded, and dispatched to Jamaica.',
+    icon: '🚢',
   },
   {
-    key: 'customs-clearance',
+    key: 'customs',
     title: 'Customs Clearance',
-    summary: 'Broker partners process customs documentation and clearance.',
-    details: [
-      'Customs review and document checks are completed.',
-      'Any required follow-up is communicated quickly.',
-      'Status updates continue until release is confirmed.',
-    ],
-    ctaLabel: 'Contact Support',
-    ctaPath: '/support',
+    summary: 'Broker partners handle all documentation and clearance.',
+    icon: '✅',
   },
   {
-    key: 'delivered-to-your-door',
-    title: 'Delivered to Your Door',
-    summary: 'Final-mile delivery is scheduled and completed to your destination.',
-    details: [
-      'Delivery handoff is coordinated with your contact info.',
-      'Final milestone marks successful delivery.',
-      'Need help after delivery? Support is one click away.',
-    ],
-    ctaLabel: 'Get Help',
-    ctaPath: '/support',
+    key: 'delivery',
+    title: 'Delivered',
+    summary: 'Final-mile delivery to your door in Jamaica.',
+    icon: '🎉',
   },
 ];
 
@@ -494,6 +451,14 @@ function App() {
   const [estimatorLinks, setEstimatorLinks] = useState('');
   const [estimatorSubtotalInput, setEstimatorSubtotalInput] = useState('');
   const [estimatorResult, setEstimatorResult] = useState(null);
+
+  const [instantQuoteForm, setInstantQuoteForm] = useState({
+    origin: 'Miami, FL',
+    destination: 'Kingston, Jamaica',
+    cargoType: 'Box',
+    weight: '',
+  });
+  const [instantQuoteResult, setInstantQuoteResult] = useState(null);
 
   const [trackingId, setTrackingId] = useState('');
   const [trackingResult, setTrackingResult] = useState(null);
@@ -1433,10 +1398,33 @@ function App() {
   }, [location.search, navigate]);
 
   function HomePage() {
+    function handleInstantQuoteChange(event) {
+      const { name, value } = event.target;
+      setInstantQuoteForm((prev) => ({ ...prev, [name]: value }));
+    }
+
+    function handleInstantQuoteSubmit(event) {
+      event.preventDefault();
+      const { cargoType, weight } = instantQuoteForm;
+      if (!weight || Number(weight) <= 0) {
+        setInstantQuoteResult({ error: 'Please enter a valid weight.' });
+        return;
+      }
+      const estimatedBaseCost = SERVICE_TIERS.find((t) => t.name === 'Standard')?.multiplier || 1.0;
+      const catInfer = inferCategoryFromUrl('');
+      const defaultPrice = inferDefaultPrice(catInfer);
+      const totalCost = (Number(weight) / 10) * defaultPrice * estimatedBaseCost;
+      const transitDays = '7-12';
+      setInstantQuoteResult({
+        cost: totalCost.toFixed(2),
+        transit: transitDays,
+      });
+    }
+
     return (
       <>
         <section className="card" style={{ textAlign: 'center', padding: '3rem 2rem', background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)' }}>
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Ship to Jamaica, Stress-Free</h2>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Ship from the USA to Jamaica with Confidence</h2>
           <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#555', maxWidth: '600px', margin: '0 auto 2rem' }}>
             Book pickups, track shipments, pay online. Everything in minutes, zero hassle.
           </p>
@@ -1446,22 +1434,112 @@ function App() {
             onClick={() => navigate('/book-pickup')}
             style={{ fontSize: '1.1rem', padding: '1rem 3rem' }}
           >
-            📦 Start Booking Now
+            📦 Book Shipment
           </button>
         </section>
 
-        <section className="card home-proof-strip">
-          <div className="home-proof-strip__item">
-            <strong>14 parishes</strong>
-            <span>Coverage across Jamaica</span>
+        {/* Instant Quote Card */}
+        <section className="card home-instant-quote">
+          <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Get an Instant Quote</h3>
+          <form onSubmit={handleInstantQuoteSubmit} className="instant-quote-form">
+            <div className="instant-quote-row">
+              <div className="instant-quote-field">
+                <label>Pickup Location</label>
+                <select name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
+                  <option>Miami, FL</option>
+                  <option>Jacksonville, FL</option>
+                  <option>Atlanta, GA</option>
+                  <option>New York, NY</option>
+                  <option>Los Angeles, CA</option>
+                </select>
+              </div>
+              <div className="instant-quote-field">
+                <label>Destination</label>
+                <select name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
+                  <option>Kingston, Jamaica</option>
+                  <option>Montego Bay, Jamaica</option>
+                  <option>Other Jamaica Location</option>
+                </select>
+              </div>
+              <div className="instant-quote-field">
+                <label>What Type?</label>
+                <select name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
+                  <option>Box</option>
+                  <option>Barrel</option>
+                  <option>Furniture</option>
+                  <option>Appliance</option>
+                  <option>Vehicle</option>
+                </select>
+              </div>
+              <div className="instant-quote-field">
+                <label>Weight (lbs)</label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={instantQuoteForm.weight}
+                  onChange={handleInstantQuoteChange}
+                  placeholder="e.g., 25"
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn--solid" style={{ width: '100%', marginTop: '1rem' }}>
+              Get Estimate
+            </button>
+
+            {instantQuoteResult && !instantQuoteResult.error && (
+              <div className="instant-quote-result">
+                <div className="result-item">
+                  <span>Estimated Cost:</span>
+                  <strong>${instantQuoteResult.cost}</strong>
+                </div>
+                <div className="result-item">
+                  <span>Transit Time:</span>
+                  <strong>{instantQuoteResult.transit} days</strong>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--solid"
+                  onClick={() => navigate('/book-pickup')}
+                  style={{ width: '100%', marginTop: '1rem' }}
+                >
+                  Book This Shipment
+                </button>
+              </div>
+            )}
+
+            {instantQuoteResult?.error && (
+              <p style={{ color: '#d32f2f', marginTop: '1rem', textAlign: 'center' }}>{instantQuoteResult.error}</p>
+            )}
+          </form>
+        </section>
+
+        {/* How It Works - 5 Step Pipeline */}
+        <section className="card" style={{ background: '#f9f9f9' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>How It Works</h2>
+          <div className="how-it-works-pipeline">
+            {HOW_IT_WORKS.map((step, idx) => (
+              <div key={step.key} className="pipeline-step">
+                <div className="step-icon">{step.icon}</div>
+                <h3>{step.title}</h3>
+                <p>{step.summary}</p>
+                {idx < HOW_IT_WORKS.length - 1 && <div className="step-arrow">↓</div>}
+              </div>
+            ))}
           </div>
-          <div className="home-proof-strip__item">
-            <strong>Live tracking</strong>
-            <span>Milestones stay visible</span>
-          </div>
-          <div className="home-proof-strip__item">
-            <strong>Help when needed</strong>
-            <span>FAQ, chat, and WhatsApp support</span>
+        </section>
+
+        {/* Trust Badges */}
+        <section className="card trust-badges-section">
+          <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Why Choose Clear Logistics?</h3>
+          <div className="trust-badges-grid">
+            <div className="trust-badge">✔ Door-to-Door Service</div>
+            <div className="trust-badge">✔ Real-Time Tracking</div>
+            <div className="trust-badge">✔ Secure Payments</div>
+            <div className="trust-badge">✔ Professional Support</div>
+            <div className="trust-badge">✔ USA Pickup</div>
+            <div className="trust-badge">✔ Jamaica Delivery</div>
           </div>
         </section>
 
@@ -1491,38 +1569,16 @@ function App() {
           </div>
         </section>
 
-        <section className="card">
-          <h2>Why Customers Choose Us</h2>
-          <div className="trust-grid">
-            {TRUST_INDICATORS.map((item) => (
-              <p key={item}>✔ {item}</p>
-            ))}
-          </div>
-        </section>
-
-        <section className="card" style={{ background: '#f9f9f9' }}>
-          <h2>The Process (6 Simple Steps)</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
-            {HOW_IT_WORKS.map((step, idx) => (
-              <div key={step.key} style={{ padding: '1rem', borderRadius: '8px', background: 'white', border: '1px solid #e0e0e0' }}>
-                <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2d7a6f', margin: '0 0 0.5rem' }}>{String(idx + 1).padStart(2, '0')}</p>
-                <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>{step.title}</h3>
-                <p style={{ margin: '0', fontSize: '0.9rem', color: '#666' }}>{step.summary}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="card" style={{ textAlign: 'center', padding: '2rem', background: '#f0f7f6' }}>
-          <h2>Need a Quote or Tracking Update?</h2>
-          <p style={{ marginBottom: '1.5rem' }}>Start with pricing or check where a shipment stands right now.</p>
+          <h2>Ready to Ship?</h2>
+          <p style={{ marginBottom: '1.5rem' }}>Track an existing shipment or start a new one today.</p>
           <button
             type="button"
             className="btn btn--solid"
-            onClick={() => navigate('/quote')}
-            style={{ fontSize: '1rem', padding: '0.8rem 2.5rem' }}
+            onClick={() => navigate('/book-pickup')}
+            style={{ fontSize: '1rem', padding: '0.8rem 2.5rem', marginRight: '1rem' }}
           >
-            Get a Quote
+            Book Shipment
           </button>
           <button
             type="button"
