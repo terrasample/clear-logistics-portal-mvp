@@ -162,6 +162,30 @@ const SUPPLY_CATALOG = [
   },
 ];
 
+const BARREL_CATALOG = [
+  {
+    sku: 'BRL-55-STANDARD',
+    name: 'Standard 55-Gallon Barrel + Lid',
+    description: 'Food-grade plastic barrel with locking ring for general household shipping.',
+    bestFor: 'Clothing, pantry items, household goods',
+    unitPriceUsd: 45,
+  },
+  {
+    sku: 'BRL-55-HEAVY',
+    name: 'Heavy-Duty 55-Gallon Barrel + Lid',
+    description: 'Thicker-wall barrel for heavier mixed loads and repeat commercial use.',
+    bestFor: 'Bulk groceries, denser mixed cargo',
+    unitPriceUsd: 58,
+  },
+  {
+    sku: 'BRL-30-COMPACT',
+    name: 'Compact 30-Gallon Barrel + Lid',
+    description: 'Smaller-format barrel for lighter shipments and easier last-mile handling.',
+    bestFor: 'Smaller family orders, lightweight items',
+    unitPriceUsd: 36,
+  },
+];
+
 const BOX_PRESETS = [
   { key: 'small', label: 'Small (16 x 12 x 12)', length: 16, width: 12, height: 12 },
   { key: 'medium', label: 'Medium (18 x 18 x 16)', length: 18, width: 18, height: 16 },
@@ -934,6 +958,37 @@ function App() {
 
   function removeShopItem(index) {
     setShopItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
+  }
+
+  function addBarrelToShopCart(barrel) {
+    const barrelItem = {
+      name: `${barrel.name} (${barrel.sku})`,
+      link: 'https://clear-logistics-portal.onrender.com/shop#barrel-catalog',
+      quantity: 1,
+      unitPriceUsd: String(barrel.unitPriceUsd),
+    };
+
+    setShopItems((prev) => {
+      const first = prev[0] || {};
+      const firstEmpty =
+        prev.length === 1
+        && !String(first.name || '').trim()
+        && !String(first.link || '').trim()
+        && (String(first.quantity || '1') === '1')
+        && !String(first.unitPriceUsd || '').trim();
+
+      if (firstEmpty) {
+        return [barrelItem];
+      }
+
+      return [...prev, barrelItem];
+    });
+
+    if (!isAuthenticated && shopAccessMode !== 'guest') {
+      setShopAccessMode('guest');
+    }
+
+    setStatusMessage(`${barrel.name} added to Shop & Ship cart.`);
   }
 
   async function fileToBase64(file) {
@@ -2754,6 +2809,32 @@ function App() {
         </div>
 
         <div>
+          <div id="barrel-catalog" className="booking-summary" style={{ marginBottom: '0.9rem' }}>
+            <h3 style={{ marginBottom: '0.45rem' }}>Barrel Catalog</h3>
+            <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
+              Need empty barrels? Add a barrel option directly to your Shop & Ship cart.
+            </p>
+            <div style={{ display: 'grid', gap: '0.7rem' }}>
+              {BARREL_CATALOG.map((barrel) => (
+                <article key={barrel.sku} className="card" style={{ padding: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.7rem', flexWrap: 'wrap' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 0.3rem' }}>{barrel.name}</h4>
+                      <p className="section-intro" style={{ marginBottom: '0.35rem' }}>{barrel.description}</p>
+                      <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}><strong>Best for:</strong> {barrel.bestFor}</p>
+                    </div>
+                    <div style={{ textAlign: 'right', minWidth: '140px' }}>
+                      <p style={{ margin: '0 0 0.4rem', fontWeight: 700 }}>${barrel.unitPriceUsd.toFixed(2)} each</p>
+                      <button type="button" className="btn btn--ghost" onClick={() => addBarrelToShopCart(barrel)}>
+                        Add Barrel
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
           <h2>Purchase Assistance</h2>
           <p className="section-intro">Need us to purchase items on your behalf? Submit links and preferences below.</p>
           <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
