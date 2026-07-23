@@ -380,6 +380,15 @@ body {
   color: var(--muted);
 }
 
+.section-context-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #0b6b61;
+}
+
 .how-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
