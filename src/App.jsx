@@ -688,27 +688,23 @@ function App() {
   function HomePage() {
     return (
       <>
-        <section className="card">
-          <h2>How It Works</h2>
-          <div className="how-grid">
-            {HOW_IT_WORKS.map((step, idx) => (
-              <button
-                type="button"
-                key={step.key}
-                className="how-step how-step--button"
-                onClick={() => navigate(`/how-it-works/${step.key}`)}
-                aria-label={`View details for ${step.title}`}
-              >
-                <p className="how-step__num">{String(idx + 1).padStart(2, '0')}</p>
-                <h3>{step.title}</h3>
-                <p className="how-step__summary">{step.summary}</p>
-              </button>
-            ))}
-          </div>
+        <section className="card" style={{ textAlign: 'center', padding: '3rem 2rem', background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)' }}>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Ship to Jamaica, Stress-Free</h2>
+          <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#555', maxWidth: '600px', margin: '0 auto 2rem' }}>
+            Book pickups, track shipments, pay online. Everything in minutes, zero hassle.
+          </p>
+          <button
+            type="button"
+            className="btn btn--solid"
+            onClick={() => navigate('/book-pickup')}
+            style={{ fontSize: '1.1rem', padding: '1rem 3rem' }}
+          >
+            📦 Start Booking Now
+          </button>
         </section>
 
         <section className="card">
-          <h2>Why Customers Trust Clear Logistics & Freight Services</h2>
+          <h2>Why Customers Choose Us</h2>
           <div className="trust-grid">
             {TRUST_INDICATORS.map((item) => (
               <p key={item}>✔ {item}</p>
@@ -716,38 +712,33 @@ function App() {
           </div>
         </section>
 
-        <section className="card card--wide">
-          <h2>Customer Portal Capabilities</h2>
-          <p className="section-intro">Focused on end-to-end visibility and reliable shipment execution.</p>
-          <div className="feature-grid">
-            <article>
-              <h3>Create Account</h3>
-              <p>Secure customer login, contact profile, and saved shipping preferences.</p>
-            </article>
-            <article>
-              <h3>Request Quote</h3>
-              <p>Capture route, cargo type, and dimensions to generate pricing quickly.</p>
-            </article>
-            <article>
-              <h3>Book Pickup</h3>
-              <p>Select pickup date, address, and handoff instructions in one step.</p>
-            </article>
-            <article>
-              <h3>Pay Online</h3>
-              <p>Collect payment before dispatch and generate proof of payment receipts.</p>
-            </article>
-            <article>
-              <h3>Track Shipment</h3>
-              <p>Milestone-based status tracking from pickup to final delivery in Jamaica.</p>
-            </article>
-            <article>
-              <h3>Contact Support</h3>
-              <p>Fast support channel for delays, questions, and required document updates.</p>
-            </article>
+        <section className="card" style={{ background: '#f9f9f9' }}>
+          <h2>The Process (6 Simple Steps)</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+            {HOW_IT_WORKS.map((step, idx) => (
+              <div key={step.key} style={{ padding: '1rem', borderRadius: '8px', background: 'white', border: '1px solid #e0e0e0' }}>
+                <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2d7a6f', margin: '0 0 0.5rem' }}>{String(idx + 1).padStart(2, '0')}</p>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>{step.title}</h3>
+                <p style={{ margin: '0', fontSize: '0.9rem', color: '#666' }}>{step.summary}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="card">
+        <section className="card" style={{ textAlign: 'center', padding: '2rem', background: '#f0f7f6' }}>
+          <h2>Ready to Get Started?</h2>
+          <p style={{ marginBottom: '1.5rem' }}>Book your first shipment in minutes</p>
+          <button
+            type="button"
+            className="btn btn--solid"
+            onClick={() => navigate('/book-pickup')}
+            style={{ fontSize: '1rem', padding: '0.8rem 2.5rem' }}
+          >
+            Book Now
+          </button>
+        </section>
+
+        <section className="card" style={{ display: 'none' }}>
           <h2>Platform Roadmap Structure</h2>
           <ul className="sitemap-list">
             {SITE_MAP.map((item) => (
@@ -1274,38 +1265,84 @@ function App() {
 
   function DashboardPage() {
     return (
-      <section className="card card--split">
-        <div>
-          <h2>Customer Dashboard</h2>
-          <p className="section-intro">Welcome back, {currentUser?.fullName || 'Customer'}.</p>
-          <p className="shipment-id">Shipment #{activeShipment}</p>
-          <div className="progress-shell">
-            <div className="progress-label">
-              <span>Journey Progress</span>
-              <span>{completion}%</span>
+      <>
+        <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '2rem' }}>
+            <div>
+              <h2>Welcome back, {currentUser?.fullName || 'Customer'}! 👋</h2>
+              <p className="section-intro">Manage your shipments and track deliveries in real time.</p>
             </div>
-            <div className="progress-bar">
-              <div style={{ width: `${completion}%` }} />
-            </div>
+            <button
+              type="button"
+              className="btn btn--solid"
+              onClick={() => navigate('/book-pickup')}
+              style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
+            >
+              📦 Book Another Shipment
+            </button>
           </div>
-          <ul className="status-list">
-            {DASHBOARD_STEPS.map((step) => (
-              <li key={step.label} className={step.done ? 'done' : ''}>
-                <span>{step.done ? '✔' : '◻'}</span> {step.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        </section>
 
-        <div>
-          <h2>Operating System Flow</h2>
-          <ol className="flow-list">
-            {OPERATING_SYSTEM_FLOW.map((step, idx) => (
-              <li key={`${step}-${idx}`}>{step}</li>
-            ))}
-          </ol>
-        </div>
-      </section>
+        <section className="card card--split">
+          <div>
+            <h2>Your Shipments</h2>
+            {activeShipment ? (
+              <>
+                <div className="booking-summary" style={{ marginBottom: '1.5rem' }}>
+                  <p style={{ margin: '0.5rem 0' }}><strong>Active Shipment:</strong> {activeShipment}</p>
+                  <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Track, update, or manage your active shipment</p>
+                </div>
+                <div className="progress-shell">
+                  <div className="progress-label">
+                    <span>Journey Progress</span>
+                    <span>{completion}%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div style={{ width: `${completion}%` }} />
+                  </div>
+                </div>
+                <ul className="status-list" style={{ marginTop: '1rem' }}>
+                  {DASHBOARD_STEPS.map((step) => (
+                    <li key={step.label} className={step.done ? 'done' : ''}>
+                      <span>{step.done ? '✔' : '◻'}</span> {step.label}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', background: '#f9f9f9', borderRadius: '8px' }}>
+                <p style={{ margin: '0', color: '#666' }}>No active shipments yet</p>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => navigate('/book-pickup')}
+                  style={{ marginTop: '1rem' }}
+                >
+                  Book Your First Shipment
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2>Quick Links</h2>
+            <ul className="status-list">
+              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/quote')}>
+                <span>•</span> <strong>Get a Quote</strong>
+              </li>
+              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/tracking')}>
+                <span>•</span> <strong>Track Shipment</strong>
+              </li>
+              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/shop')}>
+                <span>•</span> <strong>Shop & Ship</strong>
+              </li>
+              <li style={{ cursor: 'pointer', padding: '0.8rem', borderRadius: '4px', background: '#f9f9f9', marginBottom: '0.5rem' }} onClick={() => navigate('/support')}>
+                <span>•</span> <strong>Contact Support</strong>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </>
     );
   }
 
