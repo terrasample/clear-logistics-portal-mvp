@@ -270,6 +270,68 @@ const SITE_MAP = [
   'Contact Support',
 ];
 
+const WHATSAPP_PHONE = '13055550100';
+
+const CHATBOT_PROMPTS = [
+  {
+    label: 'How do I book a shipment?',
+    answer: 'Click Ship To Jamaica, complete the 5 booking steps, then log in to finalize shipment and payment.'
+  },
+  {
+    label: 'What shipment IDs can I demo?',
+    answer: 'Try CLF-10025, CLF-10041, CLF-10067, CLF-10088, CLF-10102, or CLF-10109.'
+  },
+  {
+    label: 'How do I track my shipment?',
+    answer: 'Open Track Shipment and enter your shipment ID. The tracking page will show milestones and progress.'
+  },
+  {
+    label: 'How does payment work?',
+    answer: 'After booking, the shipment goes to payment checkout. When payment completes, the shipment is marked paid and can be tracked.'
+  },
+  {
+    label: 'Do you have a FAQ page?',
+    answer: 'Yes. Open the FAQ page from the footer for common shipping, payment, customs, and tracking questions.'
+  },
+  {
+    label: 'How do I contact support?',
+    answer: 'Use Contact Support in the navigation or footer, or tap WhatsApp for a quick message.'
+  },
+];
+
+function getChatbotReply(message) {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) {
+    return 'Ask me about booking, tracking, payment, FAQs, or demo shipment IDs.';
+  }
+
+  if (normalized.includes('book') || normalized.includes('shipment')) {
+    return 'To book, click Ship To Jamaica, complete the 5 steps, then log in to finalize shipment and payment.';
+  }
+
+  if (normalized.includes('track') || normalized.includes('status') || normalized.includes('shipment id')) {
+    return 'Go to Track Shipment and enter a shipment ID. For demo, try CLF-10025 or CLF-10102.';
+  }
+
+  if (normalized.includes('pay') || normalized.includes('payment') || normalized.includes('checkout')) {
+    return 'Payments start after the shipment is created. Once checkout is completed, the shipment is marked paid.';
+  }
+
+  if (normalized.includes('faq') || normalized.includes('questions')) {
+    return 'Yes, there is a FAQ page in the footer with booking, payment, customs, and tracking answers.';
+  }
+
+  if (normalized.includes('whatsapp') || normalized.includes('chat')) {
+    return 'Tap the WhatsApp button in the bottom-right corner to open a quick support message.';
+  }
+
+  if (normalized.includes('demo') || normalized.includes('test')) {
+    return 'For demo use test@example.com / password123 and track CLF-10025, CLF-10041, CLF-10067, or CLF-10102.';
+  }
+
+  return 'I can help with booking, tracking, payment, FAQs, demo IDs, and support contact. Try one of the suggested questions.';
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -361,6 +423,15 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState('');
   const [shopAccessMode, setShopAccessMode] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 'assistant-welcome',
+      role: 'assistant',
+      text: 'Hi, I can help with booking, tracking, payment, FAQs, and demo shipment IDs.'
+    }
+  ]);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -423,6 +494,32 @@ function App() {
   function handlePurchaseChange(event) {
     const { name, value } = event.target;
     setPurchaseForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function sendChatMessage(rawMessage) {
+    const message = String(rawMessage || '').trim();
+    if (!message) {
+      return;
+    }
+
+    const response = getChatbotReply(message);
+    setChatMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: 'user', text: message },
+      { id: `${Date.now()}-assistant`, role: 'assistant', text: response },
+    ]);
+    setChatInput('');
+    setChatOpen(true);
+  }
+
+  function handleChatSubmit(event) {
+    event.preventDefault();
+    sendChatMessage(chatInput);
+  }
+
+  function openWhatsApp() {
+    const message = encodeURIComponent('Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.');
+    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank', 'noopener,noreferrer');
   }
 
   async function handleAccountSubmit(event) {
@@ -2073,6 +2170,73 @@ function App() {
     );
   }
 
+  function ChatAssistant() {
+    return (
+      <>
+        <div className="floating-actions" aria-label="Support actions">
+          <button
+            type="button"
+            className="whatsapp-fab"
+            onClick={openWhatsApp}
+            aria-label="Open WhatsApp support"
+            title="WhatsApp support"
+          >
+            WhatsApp
+          </button>
+          <button
+            type="button"
+            className="chat-fab"
+            onClick={() => setChatOpen((open) => !open)}
+            aria-label="Open AI chat assistant"
+            title="AI chat assistant"
+          >
+            AI Chat
+          </button>
+        </div>
+
+        {chatOpen && (
+          <div className="chat-panel" role="dialog" aria-label="AI chat assistant">
+            <div className="chat-panel__header">
+              <div>
+                <strong>AI Chat Assistant</strong>
+                <p>Ask about booking, tracking, payment, or demo shipments.</p>
+              </div>
+              <button type="button" className="chat-panel__close" onClick={() => setChatOpen(false)} aria-label="Close chat assistant">
+                ×
+              </button>
+            </div>
+
+            <div className="chat-panel__messages">
+              {chatMessages.map((message) => (
+                <div key={message.id} className={`chat-message chat-message--${message.role}`}>
+                  {message.text}
+                </div>
+              ))}
+            </div>
+
+            <div className="chat-panel__suggestions">
+              {CHATBOT_PROMPTS.map((prompt) => (
+                <button key={prompt.label} type="button" className="chat-suggestion" onClick={() => sendChatMessage(prompt.label)}>
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
+
+            <form className="chat-panel__form" onSubmit={handleChatSubmit}>
+              <input
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                placeholder="Ask a question..."
+                aria-label="Chat message"
+              />
+              <button type="submit" className="btn btn--solid">Send</button>
+            </form>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="page-shell">
       <header className="hero">
@@ -2170,6 +2334,7 @@ function App() {
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
+      <ChatAssistant />
       <Footer />
     </div>
   );
