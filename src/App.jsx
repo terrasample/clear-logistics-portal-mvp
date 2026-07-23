@@ -2085,9 +2085,9 @@ function App() {
 
   function MockCheckoutPage() {
     const params = new URLSearchParams(location.search);
-    const checkoutShipmentId = params.get('shipmentId') || shipmentId;
     const referenceType = params.get('referenceType') || 'shipment';
     const referenceId = params.get('referenceId') || '';
+    const checkoutShipmentId = params.get('shipmentId') || (referenceType === 'shipment' ? referenceId : '') || shipmentId;
     const amountCents = Number(params.get('amount') || 2500);
     const amountUsd = (amountCents / 100).toFixed(2);
     const customerEmail = currentUser?.email || bookingForm.email || 'customer@example.com';
