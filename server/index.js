@@ -26,13 +26,22 @@ const DRIVER_DEMO_EMAIL = 'driver.demo@clearlogistics.test';
 const DRIVER_DEMO_PASSWORD = 'Driver123!';
 const DRIVER_DEMO_TOTAL_PICKUPS = 14;
 
+const QUOTE_NUDGE_DEFAULT_STEPS_MS = [
+  60 * 60 * 1000, // 1 hour
+  24 * 60 * 60 * 1000, // 24 hours
+  72 * 60 * 60 * 1000, // 72 hours
+];
+
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const publicApiBase = process.env.PUBLIC_API_BASE || `http://localhost:${port}`;
 const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
 const uploadDir = path.resolve(process.cwd(), 'server', 'uploads');
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
 let dataWriteQueue = Promise.resolve();
+let quoteNudgeWorkerTimer = null;
+let quoteNudgeTickInProgress = false;
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || 'business@example.com')
     .split(',')
@@ -45,6 +54,13 @@ app.use(express.json({ limit: '15mb' }));
 app.use('/uploads', express.static(uploadDir));
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const nudgeEmailsEnabled = String(process.env.NUDGE_EMAILS_ENABLED || 'true').toLowerCase() === 'true';
+const quoteNudgeIntervalMs = Math.max(15 * 1000, Number(process.env.NUDGE_INTERVAL_MS || 5 * 60 * 1000));
+const quoteNudgeStepsMs = [
+  Number(process.env.NUDGE_QUOTE_STEP_1_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[0]),
+  Number(process.env.NUDGE_QUOTE_STEP_2_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[1]),
+  Number(process.env.NUDGE_QUOTE_STEP_3_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[2]),
+].filter((ms) => Number.isFinite(ms) && ms > 0);
 
 async function ensureDataFile() {
   await fs.mkdir(uploadDir, { recursive: true });
@@ -240,8 +256,22 @@ function calculateWeightBasedQuote(payload) {
 }
 
 async function sendNotification(subject, body) {
+  return sendEmail({
+    to: process.env.NOTIFY_EMAIL,
+    subject,
+    text: body,
+    mockTag: 'notification',
+  });
+}
+
+async function sendEmail({ to, subject, text, mockTag = 'email' }) {
+  const destination = String(to || '').trim();
+  if (!destination || !subject || !text) {
+    return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
+  }
+
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.NOTIFY_EMAIL) {
-    console.log('[notification:mock]', subject, body);
+    console.log(`[${mockTag}:mock]`, { to: destination, subject, text });
     return { delivered: false, mode: 'mock' };
   }
 
@@ -257,12 +287,205 @@ async function sendNotification(subject, body) {
 
   await transport.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: process.env.NOTIFY_EMAIL,
+    to: destination,
     subject,
-    text: body
+    text
   });
 
   return { delivered: true, mode: 'smtp' };
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function toMillis(value) {
+  const t = Date.parse(String(value || ''));
+  return Number.isFinite(t) ? t : null;
+}
+
+function isQuoteAlreadyBooked(quote, data) {
+  const quoteId = String(quote?.quoteId || '').trim();
+  const quoteCreatedAtMs = toMillis(quote?.createdAt);
+  const quoteEmail = normalizeEmail(quote?.email);
+
+  return (data.bookings || []).some((booking) => {
+    const bookingQuoteId = String(booking?.quoteId || '').trim();
+    const bookingEmail = normalizeEmail(booking?.email);
+    const bookingCreatedAtMs = toMillis(booking?.createdAt);
+
+    if (quoteId && bookingQuoteId && bookingQuoteId === quoteId) {
+      return true;
+    }
+
+    if (!quoteEmail || !bookingEmail || quoteEmail !== bookingEmail) {
+      return false;
+    }
+
+    if (quoteCreatedAtMs === null || bookingCreatedAtMs === null) {
+      return true;
+    }
+
+    return bookingCreatedAtMs >= quoteCreatedAtMs;
+  });
+}
+
+function buildQuoteNudgeContent(quote, stepIndex) {
+  const recipientName = String(quote?.fullName || 'there').trim();
+  const quoteId = String(quote?.quoteId || 'your quote').trim();
+  const deliveryParish = String(quote?.deliveryParish || 'Jamaica').trim();
+  const cargoType = String(quote?.cargoType || 'shipment').trim();
+  const baseSubject = [
+    `Still planning your shipment? (${quoteId})`,
+    `Friendly reminder: your quote is ready (${quoteId})`,
+    `Final reminder: reserve your shipment spot (${quoteId})`,
+  ][stepIndex] || `Quote follow-up (${quoteId})`;
+
+  const pricingLine = quote?.pricingMode === 'weight-based'
+    ? `Current quoted price: $${Number(quote?.quotedPriceUsd || 0).toFixed(2)} USD.`
+    : quote?.estimatedRangeUsd
+      ? `Estimated range: $${Number(quote.estimatedRangeUsd.low || 0).toFixed(2)} - $${Number(quote.estimatedRangeUsd.high || 0).toFixed(2)} USD.`
+      : 'Your pricing estimate is ready in the portal.';
+
+  const bookingUrl = `${frontendUrl}/booking`;
+  const unsubscribeUrl = `${publicApiBase}/api/quotes/${encodeURIComponent(quoteId)}/nudges/unsubscribe?email=${encodeURIComponent(String(quote?.email || ''))}`;
+
+  const text = [
+    `Hi ${recipientName},`,
+    '',
+    `This is a quick follow-up on quote ${quoteId} for your ${cargoType} shipment to ${deliveryParish}.`,
+    pricingLine,
+    '',
+    `Book now: ${bookingUrl}`,
+    `Need help first? Reply to this email and our team will assist you.`,
+    '',
+    `To stop follow-up reminders for this quote, use: ${unsubscribeUrl}`,
+    '',
+    'Clear Logistics & Freight Services',
+  ].join('\n');
+
+  return {
+    subject: baseSubject,
+    text,
+  };
+}
+
+function getDueQuoteNudgeStep(quote, nowMs) {
+  const createdAtMs = toMillis(quote?.createdAt);
+  if (createdAtMs === null) {
+    return null;
+  }
+
+  if (quote?.nudgesOptOutAt) {
+    return null;
+  }
+
+  const sent = Array.isArray(quote?.nudgesSent)
+    ? quote.nudgesSent.filter((item) => Number.isInteger(item?.stepIndex))
+    : [];
+  const sentSteps = new Set(sent.map((item) => item.stepIndex));
+
+  for (let i = 0; i < quoteNudgeStepsMs.length; i += 1) {
+    if (sentSteps.has(i)) {
+      continue;
+    }
+    const thresholdMs = quoteNudgeStepsMs[i];
+    if (nowMs - createdAtMs >= thresholdMs) {
+      return i;
+    }
+    break;
+  }
+
+  return null;
+}
+
+async function runQuoteNudgesTick() {
+  if (!nudgeEmailsEnabled || quoteNudgeTickInProgress || !quoteNudgeStepsMs.length) {
+    return;
+  }
+
+  quoteNudgeTickInProgress = true;
+  try {
+    const data = await readData();
+    const nowMs = Date.now();
+    let changed = false;
+
+    for (const quote of data.quotes) {
+      if (!quote || !quote.quoteId) {
+        continue;
+      }
+
+      if (isQuoteAlreadyBooked(quote, data)) {
+        if (!quote.nudgesStoppedReason) {
+          quote.nudgesStoppedReason = 'booked';
+          quote.nudgesStoppedAt = new Date().toISOString();
+          changed = true;
+        }
+        continue;
+      }
+
+      const stepIndex = getDueQuoteNudgeStep(quote, nowMs);
+      if (stepIndex === null) {
+        continue;
+      }
+
+      const destination = String(quote.email || '').trim();
+      if (!destination) {
+        continue;
+      }
+
+      const content = buildQuoteNudgeContent(quote, stepIndex);
+      const result = await sendEmail({
+        to: destination,
+        subject: content.subject,
+        text: content.text,
+        mockTag: 'quote-nudge',
+      });
+
+      if (result.delivered) {
+        if (!Array.isArray(quote.nudgesSent)) {
+          quote.nudgesSent = [];
+        }
+        quote.nudgesSent.push({
+          stepIndex,
+          sentAt: new Date().toISOString(),
+          subject: content.subject,
+        });
+        quote.lastNudgedAt = new Date().toISOString();
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await writeData(data);
+    }
+  } catch (error) {
+    console.error('[quote-nudges:error]', error?.message || error);
+  } finally {
+    quoteNudgeTickInProgress = false;
+  }
+}
+
+function startQuoteNudgeWorker() {
+  if (!nudgeEmailsEnabled || !quoteNudgeStepsMs.length || quoteNudgeWorkerTimer) {
+    return;
+  }
+
+  runQuoteNudgesTick().catch((error) => {
+    console.error('[quote-nudges:start-error]', error?.message || error);
+  });
+
+  quoteNudgeWorkerTimer = setInterval(() => {
+    runQuoteNudgesTick().catch((error) => {
+      console.error('[quote-nudges:interval-error]', error?.message || error);
+    });
+  }, quoteNudgeIntervalMs);
+
+  if (typeof quoteNudgeWorkerTimer.unref === 'function') {
+    quoteNudgeWorkerTimer.unref();
+  }
+
+  console.log(`[quote-nudges] enabled with ${quoteNudgeStepsMs.length} steps, interval ${quoteNudgeIntervalMs}ms`);
 }
 
 async function notifyCustomer({ channel, to, message, metadata = {} }) {
@@ -531,6 +754,8 @@ app.post('/api/quotes', async (req, res) => {
     pricingMode: weightUnknown ? 'estimated' : 'weight-based',
     estimatedRangeUsd,
     quotedPriceUsd,
+    nudgesSent: [],
+    nudgesOptOutAt: null,
     createdAt: new Date().toISOString()
   };
 
@@ -539,6 +764,56 @@ app.post('/api/quotes', async (req, res) => {
   await sendNotification('New Quote Request', `Quote ${quote.quoteId} from ${quote.fullName} (${quote.email})`);
 
   res.status(201).json({ quote, message: 'Quote request submitted.' });
+});
+
+app.post('/api/quotes/:quoteId/nudges/unsubscribe', async (req, res) => {
+  const quoteId = String(req.params.quoteId || '').trim();
+  const email = normalizeEmail(req.body?.email || req.query?.email || '');
+
+  if (!quoteId || !email) {
+    return res.status(400).json({ error: 'quoteId and email are required.' });
+  }
+
+  const data = await readData();
+  const quote = data.quotes.find(
+    (item) => String(item?.quoteId || '').trim() === quoteId && normalizeEmail(item?.email) === email
+  );
+
+  if (!quote) {
+    return res.status(404).json({ error: 'Quote not found.' });
+  }
+
+  quote.nudgesOptOutAt = new Date().toISOString();
+  quote.nudgesStoppedReason = 'opt-out';
+  quote.nudgesStoppedAt = quote.nudgesOptOutAt;
+  await writeData(data);
+
+  return res.json({ ok: true, quoteId, email, nudges: 'unsubscribed' });
+});
+
+app.get('/api/quotes/:quoteId/nudges/unsubscribe', async (req, res) => {
+  const quoteId = String(req.params.quoteId || '').trim();
+  const email = normalizeEmail(req.query?.email || '');
+
+  if (!quoteId || !email) {
+    return res.status(400).send('Missing quoteId or email.');
+  }
+
+  const data = await readData();
+  const quote = data.quotes.find(
+    (item) => String(item?.quoteId || '').trim() === quoteId && normalizeEmail(item?.email) === email
+  );
+
+  if (!quote) {
+    return res.status(404).send('Quote not found.');
+  }
+
+  quote.nudgesOptOutAt = new Date().toISOString();
+  quote.nudgesStoppedReason = 'opt-out';
+  quote.nudgesStoppedAt = quote.nudgesOptOutAt;
+  await writeData(data);
+
+  return res.status(200).send('You have been unsubscribed from quote reminder emails.');
 });
 
 app.post('/api/uploads/document', async (req, res) => {
@@ -1115,6 +1390,7 @@ ensureDataFile()
     await seedDriverDemoData();
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
+      startQuoteNudgeWorker();
     });
   })
   .catch((error) => {
