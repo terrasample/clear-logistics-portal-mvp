@@ -69,6 +69,20 @@ const scanRepeatWindowMs = Math.max(60 * 1000, Number(process.env.SCAN_REPEAT_WI
 const scanRepeatThreshold = Math.max(2, Number(process.env.SCAN_REPEAT_THRESHOLD || 3));
 const scanNoScanCutoffHour = Math.min(23, Math.max(0, Number(process.env.SCAN_NO_SCAN_CUTOFF_HOUR || 14)));
 
+function getFrontendBaseUrl(req) {
+  const configured = String(process.env.FRONTEND_URL || '').trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+
+  const origin = String(req.headers.origin || '').trim();
+  if (origin) {
+    return origin.replace(/\/$/, '');
+  }
+
+  return String(frontendUrl || 'http://localhost:5173').replace(/\/$/, '');
+}
+
 async function ensureDataFile() {
   await fs.mkdir(uploadDir, { recursive: true });
   try {
@@ -1424,11 +1438,12 @@ app.post('/api/payments/checkout', async (req, res) => {
   const referenceType = String(req.body?.referenceType || 'shipment');
   const referenceId = String(req.body?.referenceId || req.body?.shipmentId || 'TBD').trim() || 'TBD';
   const checkoutLabel = referenceType === 'purchase_request' ? `Shop & Ship ${referenceId}` : `Shipment Deposit ${referenceId}`;
+  const frontendBaseUrl = getFrontendBaseUrl(req);
 
   if (!stripe) {
     return res.json({
       mode: 'mock',
-      url: `${frontendUrl}/mock-checkout?referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}&amount=${amount}`,
+      url: `${frontendBaseUrl}/mock-checkout?referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}&amount=${amount}`,
       message: 'Stripe key not configured. Using mock checkout URL.'
     });
   }
@@ -1448,8 +1463,8 @@ app.post('/api/payments/checkout', async (req, res) => {
           quantity: 1
         }
       ],
-      success_url: `${frontendUrl}/?payment=success&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`,
-      cancel_url: `${frontendUrl}/?payment=cancelled&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`
+      success_url: `${frontendBaseUrl}/?payment=success&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`,
+      cancel_url: `${frontendBaseUrl}/?payment=cancelled&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`
     });
 
     res.json({ mode: 'stripe', url: session.url });
