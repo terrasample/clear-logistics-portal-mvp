@@ -472,6 +472,8 @@ function App() {
   const [authToken, setAuthToken] = useState('');
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
+  const [selectedAdminItem, setSelectedAdminItem] = useState(null);
   const [shopAccessMode, setShopAccessMode] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -2786,6 +2788,60 @@ function App() {
   function AdminDashboardPage() {
     const counts = adminOverview?.counts;
 
+    const sectionMap = {
+      rfqs: { key: 'rfqs', label: 'RFQs' },
+      bookings: { key: 'recentBookings', label: 'Bookings' },
+      purchaseRequests: { key: 'purchaseRequests', label: 'Purchase Requests' },
+      supportTickets: { key: 'supportTickets', label: 'Support Tickets' },
+    };
+
+    const selectedSectionData = adminOverview?.[sectionMap[activeAdminSection]?.key] || [];
+
+    function handleMetricSelect(sectionKey) {
+      setActiveAdminSection(sectionKey);
+      setSelectedAdminItem(null);
+    }
+
+    function getAdminDetailAction(item, sectionKey) {
+      if (sectionKey === 'rfqs') {
+        return {
+          label: 'Review Quote',
+          action: () => {
+            setStatusMessage(`RFQ ${item.quoteId} selected for review.`);
+          }
+        };
+      }
+
+      if (sectionKey === 'bookings') {
+        return {
+          label: 'View Shipment',
+          action: () => {
+            if (item.shipmentId) {
+              setTrackingId(item.shipmentId);
+              navigate('/tracking');
+            }
+          }
+        };
+      }
+
+      if (sectionKey === 'purchaseRequests') {
+        return {
+          label: 'Review Request',
+          action: () => {
+            setStatusMessage(`Purchase request ${item.requestId} selected for admin review.`);
+          }
+        };
+      }
+
+      return {
+        label: 'Respond',
+        action: () => {
+          setStatusMessage(`Support ticket ${item.ticketId} selected for response.`);
+          navigate('/support');
+        }
+      };
+    }
+
     return (
       <>
         <section className="card" style={{ background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)', marginBottom: '1rem' }}>
@@ -2800,23 +2856,23 @@ function App() {
           </div>
         </section>
 
-        <section className="admin-metrics">
-          <article className="card admin-metric-card">
+        <section className="admin-metrics" aria-label="Admin summary metrics">
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'rfqs' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('rfqs')}>
             <strong>{counts?.rfqs || 0}</strong>
             <span>RFQs</span>
-          </article>
-          <article className="card admin-metric-card">
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'bookings' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('bookings')}>
             <strong>{counts?.bookings || 0}</strong>
             <span>Bookings</span>
-          </article>
-          <article className="card admin-metric-card">
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'purchaseRequests' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('purchaseRequests')}>
             <strong>{counts?.purchaseRequests || 0}</strong>
             <span>Purchase Requests</span>
-          </article>
-          <article className="card admin-metric-card">
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'supportTickets' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('supportTickets')}>
             <strong>{counts?.supportTickets || 0}</strong>
             <span>Support Tickets</span>
-          </article>
+          </button>
         </section>
 
         <section className="card card--split">
@@ -2824,12 +2880,21 @@ function App() {
             <h2>Recent RFQs</h2>
             <div className="admin-list">
               {(adminOverview?.rfqs || []).map((quote) => (
-                <div key={quote.quoteId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  key={quote.quoteId}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('rfqs');
+                    setSelectedAdminItem({ sectionKey: 'rfqs', item: quote });
+                  }}
+                >
                   <p><strong>{quote.quoteId}</strong> - {quote.fullName}</p>
                   <p><strong>Route:</strong> {quote.origin} to {quote.destination}</p>
                   <p><strong>Type:</strong> {quote.cargoType} / {quote.serviceLevel}</p>
                   <p><strong>Quote:</strong> {quote.quotedPriceUsd ? `$${quote.quotedPriceUsd}` : `${quote.estimatedRangeUsd?.low || '?'}-${quote.estimatedRangeUsd?.high || '?'}`}</p>
-                </div>
+                </button>
               ))}
               {!adminOverview?.rfqs?.length && <p className="section-intro">No RFQs yet.</p>}
             </div>
@@ -2839,11 +2904,20 @@ function App() {
             <h2>Recent Bookings</h2>
             <div className="admin-list">
               {(adminOverview?.recentBookings || []).map((booking) => (
-                <div key={booking.bookingId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  key={booking.bookingId}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('bookings');
+                    setSelectedAdminItem({ sectionKey: 'bookings', item: booking });
+                  }}
+                >
                   <p><strong>{booking.shipmentId}</strong> - {booking.fullName}</p>
                   <p><strong>Status:</strong> {booking.paymentStatus || 'pending'} / {booking.serviceLevel}</p>
                   <p><strong>Pickup:</strong> {booking.pickupCity} on {booking.pickupDate}</p>
-                </div>
+                </button>
               ))}
               {!adminOverview?.recentBookings?.length && <p className="section-intro">No bookings yet.</p>}
             </div>
@@ -2855,14 +2929,23 @@ function App() {
             <h2>Purchase Requests</h2>
             <div className="admin-list">
               {(adminOverview?.purchaseRequests || []).map((request) => (
-                <div key={request.requestId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  key={request.requestId}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('purchaseRequests');
+                    setSelectedAdminItem({ sectionKey: 'purchaseRequests', item: request });
+                  }}
+                >
                   <p><strong>{request.requestId}</strong> - {request.fullName}</p>
                   <p><strong>Store:</strong> {request.storeName}</p>
                   <p><strong>Landed Total:</strong> ${request.totalUsd || request.budgetUsd || 'N/A'}</p>
                   <p><strong>Customs Ready:</strong> {request.customsReady ? 'Yes' : 'No'} ({request.customsReadyScore || 0}%)</p>
                   <p><strong>Review:</strong> {request.needsAdminReview ? 'Needs Admin Review' : 'Standard'}</p>
                   <p><strong>Alerts:</strong> {request.notificationPreferences?.whatsapp ? 'WhatsApp ' : ''}{request.notificationPreferences?.sms ? 'SMS' : ''}{!request.notificationPreferences?.whatsapp && !request.notificationPreferences?.sms ? 'None' : ''}</p>
-                </div>
+                </button>
               ))}
               {!adminOverview?.purchaseRequests?.length && <p className="section-intro">No purchase requests yet.</p>}
             </div>
@@ -2872,15 +2955,46 @@ function App() {
             <h2>Support Tickets</h2>
             <div className="admin-list">
               {(adminOverview?.supportTickets || []).map((ticket) => (
-                <div key={ticket.ticketId} className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  key={ticket.ticketId}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('supportTickets');
+                    setSelectedAdminItem({ sectionKey: 'supportTickets', item: ticket });
+                  }}
+                >
                   <p><strong>{ticket.ticketId}</strong> - {ticket.fullName}</p>
                   <p><strong>Email:</strong> {ticket.email}</p>
                   <p><strong>Shipment:</strong> {ticket.shipmentId || 'N/A'}</p>
-                </div>
+                </button>
               ))}
               {!adminOverview?.supportTickets?.length && <p className="section-intro">No support tickets yet.</p>}
             </div>
           </div>
+        </section>
+
+        <section className="card" aria-live="polite">
+          <h2>{sectionMap[activeAdminSection].label} Workspace</h2>
+          <p className="section-intro">{selectedSectionData.length} record(s) in this section.</p>
+
+          {selectedAdminItem ? (
+            <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
+              <p><strong>Selected:</strong> {selectedAdminItem.item.quoteId || selectedAdminItem.item.shipmentId || selectedAdminItem.item.requestId || selectedAdminItem.item.ticketId}</p>
+              <p><strong>Name:</strong> {selectedAdminItem.item.fullName || 'N/A'}</p>
+              <p><strong>Email:</strong> {selectedAdminItem.item.email || 'N/A'}</p>
+              <button
+                type="button"
+                className="btn btn--solid"
+                onClick={() => getAdminDetailAction(selectedAdminItem.item, selectedAdminItem.sectionKey).action()}
+              >
+                {getAdminDetailAction(selectedAdminItem.item, selectedAdminItem.sectionKey).label}
+              </button>
+            </div>
+          ) : (
+            <p className="section-intro">Select a card above to see context actions.</p>
+          )}
         </section>
       </>
     );

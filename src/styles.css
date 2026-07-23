@@ -263,6 +263,24 @@ body {
   margin-bottom: 0.8rem;
 }
 
+.booking-summary--interactive {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.booking-summary--interactive:hover {
+  transform: translateY(-1px);
+  border-color: #b9d5cd;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.07);
+}
+
+.booking-summary--interactive:focus-visible {
+  outline: 3px solid rgba(11, 107, 97, 0.35);
+  outline-offset: 2px;
+}
+
 .booking-summary p {
   margin: 0.4rem 0;
   font-size: 0.92rem;
@@ -688,6 +706,29 @@ body {
   gap: 0.25rem;
   text-align: center;
   background: linear-gradient(180deg, #f9fcfb 0%, #ffffff 100%);
+}
+
+.admin-metric-card--interactive {
+  width: 100%;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.admin-metric-card--interactive:hover {
+  transform: translateY(-2px);
+  border-color: #b9d5cd;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.admin-metric-card--interactive:focus-visible {
+  outline: 3px solid rgba(11, 107, 97, 0.35);
+  outline-offset: 2px;
+}
+
+.admin-metric-card--interactive.is-active {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(11, 107, 97, 0.12);
 }
 
 .admin-metric-card strong {
