@@ -1042,28 +1042,71 @@ app.get('/api/drivers/route-optimization', requireAuth, async (req, res) => {
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
 
-  const pickups = data.bookings
-    .filter((b) => b.pickupDate && !b.pickedUp)
-    .map((b) => ({
-      shipmentId: b.shipmentId,
-      lat: 28.3949 + (Math.random() - 0.5) * 0.5, // Simulated lat around Miami
-      lng: -81.4872 + (Math.random() - 0.5) * 0.5, // Simulated lng around Miami
-      address: b.pickupAddress,
-      city: b.pickupCity,
-      zip: b.pickupZip
-    }));
+  const cityPriority = {
+    miami: 1,
+    'fort lauderdale': 2,
+    jacksonville: 3,
+    orlando: 4,
+    kissimmee: 5,
+    tampa: 6,
+  };
 
-  // Simple distance sorting (in production, use actual routing API)
-  const optimizedRoute = pickups.sort((a, b) => {
-    const distA = Math.abs(a.lat - 28.3949) + Math.abs(a.lng + 81.4872);
-    const distB = Math.abs(b.lat - 28.3949) + Math.abs(b.lng + 81.4872);
-    return distA - distB;
-  });
+  const servicePriority = {
+    Premium: 1,
+    Standard: 2,
+    Economy: 3,
+  };
+
+  const pendingPickups = data.bookings
+    .filter((b) => b.pickupDate && !b.pickedUp)
+    .map((b) => {
+      const pickupCity = String(b.pickupCity || '').trim();
+      const cityKey = pickupCity.toLowerCase();
+      const zipDigits = Number(String(b.pickupZip || '').replace(/\D/g, '').slice(0, 5) || 99999);
+      const pickupDateValue = Number.isFinite(Date.parse(b.pickupDate)) ? Date.parse(b.pickupDate) : Number.MAX_SAFE_INTEGER;
+      const serviceRank = servicePriority[b.serviceLevel] || 9;
+
+      return {
+        shipmentId: b.shipmentId,
+        pickupAddress: b.pickupAddress,
+        pickupCity,
+        pickupZip: b.pickupZip,
+        pickupDate: b.pickupDate,
+        serviceLevel: b.serviceLevel,
+        cargoType: b.cargoType,
+        cityRank: cityPriority[cityKey] || 99,
+        zipDigits,
+        pickupDateValue,
+        serviceRank,
+      };
+    });
+
+  const optimizedRoute = pendingPickups
+    .sort((a, b) => {
+      if (a.cityRank !== b.cityRank) return a.cityRank - b.cityRank;
+      if (a.pickupDateValue !== b.pickupDateValue) return a.pickupDateValue - b.pickupDateValue;
+      if (a.zipDigits !== b.zipDigits) return a.zipDigits - b.zipDigits;
+      if (a.serviceRank !== b.serviceRank) return a.serviceRank - b.serviceRank;
+      return String(a.shipmentId).localeCompare(String(b.shipmentId));
+    })
+    .map(({ cityRank, zipDigits, pickupDateValue, serviceRank, ...stop }) => stop);
+
+  let citySwitches = 0;
+  for (let i = 1; i < optimizedRoute.length; i += 1) {
+    if (optimizedRoute[i].pickupCity !== optimizedRoute[i - 1].pickupCity) {
+      citySwitches += 1;
+    }
+  }
+
+  const baseMinutesPerStop = 12;
+  const cityTransitionPenalty = 18;
+  const estimatedMinutes = (optimizedRoute.length * baseMinutesPerStop) + (citySwitches * cityTransitionPenalty);
 
   res.json({
     route: optimizedRoute,
     totalStops: optimizedRoute.length,
-    estimatedTime: `${Math.round(optimizedRoute.length * 15)} minutes`
+    estimatedTime: `${Math.max(15, Math.round(estimatedMinutes))} minutes`,
+    strategy: 'city -> pickupDate -> zip -> serviceLevel',
   });
 });
 

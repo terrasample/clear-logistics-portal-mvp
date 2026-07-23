@@ -510,6 +510,7 @@ function App() {
   const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
   const [driverPickups, setDriverPickups] = useState([]);
   const [driverRoute, setDriverRoute] = useState([]);
+  const [driverRouteMeta, setDriverRouteMeta] = useState({ totalStops: 0, estimatedTime: '' });
   const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
   const [driverMode, setDriverMode] = useState('login');
@@ -1242,6 +1243,34 @@ function App() {
     }
   }
 
+  async function handleGenerateOptimizedRoute() {
+    if (!driverAuthToken) {
+      setStatusMessage('Driver session expired. Please log in again.');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/drivers/route-optimization`, {
+        headers: { Authorization: `Bearer ${driverAuthToken}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to generate optimized route.');
+
+      setDriverRoute(result.route || []);
+      setDriverRouteMeta({
+        totalStops: Number(result.totalStops || 0),
+        estimatedTime: result.estimatedTime || '',
+      });
+      setStatusMessage(`Optimized route generated for ${result.totalStops || 0} stops${result.estimatedTime ? ` (${result.estimatedTime})` : ''}.`);
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handlePickupConfirm(shipmentId) {
     setIsLoading(true);
     setStatusMessage('');
@@ -1257,10 +1286,12 @@ function App() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Confirmation failed.');
       
-      setStatusMessage(`Pickup confirmed for ${shipmentId}!`);
+      setStatusMessage(`Pickup confirmed for ${shipmentId}. Next step: transport to Miami warehouse for intake scanning.`);
       setScannedShipmentId('');
       setPickupConfirmation({ notes: '', photoUrl: '' });
       fetchDriverPickups(driverAuthToken);
+      setDriverRoute([]);
+      setDriverRouteMeta({ totalStops: 0, estimatedTime: '' });
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -2850,16 +2881,20 @@ function App() {
 
         <div>
           <h2>Route Optimization</h2>
-          <p className="section-intro">Optimized pickup sequence for efficiency.</p>
-          <button type="button" className="btn btn--ghost" onClick={() => {
-            const optimized = [...driverPickups].sort((a, b) => new Date(a.pickupDate) - new Date(b.pickupDate));
-            setDriverRoute(optimized);
-          }}>Generate Optimized Route</button>
+          <p className="section-intro">Optimized sequence using city clustering, pickup date, ZIP proximity, and service urgency.</p>
+          <button type="button" className="btn btn--ghost" onClick={handleGenerateOptimizedRoute} disabled={isLoading}>
+            Generate Optimized Route
+          </button>
+          {driverRouteMeta.totalStops > 0 && (
+            <p className="section-intro" style={{ marginTop: '0.6rem' }}>
+              {driverRouteMeta.totalStops} stops • Estimated driving window: {driverRouteMeta.estimatedTime || 'TBD'}
+            </p>
+          )}
           {driverRoute.length > 0 && (
             <ol className="status-list" style={{marginTop: '1rem'}}>
               {driverRoute.map((p, idx) => (
                 <li key={p.shipmentId}>
-                  Stop {idx + 1}: {p.shipmentId} - {p.pickupCity}
+                  Stop {idx + 1}: {p.shipmentId} - {p.pickupCity} ({p.pickupDate || 'No date'})
                 </li>
               ))}
             </ol>
