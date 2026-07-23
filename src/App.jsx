@@ -1352,14 +1352,43 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm),
       });
-      const raw = await response.text();
-      let result = {};
-      try {
-        result = raw ? JSON.parse(raw) : {};
-      } catch {
-        throw new Error(`Login service returned an unexpected response (${response.status}). Please verify the API server is running on port 8787.`);
+
+      const parseJsonResponse = async (res) => {
+        const raw = await res.text();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch {
+          throw new Error(`Login service returned an unexpected response (${res.status}). Please verify the API server is running on port 8787.`);
+        }
+      };
+
+      let result = await parseJsonResponse(response);
+
+      if (!response.ok) {
+        const driverFallbackResponse = await fetch(`${API_BASE}/drivers/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(loginForm),
+        });
+        const driverResult = await parseJsonResponse(driverFallbackResponse);
+
+        if (driverFallbackResponse.ok && driverResult.token) {
+          localStorage.setItem('driverAuthToken', driverResult.token);
+          localStorage.setItem('driverUser', JSON.stringify(driverResult.user));
+          setDriverAuthToken(driverResult.token);
+          setDriverUser(driverResult.user);
+          setDriverMode('dashboard');
+          setStatusMessage(`Welcome back, ${driverResult.user?.fullName || 'Driver'}!`);
+          fetchDriverPickups(driverResult.token);
+          fetchDriverActiveRoute(driverResult.token);
+          navigate('/driver/dashboard');
+          return;
+        }
+
+        throw new Error(result.error || driverResult.error || 'Unable to log in.');
       }
-      if (!response.ok) throw new Error(result.error || 'Unable to log in.');
+
       if (!result.token) throw new Error('Login succeeded but no session token was returned.');
       setIsAuthenticated(true);
       setCurrentUser(result.user || null);

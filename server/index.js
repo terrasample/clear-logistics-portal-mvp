@@ -741,6 +741,35 @@ async function seedDriverDemoData() {
       createdAt: new Date().toISOString(),
     });
     hasChanges = true;
+  } else {
+    // Keep the demo account predictable for QA and product demos.
+    const passwordMatches = String(existingDriver.password || '').startsWith('$2')
+      ? await bcrypt.compare(DRIVER_DEMO_PASSWORD, existingDriver.password)
+      : false;
+    if (!passwordMatches) {
+      existingDriver.password = await bcrypt.hash(DRIVER_DEMO_PASSWORD, 10);
+      hasChanges = true;
+    }
+    if (String(existingDriver.status || '').toLowerCase() !== 'active') {
+      existingDriver.status = 'active';
+      hasChanges = true;
+    }
+    if (existingDriver.role !== 'driver') {
+      existingDriver.role = 'driver';
+      hasChanges = true;
+    }
+    if (!existingDriver.fullName) {
+      existingDriver.fullName = 'Demo Driver';
+      hasChanges = true;
+    }
+    if (!existingDriver.phone) {
+      existingDriver.phone = '+1-305-555-0110';
+      hasChanges = true;
+    }
+    if (!existingDriver.vehicle) {
+      existingDriver.vehicle = 'Ford Transit 2022';
+      hasChanges = true;
+    }
   }
 
   for (let i = 0; i < DRIVER_DEMO_TOTAL_PICKUPS; i += 1) {
