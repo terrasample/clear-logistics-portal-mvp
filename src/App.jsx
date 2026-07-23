@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 
-const API_BASE = import.meta.env.VITE_API_BASE || `${window.location.origin}/api`;
+const API_BASE = import.meta.env.VITE_API_BASE
+  || (window.location.hostname === 'localhost'
+    ? 'http://localhost:8787/api'
+    : `${window.location.origin}/api`);
 
 const NAV_ITEMS = [
   { key: 'book-pickup', label: 'Services', isPrimary: true },
@@ -1178,7 +1181,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm),
       });
-      const result = await response.json();
+      const raw = await response.text();
+      let result = {};
+      try {
+        result = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(`Login service returned an unexpected response (${response.status}). Please verify the API server is running on port 8787.`);
+      }
       if (!response.ok) throw new Error(result.error || 'Unable to log in.');
       if (!result.token) throw new Error('Login succeeded but no session token was returned.');
       setIsAuthenticated(true);
