@@ -27,6 +27,7 @@ const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
+let dataWriteQueue = Promise.resolve();
 
 app.use(cors({ origin: true }));
 app.use(express.json());
@@ -72,8 +73,22 @@ async function ensureDataFile() {
 
 async function readData() {
   await ensureDataFile();
-  const raw = await fs.readFile(dataFile, 'utf-8');
-  const data = JSON.parse(raw);
+  await dataWriteQueue;
+  let raw = '';
+  try {
+    raw = await fs.readFile(dataFile, 'utf-8');
+  } catch {
+    raw = '';
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    await ensureDataFile();
+    const retryRaw = await fs.readFile(dataFile, 'utf-8');
+    data = JSON.parse(retryRaw);
+  }
   if (!Array.isArray(data.accounts)) data.accounts = [];
   if (!Array.isArray(data.drivers)) data.drivers = [];
   if (!Array.isArray(data.quotes)) data.quotes = [];
@@ -85,7 +100,14 @@ async function readData() {
 }
 
 async function writeData(data) {
-  await fs.writeFile(dataFile, JSON.stringify(data, null, 2), 'utf-8');
+  const runWrite = async () => {
+    const tempFile = `${dataFile}.${randomUUID()}.tmp`;
+    await fs.writeFile(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+    await fs.rename(tempFile, dataFile);
+  };
+
+  dataWriteQueue = dataWriteQueue.then(runWrite, runWrite);
+  await dataWriteQueue;
 }
 
 function sanitizeAccount(account) {
