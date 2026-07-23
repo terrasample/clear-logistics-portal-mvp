@@ -469,6 +469,9 @@ function App() {
     dimensionsLength: '',
     dimensionsWidth: '',
     dimensionsHeight: '',
+    barrelPurchaseQty: '0',
+    needsPackingSupplies: false,
+    vipConcierge: false,
   });
 
   const [bookingForm, setBookingForm] = useState({
@@ -556,6 +559,8 @@ function App() {
   const [authToken, setAuthToken] = useState('');
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [dispatcherData, setDispatcherData] = useState(null);
+  const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
   const [selectedAdminItem, setSelectedAdminItem] = useState(null);
   const [shopAccessMode, setShopAccessMode] = useState('');
@@ -945,7 +950,12 @@ function App() {
       const range = result.quote?.estimatedRangeUsd
         ? ` Estimated range: $${result.quote.estimatedRangeUsd.low} - $${result.quote.estimatedRangeUsd.high}.`
         : '';
-      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}`);
+      const premiumFlags = [];
+      if (Number(result.quote?.barrelPurchaseQty || 0) > 0) premiumFlags.push('barrel add-on');
+      if (result.quote?.needsPackingSupplies) premiumFlags.push('packing supplies');
+      if (result.quote?.vipConcierge) premiumFlags.push('VIP concierge');
+      const premiumLine = premiumFlags.length ? ` Premium options: ${premiumFlags.join(', ')}.` : '';
+      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}${premiumLine} Confirmation email sent.`);
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -1268,6 +1278,62 @@ function App() {
       setStatusMessage(error.message);
     } finally {
       setAdminLoading(false);
+    }
+  }
+
+  async function fetchDispatcherData(token = authToken) {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_BASE}/admin/dispatcher`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to load dispatcher data.');
+      setDispatcherData(result);
+      // Pre-populate reassign map with current assignments so dropdowns default to current driver
+      const initialSelections = {};
+      (result.pendingBookings || []).forEach((b) => {
+        if (b.assignedDriverId) initialSelections[b.bookingId] = b.assignedDriverId;
+      });
+      setDispatcherReassignMap(initialSelections);
+    } catch (error) {
+      setStatusMessage(error.message);
+    }
+  }
+
+  async function handleDispatcherReassign(bookingId) {
+    const driverId = dispatcherReassignMap[bookingId];
+    if (!driverId) {
+      setStatusMessage('Select a driver first.');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/admin/dispatcher/reassign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ bookingId, driverId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Reassign failed.');
+      setStatusMessage(`Reassigned to ${result.assignedDriverName}.`);
+      fetchDispatcherData();
+    } catch (error) {
+      setStatusMessage(error.message);
+    }
+  }
+
+  async function handleDispatcherAutoAssign() {
+    try {
+      const response = await fetch(`${API_BASE}/drivers/assignments/auto`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Auto-assign failed.');
+      setStatusMessage(result.message);
+      fetchDispatcherData();
+    } catch (error) {
+      setStatusMessage(error.message);
     }
   }
 
@@ -2116,6 +2182,44 @@ function App() {
                 <p className="section-intro">We will provide an estimated quote range and confirm final pricing after warehouse weigh-in.</p>
               </>
             )}
+
+            <div className="booking-summary" style={{ padding: '0.75rem', border: '1px solid #d9e5df', background: '#f7fbf9' }}>
+              <p style={{ marginBottom: '0.5rem' }}><strong>One-Stop Add-Ons</strong></p>
+              <label htmlFor="quote-barrelPurchaseQty" style={{ marginBottom: '0.5rem' }}>
+                Need us to provide barrels?
+                <select id="quote-barrelPurchaseQty" name="barrelPurchaseQty" value={quoteForm.barrelPurchaseQty} onChange={handleQuoteChange}>
+                  <option value="0">No, I already have barrels</option>
+                  <option value="1">Yes, 1 barrel</option>
+                  <option value="2">Yes, 2 barrels</option>
+                  <option value="3">Yes, 3 barrels</option>
+                  <option value="4">Yes, 4+ barrels</option>
+                </select>
+              </label>
+              <label htmlFor="quote-needsPackingSupplies" className="checkbox-label" style={{ marginBottom: '0.4rem' }}>
+                <input
+                  id="quote-needsPackingSupplies"
+                  type="checkbox"
+                  name="needsPackingSupplies"
+                  checked={quoteForm.needsPackingSupplies}
+                  onChange={handleQuoteChange}
+                />
+                Add packing supplies kit (tape, wrap, labels)
+              </label>
+              <label htmlFor="quote-vipConcierge" className="checkbox-label" style={{ marginBottom: 0 }}>
+                <input
+                  id="quote-vipConcierge"
+                  type="checkbox"
+                  name="vipConcierge"
+                  checked={quoteForm.vipConcierge}
+                  onChange={handleQuoteChange}
+                />
+                Enable VIP concierge follow-up for priority handling
+              </label>
+              <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+                This creates a premium one-stop request so your shipment and supplies are coordinated in one workflow.
+              </p>
+            </div>
+
             <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Quote Request'}</button>
           </form>
         </div>
@@ -3062,13 +3166,19 @@ function App() {
       bookings: { key: 'recentBookings', label: 'Bookings' },
       purchaseRequests: { key: 'purchaseRequests', label: 'Purchase Requests' },
       supportTickets: { key: 'supportTickets', label: 'Support Tickets' },
+      dispatcher: { key: 'dispatcher', label: 'Dispatcher' },
     };
 
-    const selectedSectionData = adminOverview?.[sectionMap[activeAdminSection]?.key] || [];
+    const selectedSectionData = activeAdminSection !== 'dispatcher'
+      ? (adminOverview?.[sectionMap[activeAdminSection]?.key] || [])
+      : [];
 
     function handleMetricSelect(sectionKey) {
       setActiveAdminSection(sectionKey);
       setSelectedAdminItem(null);
+      if (sectionKey === 'dispatcher') {
+        fetchDispatcherData();
+      }
     }
 
     function getAdminDetailAction(item, sectionKey) {
@@ -3142,8 +3252,117 @@ function App() {
             <strong>{counts?.supportTickets || 0}</strong>
             <span>Support Tickets</span>
           </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'dispatcher' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('dispatcher')}>
+            <strong>{dispatcherData?.drivers?.length ?? (counts ? '—' : '…')}</strong>
+            <span>Dispatcher</span>
+          </button>
         </section>
 
+        {activeAdminSection === 'dispatcher' ? (
+          <>
+            <section className="card" style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <h2 style={{ marginBottom: '0.25rem' }}>Dispatcher Control Panel</h2>
+                  <p className="section-intro">View driver workloads and manually reassign pickups.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn--ghost" onClick={() => fetchDispatcherData()}>Refresh</button>
+                  <button type="button" className="btn btn--solid" onClick={handleDispatcherAutoAssign}>Run Auto-Assign</button>
+                </div>
+              </div>
+
+              <h3 style={{ marginBottom: '0.5rem' }}>Driver Workloads</h3>
+              {!dispatcherData ? (
+                <p className="section-intro">Loading dispatcher data…</p>
+              ) : dispatcherData.drivers.length === 0 ? (
+                <p className="section-intro">No active drivers found.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  {dispatcherData.drivers.map((driver) => (
+                    <div key={driver.id} className="booking-summary" style={{ padding: '0.75rem' }}>
+                      <p><strong>{driver.fullName}</strong></p>
+                      <p style={{ fontSize: '0.85rem', color: '#555' }}>{driver.email}</p>
+                      <p style={{ marginTop: '0.4rem' }}>
+                        <span style={{ background: '#e8f5e9', color: '#2e7d32', borderRadius: '999px', padding: '0.1rem 0.6rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                          {driver.pendingCount} pending
+                        </span>
+                      </p>
+                      {driver.activeRoute ? (
+                        <p style={{ fontSize: '0.8rem', color: '#1565c0', marginTop: '0.3rem' }}>
+                          Route active: {driver.activeRoute.completed}/{driver.activeRoute.total} stops
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.3rem' }}>No active route</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <h3 style={{ marginBottom: '0.5rem' }}>Pending Pickups</h3>
+              {!dispatcherData ? null : dispatcherData.pendingBookings.length === 0 ? (
+                <p className="section-intro">No pending pickups.</p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f5f5f5', textAlign: 'left' }}>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Shipment</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Customer</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Pickup Date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>City</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Current Driver</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}>Reassign To</th>
+                        <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e0e0e0' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dispatcherData.pendingBookings.map((booking, idx) => (
+                        <tr key={booking.bookingId} style={{ background: idx % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{booking.shipmentId || booking.bookingId}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{booking.fullName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{booking.pickupDate || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{booking.pickupCity || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {booking.assignedDriverName
+                              ? <span>{booking.assignedDriverName} <span style={{ fontSize: '0.75rem', color: booking.assignmentMode === 'manual' ? '#1565c0' : '#888' }}>({booking.assignmentMode})</span></span>
+                              : <span style={{ color: '#c62828' }}>Unassigned</span>
+                            }
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <select
+                              value={dispatcherReassignMap[booking.bookingId] || ''}
+                              onChange={(e) => setDispatcherReassignMap((prev) => ({ ...prev, [booking.bookingId]: e.target.value }))}
+                              style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #ccc', fontSize: '0.85rem', maxWidth: '180px' }}
+                            >
+                              <option value="">Select driver…</option>
+                              {(dispatcherData.drivers || []).map((d) => (
+                                <option key={d.id} value={d.id}>{d.fullName} ({d.pendingCount})</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              className="btn btn--solid"
+                              style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                              disabled={!dispatcherReassignMap[booking.bookingId] || dispatcherReassignMap[booking.bookingId] === booking.assignedDriverId}
+                              onClick={() => handleDispatcherReassign(booking.bookingId)}
+                            >
+                              Reassign
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
+        ) : (
+          <>
         <section className="card card--split">
           <div>
             <h2>Recent RFQs</h2>
@@ -3265,6 +3484,8 @@ function App() {
             <p className="section-intro">Select a card above to see context actions.</p>
           )}
         </section>
+          </>
+        )}
       </>
     );
   }

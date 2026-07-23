@@ -266,14 +266,14 @@ async function sendNotification(subject, body) {
   });
 }
 
-async function sendEmail({ to, subject, text, mockTag = 'email' }) {
+async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
   const destination = String(to || '').trim();
-  if (!destination || !subject || !text) {
+  if (!destination || !subject || (!text && !html)) {
     return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
   }
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.NOTIFY_EMAIL) {
-    console.log(`[${mockTag}:mock]`, { to: destination, subject, text });
+    console.log(`[${mockTag}:mock]`, { to: destination, subject, text: text || '(html-only email)' });
     return { delivered: false, mode: 'mock' };
   }
 
@@ -291,10 +291,144 @@ async function sendEmail({ to, subject, text, mockTag = 'email' }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: destination,
     subject,
-    text
+    text: text || String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+    html
   });
 
   return { delivered: true, mode: 'smtp' };
+}
+
+function formatUsd(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'TBD';
+  return `$${numeric.toFixed(2)} USD`;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildQuotePricingLabel(quote) {
+  if (quote?.pricingMode === 'estimated') {
+    const low = quote?.estimatedRangeUsd?.low;
+    const high = quote?.estimatedRangeUsd?.high;
+    if (Number.isFinite(Number(low)) && Number.isFinite(Number(high))) {
+      return `Estimated ${formatUsd(low)} - ${formatUsd(high)}`;
+    }
+    return 'Estimated pricing (pending warehouse verification)';
+  }
+  return `Weight-based ${formatUsd(quote?.quotedPriceUsd)}`;
+}
+
+function buildPremiumQuoteAdminEmail(quote) {
+  const barrelQty = Math.max(0, Number(quote?.barrelPurchaseQty || 0));
+  const wantsSupplies = Boolean(quote?.needsPackingSupplies);
+  const wantsVipConcierge = Boolean(quote?.vipConcierge);
+  const pricingLabel = buildQuotePricingLabel(quote);
+
+  const subject = `Premium Quote Request ${quote.quoteId} - ${quote.fullName}`;
+  const text = [
+    `New premium quote request: ${quote.quoteId}`,
+    `Customer: ${quote.fullName}`,
+    `Email: ${quote.email}`,
+    `Phone: ${quote.phone}`,
+    `Route: ${quote.origin} -> ${quote.destination} (${quote.deliveryParish})`,
+    `Cargo: ${quote.cargoType} | Service: ${quote.serviceLevel}`,
+    `Category: ${quote.itemCategory}`,
+    `Declared Value: ${quote.declaredValueUsd ? formatUsd(quote.declaredValueUsd) : 'Not provided'}`,
+    `Pricing: ${pricingLabel}`,
+    `Barrel Add-On: ${barrelQty > 0 ? `${barrelQty} requested` : 'No'}`,
+    `Packing Supplies: ${wantsSupplies ? 'Yes' : 'No'}`,
+    `VIP Concierge: ${wantsVipConcierge ? 'Yes (priority follow-up)' : 'No'}`,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#f5f7fa;padding:20px;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dce3ea;border-radius:10px;overflow:hidden;">
+        <div style="background:#0e7a5f;color:#ffffff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:20px;">Premium Quote Request</h2>
+          <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">${escapeHtml(quote.quoteId)} • ${escapeHtml(quote.fullName)}</p>
+        </div>
+        <div style="padding:18px 20px;color:#1d2939;line-height:1.5;font-size:14px;">
+          <p style="margin:0 0 12px 0;"><strong>Customer:</strong> ${escapeHtml(quote.fullName)} (${escapeHtml(quote.email)})</p>
+          <p style="margin:0 0 12px 0;"><strong>Phone:</strong> ${escapeHtml(quote.phone)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Route:</strong> ${escapeHtml(quote.origin)} to ${escapeHtml(quote.destination)} (${escapeHtml(quote.deliveryParish)})</p>
+          <p style="margin:0 0 12px 0;"><strong>Cargo:</strong> ${escapeHtml(quote.cargoType)} | <strong>Service:</strong> ${escapeHtml(quote.serviceLevel)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Category:</strong> ${escapeHtml(quote.itemCategory)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Pricing:</strong> ${escapeHtml(pricingLabel)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Barrel Add-On:</strong> ${barrelQty > 0 ? `${barrelQty} requested` : 'No'} | <strong>Packing Supplies:</strong> ${wantsSupplies ? 'Yes' : 'No'}</p>
+          <p style="margin:0 0 12px 0;"><strong>VIP Concierge:</strong> ${wantsVipConcierge ? 'Yes' : 'No'}</p>
+          <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+            <strong>Action:</strong> Contact this customer quickly to lock booking before competitor churn.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
+
+function buildPremiumQuoteCustomerEmail(quote) {
+  const barrelQty = Math.max(0, Number(quote?.barrelPurchaseQty || 0));
+  const wantsSupplies = Boolean(quote?.needsPackingSupplies);
+  const wantsVipConcierge = Boolean(quote?.vipConcierge);
+  const pricingLabel = buildQuotePricingLabel(quote);
+  const subject = `Your Quote ${quote.quoteId} Is In Priority Review`;
+
+  const text = [
+    `Hi ${quote.fullName},`,
+    '',
+    `Your quote request (${quote.quoteId}) has been received and placed in priority review.`,
+    `Route: ${quote.origin} -> ${quote.destination}`,
+    `Service: ${quote.serviceLevel}`,
+    `Pricing: ${pricingLabel}`,
+    '',
+    'Why customers choose us:',
+    '- Pickup + shipping + delivery in one platform',
+    '- Fast support and proactive shipment updates',
+    '- Clear pricing and premium handling options',
+    '',
+    `Barrel add-on request: ${barrelQty > 0 ? `${barrelQty} barrel(s)` : 'Not selected'}`,
+    `Packing supplies: ${wantsSupplies ? 'Requested' : 'Not requested'}`,
+    `VIP concierge: ${wantsVipConcierge ? 'Enabled' : 'Standard follow-up'}`,
+    '',
+    'Thank you for choosing Clear Logistics & Freight Services.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#eef3f7;padding:20px;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #d6dde5;border-radius:12px;overflow:hidden;">
+        <div style="padding:20px;background:linear-gradient(135deg,#0e7a5f 0%,#0a5f4b 100%);color:#fff;">
+          <h2 style="margin:0 0 8px 0;font-size:22px;">Your Quote Is In Priority Review</h2>
+          <p style="margin:0;font-size:14px;opacity:0.95;">Quote ${escapeHtml(quote.quoteId)} • Clear Logistics & Freight Services</p>
+        </div>
+        <div style="padding:18px 20px;color:#1d2939;font-size:14px;line-height:1.5;">
+          <p style="margin:0 0 12px 0;">Hi ${escapeHtml(quote.fullName)}, your request is in and our team is preparing your best routing and pricing options.</p>
+          <div style="padding:12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;margin-bottom:12px;">
+            <p style="margin:0 0 6px 0;"><strong>Route:</strong> ${escapeHtml(quote.origin)} to ${escapeHtml(quote.destination)}</p>
+            <p style="margin:0 0 6px 0;"><strong>Service:</strong> ${escapeHtml(quote.serviceLevel)}</p>
+            <p style="margin:0;"><strong>Pricing Mode:</strong> ${escapeHtml(pricingLabel)}</p>
+          </div>
+          <p style="margin:0 0 10px 0;"><strong>One-stop options selected:</strong> Barrel add-on ${barrelQty > 0 ? `${barrelQty}` : 'none'} • Packing supplies ${wantsSupplies ? 'yes' : 'no'} • VIP concierge ${wantsVipConcierge ? 'enabled' : 'standard'}</p>
+          <p style="margin:0 0 6px 0;"><strong>Why this platform wins:</strong></p>
+          <ul style="margin:0 0 12px 18px;padding:0;">
+            <li>Pickup, freight, and Jamaica delivery in one place</li>
+            <li>Live shipment tracking and real support</li>
+            <li>Priority handling for urgent cargo</li>
+          </ul>
+          <p style="margin:0;">Need help now? Reply to this email and our team will respond promptly.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
 }
 
 function normalizeEmail(value) {
@@ -835,7 +969,24 @@ app.post('/api/quotes', async (req, res) => {
 
   data.quotes.push(quote);
   await writeData(data);
-  await sendNotification('New Quote Request', `Quote ${quote.quoteId} from ${quote.fullName} (${quote.email})`);
+
+  const adminEmail = buildPremiumQuoteAdminEmail(quote);
+  await sendEmail({
+    to: process.env.NOTIFY_EMAIL,
+    subject: adminEmail.subject,
+    text: adminEmail.text,
+    html: adminEmail.html,
+    mockTag: 'notification',
+  });
+
+  const customerEmail = buildPremiumQuoteCustomerEmail(quote);
+  await sendEmail({
+    to: quote.email,
+    subject: customerEmail.subject,
+    text: customerEmail.text,
+    html: customerEmail.html,
+    mockTag: 'quote-customer',
+  });
 
   res.status(201).json({ quote, message: 'Quote request submitted.' });
 });
@@ -1339,6 +1490,96 @@ app.post('/api/drivers/assignments/auto', requireAuth, async (req, res) => {
     message: result.assignedCount
       ? `Auto-assigned ${result.assignedCount} pickups.`
       : 'No unassigned pickups found.',
+  });
+});
+
+// ── Dispatcher: view all driver workloads + pending bookings ──────────────────
+app.get('/api/admin/dispatcher', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.drivers)) data.drivers = [];
+  if (!Array.isArray(data.routes)) data.routes = [];
+
+  const drivers = getActiveDrivers(data).map((d) => {
+    const pending = getPendingAssignmentCount(data, d.id);
+    const activeRoute = findActiveRouteForDriver(data, d.id);
+    const progress = activeRoute ? routeProgress(activeRoute) : null;
+    return {
+      id: d.id,
+      fullName: d.fullName,
+      email: d.email,
+      status: d.status || 'active',
+      pendingCount: pending,
+      activeRoute: activeRoute
+        ? { routeId: activeRoute.routeId, status: activeRoute.status, ...progress }
+        : null,
+    };
+  });
+
+  const pendingBookings = (data.bookings || [])
+    .filter((b) => !b.pickedUp)
+    .sort((a, b) => {
+      const aDate = Date.parse(a.pickupDate) || 0;
+      const bDate = Date.parse(b.pickupDate) || 0;
+      return aDate - bDate;
+    })
+    .map((b) => ({
+      bookingId: b.bookingId,
+      shipmentId: b.shipmentId,
+      fullName: b.fullName,
+      pickupDate: b.pickupDate,
+      pickupCity: b.pickupCity,
+      pickupAddress: b.pickupAddress,
+      assignedDriverId: b.assignedDriverId || null,
+      assignedDriverName: b.assignedDriverName || null,
+      assignmentMode: b.assignmentMode || null,
+    }));
+
+  return res.json({ drivers, pendingBookings });
+});
+
+// ── Dispatcher: manually reassign a booking to a specific driver ──────────────
+app.post('/api/admin/dispatcher/reassign', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const { bookingId, driverId } = req.body || {};
+  if (!bookingId || !driverId) {
+    return res.status(400).json({ error: 'bookingId and driverId are required.' });
+  }
+
+  const data = await readData();
+  const booking = (data.bookings || []).find((b) => b.bookingId === bookingId);
+  if (!booking) {
+    return res.status(404).json({ error: 'Booking not found.' });
+  }
+  if (booking.pickedUp) {
+    return res.status(409).json({ error: 'Booking is already picked up.' });
+  }
+
+  const driver = (data.drivers || []).find((d) => d.id === driverId);
+  if (!driver) {
+    return res.status(404).json({ error: 'Driver not found.' });
+  }
+
+  booking.assignedDriverId = driverId;
+  booking.assignedDriverName = driver.fullName;
+  booking.assignedAt = new Date().toISOString();
+  booking.assignmentMode = 'manual';
+
+  await writeData(data);
+
+  return res.json({
+    ok: true,
+    bookingId,
+    assignedDriverId: driverId,
+    assignedDriverName: driver.fullName,
+    assignmentMode: 'manual',
   });
 });
 
