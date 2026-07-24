@@ -916,7 +916,51 @@ async function sendViaSmtp({ destination, subject, text, html, mockTag }) {
       text: buildPlainTextEmail(text, html),
       html
     });
-    return { delivered: true, mode: 'smtp', provider: 'smtp', messageId: info?.messageId || null };
+
+    const target = extractEmailAddress(destination);
+    const accepted = Array.isArray(info?.accepted)
+      ? info.accepted.map((value) => extractEmailAddress(value)).filter(Boolean)
+      : [];
+    const rejected = Array.isArray(info?.rejected)
+      ? info.rejected.map((value) => extractEmailAddress(value)).filter(Boolean)
+      : [];
+
+    const delivered = target
+      ? accepted.includes(target) && !rejected.includes(target)
+      : accepted.length > 0;
+
+    if (!delivered) {
+      console.error(`[${mockTag}:smtp-rejected]`, {
+        to: destination,
+        subject,
+        accepted,
+        rejected,
+        response: info?.response || '',
+      });
+      return {
+        delivered: false,
+        mode: 'smtp-rejected',
+        provider: 'smtp',
+        reason: 'recipient-rejected-by-smtp',
+        code: 'SMTP_RECIPIENT_REJECTED',
+        responseCode: Number.isFinite(Number(info?.responseCode)) ? Number(info.responseCode) : null,
+        response: info?.response || '',
+        messageId: info?.messageId || null,
+        acceptedCount: accepted.length,
+        rejectedCount: rejected.length,
+      };
+    }
+
+    return {
+      delivered: true,
+      mode: 'smtp',
+      provider: 'smtp',
+      messageId: info?.messageId || null,
+      responseCode: Number.isFinite(Number(info?.responseCode)) ? Number(info.responseCode) : null,
+      response: info?.response || '',
+      acceptedCount: accepted.length,
+      rejectedCount: rejected.length,
+    };
   } catch (error) {
     console.error(`[${mockTag}:smtp-error]`, {
       to: destination,
@@ -945,6 +989,9 @@ function normalizeDeliveryStatus(result) {
     code: result?.code ? String(result.code) : '',
     responseCode: Number.isFinite(Number(result?.responseCode)) ? Number(result.responseCode) : null,
     messageId: result?.messageId ? String(result.messageId) : '',
+    response: result?.response ? String(result.response) : '',
+    acceptedCount: Number.isFinite(Number(result?.acceptedCount)) ? Number(result.acceptedCount) : null,
+    rejectedCount: Number.isFinite(Number(result?.rejectedCount)) ? Number(result.rejectedCount) : null,
   };
 }
 
