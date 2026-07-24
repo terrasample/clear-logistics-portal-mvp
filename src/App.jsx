@@ -535,6 +535,13 @@ function App() {
     email: '',
     password: '',
   });
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordForm, setForgotPasswordForm] = useState({
+    email: '',
+    token: '',
+    newPassword: '',
+  });
 
   const [purchaseForm, setPurchaseForm] = useState({
     fullName: '',
@@ -727,6 +734,30 @@ function App() {
 
     setAuthHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (location.pathname !== '/login') {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('reset') !== '1') {
+      return;
+    }
+
+    const emailFromQuery = String(params.get('email') || '').trim().toLowerCase();
+    const tokenFromQuery = String(params.get('token') || '').trim();
+
+    setForgotPasswordOpen(true);
+    setForgotPasswordForm((prev) => ({
+      ...prev,
+      email: emailFromQuery || prev.email,
+      token: tokenFromQuery || prev.token,
+    }));
+    if (emailFromQuery) {
+      setLoginForm((prev) => ({ ...prev, email: emailFromQuery }));
+    }
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -1079,6 +1110,11 @@ function App() {
   function handleLoginChange(event) {
     const { name, value } = event.target;
     setLoginForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleForgotPasswordChange(event) {
+    const { name, value } = event.target;
+    setForgotPasswordForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function handlePurchaseChange(event) {
@@ -2089,6 +2125,76 @@ function App() {
       setStatusMessage(error.message);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleForgotPasswordRequest(event) {
+    event.preventDefault();
+    setForgotPasswordLoading(true);
+    setStatusMessage('');
+
+    try {
+      const email = String(forgotPasswordForm.email || loginForm.email || '').trim().toLowerCase();
+      if (!email) {
+        throw new Error('Please enter your email first.');
+      }
+
+      const response = await fetch(`${API_BASE}/password/forgot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to send reset instructions.');
+      }
+
+      setForgotPasswordForm((prev) => ({ ...prev, email, token: '', newPassword: '' }));
+      setLoginForm((prev) => ({ ...prev, email }));
+      setStatusMessage(result.message || 'If an account exists for this email, reset instructions have been sent.');
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  }
+
+  async function handleForgotPasswordReset(event) {
+    event.preventDefault();
+    setForgotPasswordLoading(true);
+    setStatusMessage('');
+
+    try {
+      const payload = {
+        email: String(forgotPasswordForm.email || '').trim().toLowerCase(),
+        token: String(forgotPasswordForm.token || '').trim(),
+        newPassword: String(forgotPasswordForm.newPassword || ''),
+      };
+
+      if (!payload.email || !payload.token || !payload.newPassword) {
+        throw new Error('Email, reset token, and new password are required.');
+      }
+
+      const response = await fetch(`${API_BASE}/password/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to reset password.');
+      }
+
+      setLoginForm((prev) => ({ ...prev, email: payload.email, password: '' }));
+      setForgotPasswordForm({ email: payload.email, token: '', newPassword: '' });
+      setForgotPasswordOpen(false);
+      setStatusMessage(result.message || 'Password updated. Please log in with your new password.');
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setForgotPasswordLoading(false);
     }
   }
 
@@ -4993,6 +5099,74 @@ function App() {
             </label>
             <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
           </form>
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setForgotPasswordOpen((prev) => !prev);
+                setForgotPasswordForm((prev) => ({
+                  ...prev,
+                  email: String(prev.email || loginForm.email || '').trim().toLowerCase(),
+                }));
+              }}
+              disabled={forgotPasswordLoading}
+            >
+              {forgotPasswordOpen ? 'Hide Password Reset' : 'Forgot Password?'}
+            </button>
+          </div>
+
+          {forgotPasswordOpen ? (
+            <div style={{ marginTop: '1rem', borderTop: '1px solid #e6ebef', paddingTop: '1rem' }}>
+              <h3 style={{ marginTop: 0 }}>Reset Password</h3>
+              <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
+                Step 1: request a reset email. Step 2: paste the token and choose a new password.
+              </p>
+
+              <form className="form" onSubmit={handleForgotPasswordRequest}>
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    name="email"
+                    value={forgotPasswordForm.email}
+                    onChange={handleForgotPasswordChange}
+                    required
+                  />
+                </label>
+                <button type="submit" className="btn btn--ghost" disabled={forgotPasswordLoading}>
+                  {forgotPasswordLoading ? 'Sending...' : 'Send Reset Instructions'}
+                </button>
+              </form>
+
+              <form className="form" onSubmit={handleForgotPasswordReset} style={{ marginTop: '0.75rem' }}>
+                <label>
+                  Reset Token
+                  <input
+                    name="token"
+                    value={forgotPasswordForm.token}
+                    onChange={handleForgotPasswordChange}
+                    placeholder="Paste token from email"
+                    required
+                  />
+                </label>
+                <label>
+                  New Password
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={forgotPasswordForm.newPassword}
+                    onChange={handleForgotPasswordChange}
+                    minLength={8}
+                    required
+                  />
+                </label>
+                <button type="submit" className="btn btn--solid" disabled={forgotPasswordLoading}>
+                  {forgotPasswordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
+          ) : null}
         </div>
 
         <div>

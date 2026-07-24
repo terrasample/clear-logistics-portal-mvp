@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes, createHash } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -87,6 +87,7 @@ const purgeDemoDataOnStart = String(
 ).toLowerCase() === 'true';
 const emailProviderPreference = String(process.env.EMAIL_PROVIDER || 'resend').trim().toLowerCase();
 const emailRequestTimeoutMs = Math.max(3000, Number(process.env.EMAIL_REQUEST_TIMEOUT_MS || 12000));
+const passwordResetTokenTtlMinutes = Math.max(5, Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30));
 
 function getFrontendBaseUrl(req) {
   const configured = String(process.env.FRONTEND_URL || '').trim();
@@ -900,6 +901,54 @@ function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function hashPasswordResetToken(token) {
+  return createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function buildPasswordResetCustomerEmail({ fullName, email, resetToken, expiresAtIso, req }) {
+  const recipientName = String(fullName || 'there').trim();
+  const frontendBase = getFrontendBaseUrl(req);
+  const resetLink = `${frontendBase}/login?reset=1&email=${encodeURIComponent(email)}&token=${encodeURIComponent(resetToken)}`;
+  const expiresAt = new Date(expiresAtIso);
+  const expiresLabel = Number.isFinite(expiresAt.getTime()) ? expiresAt.toUTCString() : 'soon';
+
+  const subject = 'Reset your Clear Logistics password';
+  const text = [
+    `Hi ${recipientName},`,
+    '',
+    'We received a request to reset your Clear Logistics account password.',
+    `Reset link: ${resetLink}`,
+    `Reset token: ${resetToken}`,
+    `This token expires at: ${expiresLabel}`,
+    '',
+    'If you did not request this, you can ignore this email.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#f4f7fb;padding:20px;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde4ee;border-radius:10px;overflow:hidden;">
+        <div style="background:#0e7a5f;color:#ffffff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:20px;">Reset Your Password</h2>
+        </div>
+        <div style="padding:18px 20px;color:#1d2939;font-size:14px;line-height:1.5;">
+          <p style="margin:0 0 12px 0;">Hi ${escapeHtml(recipientName)},</p>
+          <p style="margin:0 0 12px 0;">We received a request to reset your Clear Logistics account password.</p>
+          <p style="margin:0 0 12px 0;">
+            <a href="${escapeHtml(resetLink)}" style="display:inline-block;background:#0e7a5f;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;">
+              Open Reset Form
+            </a>
+          </p>
+          <p style="margin:0 0 8px 0;"><strong>Reset token:</strong> ${escapeHtml(resetToken)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Expires:</strong> ${escapeHtml(expiresLabel)}</p>
+          <p style="margin:0;">If you did not request this, you can ignore this email.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
+
 function toMillis(value) {
   const t = Date.parse(String(value || ''));
   return Number.isFinite(t) ? t : null;
@@ -1495,7 +1544,10 @@ app.post('/api/login', async (req, res) => {
   const accountIndex = data.accounts.findIndex((a) => normalizeEmail(a?.email) === normalizedEmail);
   const account = accountIndex >= 0 ? data.accounts[accountIndex] : null;
   if (!account) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
+    return res.status(404).json({
+      error: 'No account found for this email. Create an account or reset your password.',
+      code: 'ACCOUNT_NOT_FOUND',
+    });
   }
 
   const storedHash = account.passwordHash || account.password || '';
@@ -1524,6 +1576,89 @@ app.post('/api/login', async (req, res) => {
 
   const token = createAuthToken(accountForToken);
   res.json({ user: sanitizeAccount(accountForToken), token });
+});
+
+app.post('/api/password/forgot', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!email) {
+    return res.status(400).json({ error: 'email is required.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex >= 0) {
+    const resetToken = randomBytes(24).toString('hex');
+    const expiresAtIso = new Date(Date.now() + passwordResetTokenTtlMinutes * 60 * 1000).toISOString();
+    const account = data.accounts[accountIndex];
+
+    account.passwordResetTokenHash = hashPasswordResetToken(resetToken);
+    account.passwordResetRequestedAt = new Date().toISOString();
+    account.passwordResetExpiresAt = expiresAtIso;
+
+    await writeData(data);
+
+    const resetEmail = buildPasswordResetCustomerEmail({
+      fullName: account.fullName,
+      email,
+      resetToken,
+      expiresAtIso,
+      req,
+    });
+
+    await sendEmail({
+      to: account.email,
+      subject: resetEmail.subject,
+      text: resetEmail.text,
+      html: resetEmail.html,
+      mockTag: 'password-reset',
+    });
+  }
+
+  res.json({
+    ok: true,
+    message: 'If an account exists for this email, reset instructions have been sent.',
+  });
+});
+
+app.post('/api/password/reset', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const token = String(req.body?.token || '').trim();
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!email || !token || !newPassword) {
+    return res.status(400).json({ error: 'email, token, and newPassword are required.' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'newPassword must be at least 8 characters.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex < 0) {
+    return res.status(400).json({ error: 'Invalid or expired reset token.' });
+  }
+
+  const account = data.accounts[accountIndex];
+  const expiresAtMs = Date.parse(String(account?.passwordResetExpiresAt || ''));
+  const savedTokenHash = String(account?.passwordResetTokenHash || '');
+  const providedTokenHash = hashPasswordResetToken(token);
+  const tokenExpired = !Number.isFinite(expiresAtMs) || Date.now() > expiresAtMs;
+
+  if (!savedTokenHash || tokenExpired || savedTokenHash !== providedTokenHash) {
+    return res.status(400).json({ error: 'Invalid or expired reset token.' });
+  }
+
+  account.passwordHash = await bcrypt.hash(newPassword, 10);
+  delete account.password;
+  delete account.passwordResetTokenHash;
+  delete account.passwordResetRequestedAt;
+  delete account.passwordResetExpiresAt;
+
+  await writeData(data);
+  await sendNotification('Customer Password Reset Completed', `Customer ${email} completed password reset.`);
+
+  res.json({ ok: true, message: 'Password has been reset. You can now log in.' });
 });
 
 app.get('/api/admin/overview', requireAuth, async (req, res) => {
