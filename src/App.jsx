@@ -2117,10 +2117,17 @@ function App() {
       fetchDriverRecentScans(driverAuthToken);
     }
 
-    const localFound = driverPickups.some((p) => p.shipmentId === cleanedShipmentId)
+    let knownPickups = driverPickups;
+    const pickupFromScan = scanResult.ok ? (scanResult.result?.pickup || null) : null;
+    if (pickupFromScan && !knownPickups.some((p) => p.shipmentId === pickupFromScan.shipmentId)) {
+      knownPickups = [pickupFromScan, ...knownPickups];
+      setDriverPickups(knownPickups);
+    }
+
+    const localFound = knownPickups.some((p) => p.shipmentId === cleanedShipmentId)
       || driverRoute.some((p) => p.shipmentId === cleanedShipmentId);
 
-    let refreshedPickups = driverPickups;
+    let refreshedPickups = knownPickups;
     if (!localFound && driverAuthToken) {
       refreshedPickups = await fetchDriverPickups(driverAuthToken);
     }

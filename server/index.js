@@ -2267,6 +2267,7 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
+  if (!Array.isArray(data.shipments)) data.shipments = [];
 
   const nowIso = new Date().toISOString();
   const baseEvent = {
@@ -2285,6 +2286,29 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
     await sendNotification('Scan Exception: Unknown Shipment', `Shipment ${shipmentId} scanned by ${req.user.fullName} via ${source}, but shipment was not found.`);
     return res.status(404).json({ error: 'Shipment not found.' });
   }
+
+  const shipment = data.shipments.find((s) => s.shipmentId === shipmentId);
+  const pickup = {
+    shipmentId: booking.shipmentId,
+    bookingId: booking.bookingId,
+    fullName: booking.fullName,
+    email: booking.email,
+    phone: booking.phone,
+    pickupAddress: booking.pickupAddress,
+    pickupCity: booking.pickupCity,
+    pickupZip: booking.pickupZip,
+    pickupDate: booking.pickupDate,
+    cargoType: booking.cargoType,
+    quantity: booking.quantity,
+    weight: booking.weight,
+    jamaicaRecipient: booking.jamaicaRecipient,
+    jamaicaLocation: booking.jamaicaLocation,
+    serviceLevel: booking.serviceLevel,
+    assignedDriverId: booking.assignedDriverId,
+    assignedDriverName: booking.assignedDriverName,
+    status: shipment?.status || 'Pickup Scheduled',
+    createdAt: booking.createdAt,
+  };
 
   if (booking.assignedDriverId && booking.assignedDriverId !== req.user.sub) {
     data.scanEvents.push({
@@ -2317,6 +2341,7 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
       ok: true,
       duplicate: true,
       shipmentId,
+      pickup,
       message: `Scan already recorded recently for ${shipmentId}.`,
       lastAcceptedScanAt: duplicateScanForDriver.createdAt,
     });
@@ -2347,6 +2372,7 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
   return res.status(201).json({
     ok: true,
     scanEvent,
+    pickup,
     message: `Scan recorded for ${shipmentId}.`,
   });
 });
