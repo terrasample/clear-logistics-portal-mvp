@@ -375,9 +375,19 @@ function isCartStyleUrl(url) {
   return lower.includes('/cart') || lower.includes('/gp/cart') || lower.includes('view.html?ref_=nav_cart');
 }
 
+function normalizeWebUrl(value) {
+  const input = String(value || '').trim();
+  if (!input) return '';
+  if (/^https?:\/\//i.test(input)) return input;
+  if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(input)) {
+    return `https://${input}`;
+  }
+  return input;
+}
+
 function getStoreNameFromUrl(url) {
   try {
-    const host = new URL(url).hostname.replace('www.', '');
+    const host = new URL(normalizeWebUrl(url)).hostname.replace('www.', '');
     const match = POPULAR_STORES.find((store) => host.includes(new URL(store.url).hostname.replace('www.', '')));
     if (match) return match.name;
     return host.split('.')[0];
@@ -406,7 +416,7 @@ function extractProductNameFromUrl(url) {
   };
 
   try {
-    const urlObj = new URL(url);
+    const urlObj = new URL(normalizeWebUrl(url));
     const pathname = urlObj.pathname;
     
     // Extract product name from common URL patterns
@@ -599,6 +609,16 @@ function App() {
   const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
   const [driverMode, setDriverMode] = useState('login');
+
+  useEffect(() => {
+    const lower = String(statusMessage || '').toLowerCase();
+    if (lower.includes('did not match the expected pattern') || lower.includes('expected pattern')) {
+      const friendly = 'One or more links are invalid. Use full links like https://www.amazon.com/... before continuing.';
+      if (statusMessage !== friendly) {
+        setStatusMessage(friendly);
+      }
+    }
+  }, [statusMessage]);
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
@@ -1053,7 +1073,7 @@ function App() {
   function runLinkEstimator() {
     const links = estimatorLinks
       .split('\n')
-      .map((line) => line.trim())
+      .map((line) => normalizeWebUrl(line.trim()))
       .filter(Boolean);
 
     if (!links.length) {
@@ -1089,11 +1109,11 @@ function App() {
       };
     });
 
-    const cartItems = hasValidManualSubtotal
+    const cartItems = hasCartLink && hasValidManualSubtotal
       ? [
           {
             name: `${getStoreNameFromUrl(cartLinks[0])} cart subtotal`,
-            link: cartLinks[0] || 'cart-link',
+            link: normalizeWebUrl(cartLinks[0]),
             quantity: 1,
             unitPriceUsd: Number(manualSubtotal.toFixed(2)),
             category: 'General',
