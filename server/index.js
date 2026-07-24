@@ -1559,6 +1559,37 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   });
 });
 
+app.post('/api/admin/accounts/password-reset', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const email = normalizeEmail(req.body?.email);
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: 'email and newPassword are required.' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'newPassword must be at least 8 characters.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex < 0) {
+    return res.status(404).json({ error: 'Account not found.' });
+  }
+
+  data.accounts[accountIndex].passwordHash = await bcrypt.hash(newPassword, 10);
+  delete data.accounts[accountIndex].password;
+  await writeData(data);
+
+  await sendNotification('Customer Password Reset', `Admin ${req.user.email} reset password for ${email}.`);
+
+  res.json({ ok: true, email });
+});
+
 app.post('/api/admin/rfqs/:quoteId/review', requireAuth, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required.' });
