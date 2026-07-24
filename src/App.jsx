@@ -2791,10 +2791,10 @@ function App() {
           <div className="booking-summary" style={{ marginBottom: '0.9rem', borderLeft: '4px solid var(--brand)' }}>
             <h3 style={{ marginBottom: '0.35rem' }}>Where do I ship my online order?</h3>
             <p style={{ marginBottom: '0.45rem' }}><strong>Option 1: Purchase Assistance (recommended)</strong> - Submit links below and we handle checkout for you. You do not need to enter a shipping address at the store.</p>
-            <p style={{ marginBottom: '0.45rem' }}><strong>Option 2: You buy at the store yourself</strong> - Contact us first for your exact US receiving address and your customer reference before placing your order.</p>
-            <p style={{ marginBottom: '0.45rem' }}><strong>Important:</strong> Always include your customer reference/shipment ID so your package can be matched correctly at intake.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Option 2: You buy at the store yourself</strong> - Use your assigned US receiving address and customer reference, then paste them at checkout.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Important:</strong> Always include your customer reference/shipment ID at checkout so your package is matched correctly at intake.</p>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Get US Address on WhatsApp</button>
+              <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Need help? Chat on WhatsApp</button>
               <a className="btn btn--ghost" href={`mailto:${SHOP_AND_SHIP_HELP_EMAIL}`} style={{ textDecoration: 'none' }}>Email Support</a>
             </div>
           </div>
