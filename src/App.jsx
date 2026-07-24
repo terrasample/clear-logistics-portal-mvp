@@ -998,7 +998,7 @@ function App() {
     }));
 
     setBookingStep(1);
-    setStatusMessage('Quote imported into booking. Complete pickup details to continue.');
+    setStatusMessage('');
     navigate('/book-pickup');
   }
 
@@ -1686,7 +1686,7 @@ function App() {
         emailStatus: result.emailStatus,
         summary: `${modeLabel} pricing mode.${quoted}${range}${tier}${zone}${premiumLine}${emailLine}`,
       });
-      setStatusMessage('Quote ready. Review total below and continue to booking when ready.');
+      setStatusMessage('');
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
