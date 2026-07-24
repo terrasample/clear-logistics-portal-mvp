@@ -243,6 +243,15 @@ const PRICING = [
   { lane: 'Box (Medium)', eta: '7-12 business days', from: '$45' },
   { lane: 'Pallet (Commercial)', eta: '12-18 business days', from: '$395' },
 ];
+const SHARED_SPACE_TIERS = [
+  { key: 'auto', label: 'Auto (recommended)' },
+  { key: 'mini', label: 'Mini Space (up to 1.0 cu ft)' },
+  { key: 'small', label: 'Small Space (up to 2.5 cu ft)' },
+  { key: 'medium', label: 'Medium Space (up to 5.0 cu ft)' },
+  { key: 'large', label: 'Large Space (up to 9.0 cu ft)' },
+  { key: 'half-barrel', label: 'Half Barrel Space (up to 14.0 cu ft)' },
+  { key: 'full-barrel', label: 'Full Barrel Space (up to 20.0 cu ft)' },
+];
 
 const POPULAR_STORES = [
   { name: 'Amazon', icon: 'A', logo: 'https://icons.duckduckgo.com/ip3/www.amazon.com.ico', url: 'https://www.amazon.com' },
@@ -509,6 +518,7 @@ function App() {
     cargoType: 'Box',
     serviceLevel: 'Standard',
     itemCategory: '',
+    spaceTier: 'auto',
     origin: 'Miami, FL',
     destination: 'Kingston, Jamaica',
     deliveryParish: '',
@@ -1104,6 +1114,7 @@ function App() {
         cargoType: bookingForm.cargoType,
         serviceLevel: bookingForm.serviceLevel || 'Standard',
         itemCategory: bookingForm.cargoType,
+        spaceTier: 'auto',
         origin: `${bookingForm.pickupCity || 'Miami'}, FL`,
         destination: `${bookingForm.jamaicaLocation || 'Kingston'}, Jamaica`,
         deliveryParish: bookingForm.deliveryParish || 'Kingston',
@@ -1602,7 +1613,11 @@ function App() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to submit quote request.');
-      const modeLabel = result.quote?.pricingMode === 'estimated' ? 'Estimated' : 'Weight-based';
+      const modeLabel = result.quote?.pricingMode === 'estimated'
+        ? 'Estimated'
+        : result.quote?.pricingMode === 'hybrid-space-weight'
+          ? 'Shared-space hybrid'
+          : 'Weight-based';
       const range = result.quote?.estimatedRangeUsd
         ? ` Estimated range: $${result.quote.estimatedRangeUsd.low} - $${result.quote.estimatedRangeUsd.high}.`
         : '';
@@ -1613,7 +1628,16 @@ function App() {
       if (Number(result.quote?.supplyAddonsTotalUsd || 0) > 0) premiumFlags.push(`supplies total $${Number(result.quote.supplyAddonsTotalUsd).toFixed(2)}`);
       const premiumLine = premiumFlags.length ? ` Premium options: ${premiumFlags.join(', ')}.` : '';
       const emailLine = buildQuoteEmailStatusLine(result.emailStatus);
-      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}${premiumLine}${emailLine}`);
+      const quoted = Number.isFinite(Number(result.quote?.quotedPriceUsd))
+        ? ` Quote total: $${Number(result.quote.quotedPriceUsd).toFixed(2)}.`
+        : '';
+      const tier = result.quote?.spaceTierLabel
+        ? ` Space tier: ${result.quote.spaceTierLabel}.`
+        : '';
+      const zone = result.quote?.deliveryZone?.label
+        ? ` Delivery zone: ${result.quote.deliveryZone.label}.`
+        : '';
+      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${quoted}${range}${tier}${zone}${premiumLine}${emailLine}`);
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -3203,6 +3227,14 @@ function App() {
               Item Category
               <input id="quote-itemCategory" name="itemCategory" value={quoteForm.itemCategory} onChange={handleQuoteChange} placeholder="Clothing, Electronics, Household, etc." required />
             </label>
+            <label htmlFor="quote-spaceTier">
+              Shared Space Tier
+              <select id="quote-spaceTier" name="spaceTier" value={quoteForm.spaceTier} onChange={handleQuoteChange}>
+                {SHARED_SPACE_TIERS.map((tier) => (
+                  <option key={tier.key} value={tier.key}>{tier.label}</option>
+                ))}
+              </select>
+            </label>
             <label htmlFor="quote-origin-form">
               Origin
               <input id="quote-origin-form" name="origin" value={quoteForm.origin} onChange={handleQuoteChange} required />
@@ -3299,6 +3331,9 @@ function App() {
               )}
               <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
                 This creates a premium one-stop request so your shipment and supplies are coordinated in one workflow.
+              </p>
+              <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+                Pricing uses the greater of space or weight, plus parish delivery zone and handling surcharges.
               </p>
             </div>
 
@@ -4561,6 +4596,8 @@ function App() {
                 const deliveryMeta = getQuoteDeliveryPresentation(delivery);
                 const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
                   ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
+                  : quote.pricingMode === 'hybrid-space-weight' && Number.isFinite(Number(quote.quotedPriceUsd))
+                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (hybrid${quote.spaceTierLabel ? ` • ${quote.spaceTierLabel}` : ''})`
                   : Number.isFinite(Number(quote.quotedPriceUsd))
                     ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (weight-based)`
                     : 'Pricing pending';
@@ -4581,6 +4618,11 @@ function App() {
                     <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
                       {quote.cargoType} • {pricingLabel}
                     </p>
+                    {quote.deliveryZone?.label ? (
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                        Delivery zone: {quote.deliveryZone.label}
+                      </p>
+                    ) : null}
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
                       Submitted {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}
                     </p>

@@ -442,6 +442,199 @@ function normalizeNumber(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+const SHARED_SPACE_TIERS = [
+  { key: 'mini', label: 'Mini Space', minCubicFeet: 0, maxCubicFeet: 1.0, basePriceUsd: 42 },
+  { key: 'small', label: 'Small Space', minCubicFeet: 1.0, maxCubicFeet: 2.5, basePriceUsd: 68 },
+  { key: 'medium', label: 'Medium Space', minCubicFeet: 2.5, maxCubicFeet: 5.0, basePriceUsd: 108 },
+  { key: 'large', label: 'Large Space', minCubicFeet: 5.0, maxCubicFeet: 9.0, basePriceUsd: 168 },
+  { key: 'half-barrel', label: 'Half Barrel Space', minCubicFeet: 9.0, maxCubicFeet: 14.0, basePriceUsd: 248 },
+  { key: 'full-barrel', label: 'Full Barrel Space', minCubicFeet: 14.0, maxCubicFeet: 20.0, basePriceUsd: 385 },
+];
+
+const DELIVERY_ZONE_CONFIG = {
+  metro: { key: 'metro', label: 'Metro Kingston', baseFeeUsd: 0 },
+  standard: { key: 'standard', label: 'Standard Parish Delivery', baseFeeUsd: 18 },
+  remote: { key: 'remote', label: 'Remote Parish Delivery', baseFeeUsd: 34 },
+};
+
+const DELIVERY_ZONE_BY_PARISH = {
+  kingston: 'metro',
+  standrew: 'metro',
+  stcatherine: 'metro',
+  portmore: 'metro',
+  spanishtown: 'metro',
+  clarendon: 'standard',
+  manchester: 'standard',
+  saintjames: 'standard',
+  stann: 'standard',
+  saintthomas: 'standard',
+  saintelizabeth: 'standard',
+  westmoreland: 'standard',
+  trelawny: 'remote',
+  portland: 'remote',
+  saintmary: 'remote',
+  hanover: 'remote',
+};
+
+const CARGO_RATE_PER_LB = {
+  box: 1.45,
+  barrel: 1.65,
+  pallet: 1.85,
+  commercial_freight: 2.4,
+};
+
+const ESTIMATED_DENSITY_LBS_PER_CUBIC_FOOT = {
+  box: 8.5,
+  barrel: 10.5,
+  pallet: 13.0,
+  commercial_freight: 16.0,
+};
+
+const DEFAULT_SPACE_CUBIC_FEET_BY_CARGO = {
+  box: 1.5,
+  barrel: 7.3,
+  pallet: 14.0,
+  commercial_freight: 18.0,
+};
+
+const MINIMUM_SHIPMENT_FEE_USD = 48;
+
+function normalizeCargoKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function normalizeParishKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function getServiceMultiplier(serviceLevel) {
+  return serviceLevel === 'Express'
+    ? 1.35
+    : serviceLevel === 'Priority'
+      ? 1.15
+      : 1;
+}
+
+function getDeliveryZone(deliveryParish) {
+  const normalized = normalizeParishKey(deliveryParish);
+  const zoneKey = DELIVERY_ZONE_BY_PARISH[normalized] || 'standard';
+  return DELIVERY_ZONE_CONFIG[zoneKey] || DELIVERY_ZONE_CONFIG.standard;
+}
+
+function calculateDimensionalCubicFeet(payload) {
+  const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
+  const length = Math.max(0, normalizeNumber(payload.dimensionsLength, 0));
+  const width = Math.max(0, normalizeNumber(payload.dimensionsWidth, 0));
+  const height = Math.max(0, normalizeNumber(payload.dimensionsHeight, 0));
+  if (!length || !width || !height) return 0;
+  return (length * width * height * quantity) / 1728;
+}
+
+function resolveSpaceTier(payload, billableCubicFeet) {
+  const requestedKey = String(payload?.spaceTier || '').trim().toLowerCase();
+  if (requestedKey && requestedKey !== 'auto') {
+    const requested = SHARED_SPACE_TIERS.find((tier) => tier.key === requestedKey);
+    if (requested) return requested;
+  }
+
+  const cubicFeet = Math.max(0, Number(billableCubicFeet || 0));
+  return SHARED_SPACE_TIERS.find((tier) => cubicFeet <= tier.maxCubicFeet) || SHARED_SPACE_TIERS[SHARED_SPACE_TIERS.length - 1];
+}
+
+function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
+  const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
+  const cargoKey = normalizeCargoKey(payload.cargoType);
+  const perLbRate = CARGO_RATE_PER_LB[cargoKey] || CARGO_RATE_PER_LB.box;
+  const density = ESTIMATED_DENSITY_LBS_PER_CUBIC_FOOT[cargoKey] || ESTIMATED_DENSITY_LBS_PER_CUBIC_FOOT.box;
+  const defaultCubicFeet = (DEFAULT_SPACE_CUBIC_FEET_BY_CARGO[cargoKey] || DEFAULT_SPACE_CUBIC_FEET_BY_CARGO.box) * quantity;
+  const serviceMultiplier = getServiceMultiplier(payload.serviceLevel);
+  const deliveryZone = getDeliveryZone(payload.deliveryParish);
+
+  const dimensionalCubicFeet = calculateDimensionalCubicFeet(payload);
+  const provisionalCubicFeet = dimensionalCubicFeet > 0 ? dimensionalCubicFeet : defaultCubicFeet;
+  const selectedTier = resolveSpaceTier(payload, provisionalCubicFeet);
+  const billableCubicFeet = Math.max(provisionalCubicFeet, selectedTier.minCubicFeet || 0);
+
+  const explicitWeight = Math.max(0, normalizeNumber(payload.weight, 0));
+  const computedWeight = explicitWeight > 0 ? explicitWeight * quantity : billableCubicFeet * density;
+  const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
+  const valueFeeUsd = declaredValueUsd > 0 ? declaredValueUsd * 0.02 : 0;
+
+  const weightChargeUsd = (computedWeight * perLbRate * serviceMultiplier) + valueFeeUsd;
+  const spaceChargeUsd = selectedTier.basePriceUsd * serviceMultiplier;
+  const baseChargeUsd = Math.max(weightChargeUsd, spaceChargeUsd);
+
+  const lowerCategory = String(payload.itemCategory || '').toLowerCase();
+  const fragileSurchargeUsd = /(fragile|glass|screen|electronics?)/i.test(lowerCategory) ? 12 : 0;
+  const heavySurchargeUsd = computedWeight > 250 ? Math.min(85, (computedWeight - 250) * 0.18) : 0;
+  const oversizeSurchargeUsd = billableCubicFeet > 20 ? Math.min(95, (billableCubicFeet - 20) * 7.5) : 0;
+  const customsComplexitySurchargeUsd = declaredValueUsd >= 2500 ? 45 : declaredValueUsd >= 1200 ? 22 : 0;
+  const supplyAddonsTotalUsd = Math.max(0, normalizeNumber(payload.supplyAddonsTotalUsd, 0));
+
+  const subtotalUsd = baseChargeUsd
+    + deliveryZone.baseFeeUsd
+    + fragileSurchargeUsd
+    + heavySurchargeUsd
+    + oversizeSurchargeUsd
+    + customsComplexitySurchargeUsd
+    + supplyAddonsTotalUsd;
+
+  const billableTotalUsd = Math.max(MINIMUM_SHIPMENT_FEE_USD, subtotalUsd);
+  const breakdown = {
+    strategy: 'greater-of-space-or-weight',
+    spaceTierKey: selectedTier.key,
+    spaceTierLabel: selectedTier.label,
+    billableCubicFeet: Number(billableCubicFeet.toFixed(2)),
+    weightLbs: Number(computedWeight.toFixed(2)),
+    chargesUsd: {
+      weightBased: Number(weightChargeUsd.toFixed(2)),
+      spaceBased: Number(spaceChargeUsd.toFixed(2)),
+      selectedBase: Number(baseChargeUsd.toFixed(2)),
+      deliveryZoneFee: Number(deliveryZone.baseFeeUsd.toFixed(2)),
+      fragileSurcharge: Number(fragileSurchargeUsd.toFixed(2)),
+      heavySurcharge: Number(heavySurchargeUsd.toFixed(2)),
+      oversizeSurcharge: Number(oversizeSurchargeUsd.toFixed(2)),
+      customsComplexitySurcharge: Number(customsComplexitySurchargeUsd.toFixed(2)),
+      supplyAddons: Number(supplyAddonsTotalUsd.toFixed(2)),
+      minimumShipmentFee: Number(MINIMUM_SHIPMENT_FEE_USD.toFixed(2)),
+    },
+    deliveryZone: {
+      key: deliveryZone.key,
+      label: deliveryZone.label,
+    },
+  };
+
+  if (estimateOnly) {
+    const low = Math.max(MINIMUM_SHIPMENT_FEE_USD, Math.round(billableTotalUsd * 0.9));
+    const high = Math.max(low + 5, Math.round(billableTotalUsd * 1.15));
+    return {
+      pricingMode: 'estimated',
+      estimatedRangeUsd: { low, high },
+      quotedPriceUsd: null,
+      spaceTierKey: selectedTier.key,
+      spaceTierLabel: selectedTier.label,
+      deliveryZone,
+      pricingBreakdown: {
+        ...breakdown,
+        estimatedRangeUsd: { low, high },
+      },
+    };
+  }
+
+  return {
+    pricingMode: 'hybrid-space-weight',
+    quotedPriceUsd: Math.round(billableTotalUsd),
+    estimatedRangeUsd: null,
+    spaceTierKey: selectedTier.key,
+    spaceTierLabel: selectedTier.label,
+    deliveryZone,
+    pricingBreakdown: {
+      ...breakdown,
+      finalPriceUsd: Math.round(billableTotalUsd),
+    },
+  };
+}
+
 function containsDemoMarker(value) {
   if (value == null) {
     return false;
@@ -513,64 +706,11 @@ async function purgeDemoDataIfNeeded() {
 }
 
 function estimateQuoteRange(payload) {
-  const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
-  const length = Math.max(1, normalizeNumber(payload.dimensionsLength, 1));
-  const width = Math.max(1, normalizeNumber(payload.dimensionsWidth, 1));
-  const height = Math.max(1, normalizeNumber(payload.dimensionsHeight, 1));
-  const volume = length * width * height;
-
-  const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
-  const valueFactor = Math.min(1.8, 1 + declaredValueUsd / 1000);
-
-  const serviceMultiplier = payload.serviceLevel === 'Express'
-    ? 1.35
-    : payload.serviceLevel === 'Priority'
-      ? 1.15
-      : 1;
-
-  const parishKey = String(payload.deliveryParish || '').toLowerCase();
-  const remoteParishes = ['hanover', 'portland', 'st. mary', 'st mary', 'trelawny'];
-  const parishMultiplier = remoteParishes.some((p) => parishKey.includes(p)) ? 1.08 : 1;
-
-  const cargoBase = payload.cargoType === 'Barrel'
-    ? 70
-    : payload.cargoType === 'Pallet'
-      ? 290
-      : payload.cargoType === 'Commercial Freight'
-        ? 340
-        : 40;
-
-  const dimensionalCharge = (volume / 1728) * 12; // cubic feet pricing basis
-  const base = (cargoBase + dimensionalCharge) * quantity * serviceMultiplier * parishMultiplier * valueFactor;
-
-  return {
-    low: Math.max(25, Math.round(base * 0.88)),
-    high: Math.max(30, Math.round(base * 1.18))
-  };
+  return calculateHybridQuotePricing(payload, { estimateOnly: true }).estimatedRangeUsd;
 }
 
 function calculateWeightBasedQuote(payload) {
-  const weight = Math.max(1, normalizeNumber(payload.weight, 1));
-  const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
-  const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
-
-  const serviceMultiplier = payload.serviceLevel === 'Express'
-    ? 1.35
-    : payload.serviceLevel === 'Priority'
-      ? 1.15
-      : 1;
-
-  const cargoPerLb = payload.cargoType === 'Commercial Freight'
-    ? 2.4
-    : payload.cargoType === 'Pallet'
-      ? 1.85
-      : payload.cargoType === 'Barrel'
-        ? 1.65
-        : 1.45;
-
-  const valueFee = declaredValueUsd > 0 ? declaredValueUsd * 0.025 : 0;
-  const total = ((weight * cargoPerLb * quantity) + valueFee) * serviceMultiplier;
-  return Math.max(35, Math.round(total));
+  return calculateHybridQuotePricing(payload, { estimateOnly: false }).quotedPriceUsd;
 }
 
 async function sendNotification(subject, body) {
@@ -1077,6 +1217,11 @@ function buildQuotePricingLabel(quote) {
       return `Estimated ${formatUsd(low)} - ${formatUsd(high)}`;
     }
     return 'Estimated pricing (pending warehouse verification)';
+  }
+  if (quote?.pricingMode === 'hybrid-space-weight') {
+    const tierLabel = quote?.spaceTierLabel || quote?.pricingBreakdown?.spaceTierLabel;
+    const tierSuffix = tierLabel ? ` (${tierLabel})` : '';
+    return `Shared-space hybrid ${formatUsd(quote?.quotedPriceUsd)}${tierSuffix}`;
   }
   return `Weight-based ${formatUsd(quote?.quotedPriceUsd)}`;
 }
@@ -2211,17 +2356,20 @@ app.post('/api/quotes', async (req, res) => {
   }
 
   const data = await readData();
-  const estimatedRangeUsd = weightUnknown ? estimateQuoteRange(payload) : null;
-  const quotedPriceUsd = weightUnknown ? null : calculateWeightBasedQuote(payload);
+  const pricing = calculateHybridQuotePricing(payload, { estimateOnly: weightUnknown });
 
   const quote = {
     quoteId: `Q-${Date.now()}`,
     ...payload,
     userId: authUser?.sub || null,
     accountEmail: normalizeEmail(authUser?.email || ''),
-    pricingMode: weightUnknown ? 'estimated' : 'weight-based',
-    estimatedRangeUsd,
-    quotedPriceUsd,
+    pricingMode: pricing.pricingMode,
+    estimatedRangeUsd: pricing.estimatedRangeUsd,
+    quotedPriceUsd: pricing.quotedPriceUsd,
+    spaceTierKey: pricing.spaceTierKey,
+    spaceTierLabel: pricing.spaceTierLabel,
+    deliveryZone: pricing.deliveryZone,
+    pricingBreakdown: pricing.pricingBreakdown,
     nudgesSent: [],
     nudgesOptOutAt: null,
     createdAt: new Date().toISOString()
@@ -2616,6 +2764,10 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
       pricingMode: String(quote.pricingMode || ''),
       quotedPriceUsd: Number.isFinite(Number(quote.quotedPriceUsd)) ? Number(quote.quotedPriceUsd) : null,
       estimatedRangeUsd: quote.estimatedRangeUsd || null,
+      spaceTierKey: String(quote.spaceTierKey || ''),
+      spaceTierLabel: String(quote.spaceTierLabel || ''),
+      deliveryZone: quote.deliveryZone || null,
+      pricingBreakdown: quote.pricingBreakdown || null,
       createdAt: quote.createdAt || new Date().toISOString(),
       status: String(quote.status || 'Submitted'),
       emailStatus: quote?.emailStatus?.customer ? normalizeDeliveryStatus(quote.emailStatus.customer) : null,
