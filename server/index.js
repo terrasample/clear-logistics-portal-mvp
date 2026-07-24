@@ -2311,6 +2311,17 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
     return eventMs !== null && nowMs - eventMs <= scanRepeatWindowMs;
   });
 
+  const duplicateScanForDriver = recentSameShipmentScans.find((event) => event?.driverId === req.user.sub);
+  if (duplicateScanForDriver) {
+    return res.status(200).json({
+      ok: true,
+      duplicate: true,
+      shipmentId,
+      message: `Scan already recorded recently for ${shipmentId}.`,
+      lastAcceptedScanAt: duplicateScanForDriver.createdAt,
+    });
+  }
+
   const scanEvent = {
     ...baseEvent,
     bookingId: booking.bookingId,

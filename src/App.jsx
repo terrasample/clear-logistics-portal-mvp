@@ -631,6 +631,7 @@ function App() {
   const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
   const [pickupPhotoUploadState, setPickupPhotoUploadState] = useState({ uploading: false, fileName: '', error: '' });
+  const [pickupConfirmLoading, setPickupConfirmLoading] = useState(false);
 
   function clearCustomerSessionState() {
     setIsAuthenticated(false);
@@ -664,6 +665,7 @@ function App() {
     setScanInput('');
     setPickupConfirmation({ notes: '', photoUrl: '' });
     setPickupPhotoUploadState({ uploading: false, fileName: '', error: '' });
+    setPickupConfirmLoading(false);
     setDriverMode('login');
   }
 
@@ -2135,6 +2137,11 @@ function App() {
 
     setScannedShipmentId(cleanedShipmentId);
     setScanInput(cleanedShipmentId);
+    if (scanResult.ok && scanResult.result?.duplicate) {
+      setStatusMessage(`Scan already recorded recently for ${cleanedShipmentId}. Pickup opened.`);
+      return;
+    }
+
     setStatusMessage(scanResult.ok
       ? `Scan logged and pickup opened for ${cleanedShipmentId}.`
       : `Pickup opened for ${cleanedShipmentId}. Note: scan log failed (${scanResult.error}).`);
@@ -2295,7 +2302,7 @@ function App() {
       return;
     }
 
-    setIsLoading(true);
+    setPickupConfirmLoading(true);
     setStatusMessage('');
     try {
       const response = await fetch(`${API_BASE}/drivers/pickups/${shipmentId}/confirm`, {
@@ -2325,7 +2332,7 @@ function App() {
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
-      setIsLoading(false);
+      setPickupConfirmLoading(false);
     }
   }
 
@@ -4899,9 +4906,9 @@ function App() {
                   type="button"
                   className="btn btn--solid"
                   onClick={() => handlePickupConfirm(scannedPickup.shipmentId)}
-                  disabled={isLoading || pickupPhotoUploadState.uploading || !String(pickupConfirmation.photoUrl || '').trim()}
+                  disabled={pickupConfirmLoading || pickupPhotoUploadState.uploading || !String(pickupConfirmation.photoUrl || '').trim()}
                 >
-                  Confirm Pickup
+                  {pickupConfirmLoading ? 'Confirming pickup...' : 'Confirm Pickup'}
                 </button>
               </div>
             </>
