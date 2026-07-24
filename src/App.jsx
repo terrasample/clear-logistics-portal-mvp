@@ -610,6 +610,7 @@ function App() {
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
   const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driverUser') || 'null'));
   const [driverPickups, setDriverPickups] = useState([]);
+  const [driverRecentScans, setDriverRecentScans] = useState([]);
   const [driverRoute, setDriverRoute] = useState([]);
   const [activeDriverRoute, setActiveDriverRoute] = useState(null);
   const [driverRouteMeta, setDriverRouteMeta] = useState({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
@@ -629,6 +630,7 @@ function App() {
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
+  const [pickupPhotoUploadState, setPickupPhotoUploadState] = useState({ uploading: false, fileName: '', error: '' });
 
   function clearCustomerSessionState() {
     setIsAuthenticated(false);
@@ -654,9 +656,14 @@ function App() {
     setDriverAuthToken(null);
     setDriverUser(null);
     setDriverPickups([]);
+    setDriverRecentScans([]);
     setDriverRoute([]);
     setActiveDriverRoute(null);
     setDriverRouteMeta({ totalStops: 0, estimatedTime: '', totalDistanceKm: 0 });
+    setScannedShipmentId('');
+    setScanInput('');
+    setPickupConfirmation({ notes: '', photoUrl: '' });
+    setPickupPhotoUploadState({ uploading: false, fileName: '', error: '' });
     setDriverMode('login');
   }
 
@@ -728,11 +735,13 @@ function App() {
   useEffect(() => {
     if (!driverAuthToken) {
       setDriverPickups([]);
+      setDriverRecentScans([]);
       setActiveDriverRoute(null);
       return;
     }
 
     fetchDriverPickups(driverAuthToken);
+    fetchDriverRecentScans(driverAuthToken);
     fetchDriverActiveRoute(driverAuthToken);
   }, [driverAuthToken]);
 
@@ -1938,6 +1947,7 @@ function App() {
       setDriverMode('dashboard');
       setStatusMessage(`Welcome back, ${result.user.fullName}!`);
       fetchDriverPickups(result.token);
+      fetchDriverRecentScans(result.token);
       fetchDriverActiveRoute(result.token);
       navigate('/driver/dashboard');
     } catch (error) {
@@ -2002,6 +2012,71 @@ function App() {
     }
   }
 
+  async function fetchDriverRecentScans(token) {
+    try {
+      const response = await fetch(`${API_BASE}/drivers/scans/recent?limit=20`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setDriverRecentScans(result.scans || []);
+        return result.scans || [];
+      }
+      setDriverRecentScans([]);
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch recent scans:', error);
+      setDriverRecentScans([]);
+      return [];
+    }
+  }
+
+  async function uploadDriverPickupPhoto(file) {
+    if (!file) {
+      return;
+    }
+
+    if (!String(file.type || '').startsWith('image/')) {
+      setPickupPhotoUploadState({ uploading: false, fileName: '', error: 'Please upload an image file.' });
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setPickupPhotoUploadState({ uploading: false, fileName: file.name, error: 'Photo exceeds 8MB limit. Upload a smaller image.' });
+      return;
+    }
+
+    setPickupPhotoUploadState({ uploading: true, fileName: file.name, error: '' });
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const response = await fetch(`${API_BASE}/uploads/document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type,
+          dataBase64,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to upload pickup photo.');
+
+      setPickupConfirmation((prev) => ({ ...prev, photoUrl: result.url }));
+      setPickupPhotoUploadState({ uploading: false, fileName: file.name, error: '' });
+      setStatusMessage('Pickup photo uploaded. You can now confirm pickup.');
+    } catch (error) {
+      setPickupPhotoUploadState({ uploading: false, fileName: file.name, error: error.message });
+      setStatusMessage(error.message);
+    }
+  }
+
+  function handleDriverPickupPhotoFileChange(event) {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadDriverPickupPhoto(file);
+    }
+  }
+
   async function logDriverScan(shipmentId, source = 'manual-input') {
     const cleanedShipmentId = String(shipmentId || '').trim();
     if (!driverAuthToken || !cleanedShipmentId) {
@@ -2036,6 +2111,9 @@ function App() {
     }
 
     const scanResult = await logDriverScan(cleanedShipmentId, source);
+    if (driverAuthToken) {
+      fetchDriverRecentScans(driverAuthToken);
+    }
 
     const localFound = driverPickups.some((p) => p.shipmentId === cleanedShipmentId)
       || driverRoute.some((p) => p.shipmentId === cleanedShipmentId);
@@ -2207,6 +2285,16 @@ function App() {
   }
 
   async function handlePickupConfirm(shipmentId) {
+    if (pickupPhotoUploadState.uploading) {
+      setStatusMessage('Photo upload is still in progress. Please wait before confirming pickup.');
+      return;
+    }
+
+    if (!String(pickupConfirmation.photoUrl || '').trim()) {
+      setStatusMessage('Pickup photo is required before confirmation. Upload a photo first.');
+      return;
+    }
+
     setIsLoading(true);
     setStatusMessage('');
     try {
@@ -2224,7 +2312,9 @@ function App() {
       setStatusMessage(`Pickup confirmed for ${shipmentId}. Next step: transport to Miami warehouse for intake scanning.`);
       setScannedShipmentId('');
       setPickupConfirmation({ notes: '', photoUrl: '' });
+      setPickupPhotoUploadState({ uploading: false, fileName: '', error: '' });
       fetchDriverPickups(driverAuthToken);
+      fetchDriverRecentScans(driverAuthToken);
       if (result.activeRoute) {
         setActiveDriverRoute(result.activeRoute);
       } else {
@@ -4773,6 +4863,26 @@ function App() {
                   placeholder="E.g. Heavy items, fragile items, special instructions..."
                 />
               </label>
+              <label style={{ marginTop: '0.75rem' }}>
+                Pickup Photo (required)
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleDriverPickupPhotoFileChange}
+                />
+              </label>
+              {pickupPhotoUploadState.uploading && (
+                <p className="section-intro" style={{ marginTop: '0.45rem' }}>Uploading photo...</p>
+              )}
+              {pickupPhotoUploadState.fileName && !pickupPhotoUploadState.uploading && !pickupPhotoUploadState.error && (
+                <p className="section-intro" style={{ marginTop: '0.45rem' }}>Uploaded: {pickupPhotoUploadState.fileName}</p>
+              )}
+              {pickupPhotoUploadState.error && (
+                <p className="section-intro" style={{ marginTop: '0.45rem', color: '#b42318' }}>{pickupPhotoUploadState.error}</p>
+              )}
+              {pickupConfirmation.photoUrl && (
+                <p className="section-intro" style={{ marginTop: '0.25rem' }}>Proof URL ready for confirmation.</p>
+              )}
               <button
                 type="button"
                 className="btn btn--ghost"
@@ -4785,7 +4895,12 @@ function App() {
                 <button type="button" className="btn btn--ghost" onClick={() => setScannedShipmentId('')}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn--solid" onClick={() => handlePickupConfirm(scannedPickup.shipmentId)} disabled={isLoading}>
+                <button
+                  type="button"
+                  className="btn btn--solid"
+                  onClick={() => handlePickupConfirm(scannedPickup.shipmentId)}
+                  disabled={isLoading || pickupPhotoUploadState.uploading || !String(pickupConfirmation.photoUrl || '').trim()}
+                >
                   Confirm Pickup
                 </button>
               </div>
@@ -4819,6 +4934,23 @@ function App() {
               Start Route Tracking
             </button>
           )}
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <h3>Recent Scan Activity</h3>
+            {driverRecentScans.length > 0 ? (
+              <ul className="status-list">
+                {driverRecentScans.slice(0, 8).map((scan) => (
+                  <li key={scan.scanId}>
+                    <strong>{scan.shipmentId}</strong>
+                    {' '}• {scan.status === 'accepted' ? 'Accepted' : 'Rejected'}
+                    {' '}• {new Date(scan.createdAt).toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="section-intro">No scan events yet for this driver session.</p>
+            )}
+          </div>
 
           {activeDriverRoute && (
             <div className="booking-summary" style={{ marginTop: '0.9rem' }}>

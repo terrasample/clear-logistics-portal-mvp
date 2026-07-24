@@ -27,6 +27,7 @@ const DRIVER_DEMO_PASSWORD = String(process.env.DRIVER_DEMO_PASSWORD || 'Driver1
 const DRIVER_DEMO_LEGACY_PASSWORD = String(process.env.DRIVER_DEMO_LEGACY_PASSWORD || 'Driver123!');
 const DRIVER_DEMO_TOTAL_PICKUPS = 14;
 const driverDemoAccountEnabled = String(process.env.DRIVER_DEMO_ACCOUNT_ENABLED || 'true').toLowerCase() === 'true';
+const driverDemoPickupsEnabled = String(process.env.DRIVER_DEMO_PICKUPS_ENABLED || 'true').toLowerCase() === 'true';
 const DEFAULT_US_RECEIVING_ADDRESS = String(
   process.env.US_RECEIVING_ADDRESS || 'Clear Logistics Freight Receiving, 7801 NW 37th St, Doral, FL 33166, USA'
 ).trim();
@@ -75,6 +76,7 @@ const scanAlertsEnabled = String(process.env.SCAN_ALERTS_ENABLED || 'true').toLo
 const scanAlertIntervalMs = Math.max(60 * 1000, Number(process.env.SCAN_ALERT_INTERVAL_MS || 5 * 60 * 1000));
 const scanRepeatWindowMs = Math.max(60 * 1000, Number(process.env.SCAN_REPEAT_WINDOW_MINUTES || 10) * 60 * 1000);
 const scanRepeatThreshold = Math.max(2, Number(process.env.SCAN_REPEAT_THRESHOLD || 3));
+const pickupConfirmScanWindowMs = Math.max(5 * 60 * 1000, Number(process.env.PICKUP_CONFIRM_SCAN_WINDOW_MINUTES || 30) * 60 * 1000);
 const scanNoScanCutoffHour = Math.min(23, Math.max(0, Number(process.env.SCAN_NO_SCAN_CUTOFF_HOUR || 14)));
 const purgeDemoDataOnStart = String(
   process.env.PURGE_DEMO_DATA_ON_START || (process.env.NODE_ENV === 'production' ? 'true' : 'false')
@@ -1101,11 +1103,15 @@ async function seedDriverDemoData() {
     }
   }
 
-  if (allowDemoSeed) {
+  if (allowDemoSeed || driverDemoPickupsEnabled) {
     for (let i = 0; i < DRIVER_DEMO_TOTAL_PICKUPS; i += 1) {
       const demo = buildDemoPickup(i);
       const bookingExists = data.bookings.some((b) => b.shipmentId === demo.booking.shipmentId);
       if (!bookingExists) {
+        demo.booking.assignedDriverId = 'driver-demo-001';
+        demo.booking.assignedDriverName = 'Demo Driver';
+        demo.booking.assignedAt = new Date().toISOString();
+        demo.booking.assignmentMode = 'demo-seed';
         data.bookings.push(demo.booking);
         hasChanges = true;
       }
@@ -2334,6 +2340,27 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
   });
 });
 
+app.get('/api/drivers/scans/recent', requireAuth, async (req, res) => {
+  if (req.user.role !== 'driver') {
+    return res.status(403).json({ error: 'Driver access required.' });
+  }
+
+  const limit = Math.min(100, Math.max(1, Number(req.query?.limit || 20)));
+  const data = await readData();
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
+
+  const scans = data.scanEvents
+    .filter((event) => event?.driverId === req.user.sub)
+    .sort((a, b) => {
+      const aMs = toMillis(a?.createdAt) || 0;
+      const bMs = toMillis(b?.createdAt) || 0;
+      return bMs - aMs;
+    })
+    .slice(0, limit);
+
+  return res.json({ scans, count: scans.length });
+});
+
 app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res) => {
   if (req.user.role !== 'driver') {
     return res.status(403).json({ error: 'Driver access required.' });
@@ -2341,10 +2368,16 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
 
   const { notes, photoUrl } = req.body || {};
   const shipmentId = req.params.shipmentId;
+  const normalizedPhotoUrl = String(photoUrl || '').trim();
+
+  if (!normalizedPhotoUrl) {
+    return res.status(400).json({ error: 'Pickup photo is required before confirmation.' });
+  }
 
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
 
   const booking = data.bookings.find((b) => b.shipmentId === shipmentId);
   if (!booking) {
@@ -2353,6 +2386,28 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
 
   if (booking.assignedDriverId && booking.assignedDriverId !== req.user.sub) {
     return res.status(403).json({ error: 'This pickup is assigned to a different driver.' });
+  }
+
+  const nowMs = Date.now();
+  const recentAcceptedScan = data.scanEvents
+    .filter((event) => (
+      String(event?.shipmentId || '').trim() === shipmentId
+      && event?.driverId === req.user.sub
+      && event?.status === 'accepted'
+    ))
+    .sort((a, b) => (toMillis(b?.createdAt) || 0) - (toMillis(a?.createdAt) || 0))[0];
+
+  if (!recentAcceptedScan) {
+    return res.status(409).json({
+      error: 'Scan required before pickup confirmation. Please scan this shipment first.',
+    });
+  }
+
+  const recentScanMs = toMillis(recentAcceptedScan.createdAt);
+  if (recentScanMs === null || (nowMs - recentScanMs) > pickupConfirmScanWindowMs) {
+    return res.status(409).json({
+      error: `Latest scan is too old. Please re-scan within ${Math.round(pickupConfirmScanWindowMs / 60000)} minutes before confirming pickup.`,
+    });
   }
 
   const shipment = data.shipments.find((s) => s.shipmentId === shipmentId);
@@ -2369,7 +2424,7 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
   booking.pickedUpAt = new Date().toISOString();
   booking.pickedUpBy = req.user.fullName;
   booking.pickupNotes = notes;
-  booking.pickupPhotoUrl = photoUrl;
+  booking.pickupPhotoUrl = normalizedPhotoUrl;
 
   const activeRoute = findActiveRouteForDriver(data, req.user.sub);
   if (activeRoute && Array.isArray(activeRoute.stops)) {
