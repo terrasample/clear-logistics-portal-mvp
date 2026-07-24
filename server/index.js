@@ -2366,10 +2366,24 @@ app.get('/api/drivers/scans/recent', requireAuth, async (req, res) => {
       const aMs = toMillis(a?.createdAt) || 0;
       const bMs = toMillis(b?.createdAt) || 0;
       return bMs - aMs;
-    })
-    .slice(0, limit);
+    });
 
-  return res.json({ scans, count: scans.length });
+  // Keep only the latest scan per shipment in the driver activity feed.
+  const uniqueByShipment = [];
+  const seenShipments = new Set();
+  for (const scan of scans) {
+    const shipmentKey = String(scan?.shipmentId || '').trim();
+    if (!shipmentKey || seenShipments.has(shipmentKey)) {
+      continue;
+    }
+    seenShipments.add(shipmentKey);
+    uniqueByShipment.push(scan);
+    if (uniqueByShipment.length >= limit) {
+      break;
+    }
+  }
+
+  return res.json({ scans: uniqueByShipment, count: uniqueByShipment.length });
 });
 
 app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res) => {
