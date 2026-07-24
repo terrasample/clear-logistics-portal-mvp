@@ -2408,34 +2408,57 @@ function App() {
     const paidShipmentId = params.get('shipmentId');
     const referenceType = params.get('referenceType');
     const referenceId = params.get('referenceId');
+    const sessionId = params.get('session_id') || '';
     const effectiveShipmentId = paidShipmentId || (referenceType === 'shipment' ? referenceId : '');
 
     if (!payment) {
       return;
     }
 
-    if (payment === 'success' || payment === 'mock-success') {
-      if (referenceType === 'purchase_request' && referenceId) {
-        fetch(`${API_BASE}/payments/confirm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ referenceType, referenceId, providerStatus: payment }),
-        }).catch(() => undefined);
-        setStatusMessage(`Shop & Ship payment successful for ${referenceId}. We will confirm your purchase and shipping timeline.`);
-        navigate('/shop', { replace: true });
-        return;
-      }
+    let cancelled = false;
 
-      if (effectiveShipmentId) {
-        setTrackingId(effectiveShipmentId);
-        fetch(`${API_BASE}/payments/confirm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shipmentId: effectiveShipmentId, providerStatus: payment }),
-        }).catch(() => undefined);
+    async function confirmPayment(payload) {
+      const response = await fetch(`${API_BASE}/payments/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Payment confirmation failed. Please contact support.');
       }
-      setStatusMessage(`Payment successful for ${effectiveShipmentId || 'shipment'}. You can now track your cargo.`);
-      navigate('/tracking', { replace: true });
+    }
+
+    if (payment === 'success' || payment === 'mock-success') {
+      (async () => {
+        try {
+          if (referenceType === 'purchase_request' && referenceId) {
+            await confirmPayment({ referenceType, referenceId, providerStatus: payment, sessionId });
+            if (cancelled) return;
+            setStatusMessage(`Shop & Ship payment successful for ${referenceId}. We will confirm your purchase and shipping timeline.`);
+            navigate('/shop', { replace: true });
+            return;
+          }
+
+          if (effectiveShipmentId) {
+            await confirmPayment({ shipmentId: effectiveShipmentId, providerStatus: payment, sessionId });
+            if (cancelled) return;
+            setTrackingId(effectiveShipmentId);
+          }
+
+          if (cancelled) return;
+          setStatusMessage(`Payment successful for ${effectiveShipmentId || 'shipment'}. You can now track your cargo.`);
+          navigate('/tracking', { replace: true });
+        } catch (error) {
+          if (cancelled) return;
+          setStatusMessage(error.message || 'Payment confirmation failed.');
+          if (referenceType === 'purchase_request') {
+            navigate('/shop', { replace: true });
+            return;
+          }
+          navigate('/book-pickup', { replace: true });
+        }
+      })();
       return;
     }
 
@@ -2448,6 +2471,10 @@ function App() {
       setStatusMessage('Payment was cancelled. Your shipment is saved; you can resume payment anytime.');
       navigate('/book-pickup', { replace: true });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [location.search, navigate]);
 
   function HomePage() {

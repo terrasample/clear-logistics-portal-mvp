@@ -65,6 +65,10 @@ app.use(express.json({ limit: '15mb' }));
 app.use('/uploads', express.static(uploadDir));
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripePaymentMethodTypes = String(process.env.STRIPE_PAYMENT_METHOD_TYPES || 'card,link,cashapp')
+  .split(',')
+  .map((method) => method.trim().toLowerCase())
+  .filter(Boolean);
 const nudgeEmailsEnabled = String(process.env.NUDGE_EMAILS_ENABLED || 'true').toLowerCase() === 'true';
 const quoteNudgeIntervalMs = Math.max(15 * 1000, Number(process.env.NUDGE_INTERVAL_MS || 5 * 60 * 1000));
 const quoteNudgeStepsMs = [
@@ -1213,7 +1217,12 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, stripe: Boolean(stripe), timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    stripe: Boolean(stripe),
+    stripePaymentMethodTypes,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.post('/api/accounts', async (req, res) => {
@@ -1907,7 +1916,9 @@ app.post('/api/payments/checkout', async (req, res) => {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const successUrl = `${frontendBaseUrl}/?payment=success&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${frontendBaseUrl}/?payment=cancelled&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`;
+    const sessionPayload = {
       mode: 'payment',
       line_items: [
         {
@@ -1921,9 +1932,35 @@ app.post('/api/payments/checkout', async (req, res) => {
           quantity: 1
         }
       ],
-      success_url: `${frontendBaseUrl}/?payment=success&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`,
-      cancel_url: `${frontendBaseUrl}/?payment=cancelled&referenceType=${encodeURIComponent(referenceType)}&referenceId=${encodeURIComponent(referenceId)}`
-    });
+      billing_address_collection: 'required',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: referenceId,
+      metadata: {
+        referenceType,
+        referenceId,
+      },
+    };
+
+    if (stripePaymentMethodTypes.length) {
+      sessionPayload.payment_method_types = stripePaymentMethodTypes;
+    }
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionPayload);
+    } catch (error) {
+      const paymentMethodError =
+        error?.type === 'StripeInvalidRequestError' &&
+        /payment_method_types|cashapp|apple|link/i.test(String(error.message || ''));
+      if (!paymentMethodError) {
+        throw error;
+      }
+
+      const fallbackPayload = { ...sessionPayload };
+      delete fallbackPayload.payment_method_types;
+      session = await stripe.checkout.sessions.create(fallbackPayload);
+    }
 
     res.json({ mode: 'stripe', url: session.url });
   } catch (error) {
@@ -1936,6 +1973,18 @@ app.post('/api/payments/confirm', async (req, res) => {
   const referenceType = String(req.body?.referenceType || '').trim();
   const referenceId = String(req.body?.referenceId || '').trim();
   const providerStatus = String(req.body?.providerStatus || '').trim();
+  const sessionId = String(req.body?.sessionId || '').trim();
+
+  if (providerStatus === 'success' && stripe && sessionId) {
+    try {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+      if (checkoutSession.payment_status !== 'paid') {
+        return res.status(402).json({ error: 'Stripe session is not paid yet.' });
+      }
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Unable to verify Stripe checkout session.' });
+    }
+  }
 
   if (referenceType === 'purchase_request') {
     if (!referenceId) {
