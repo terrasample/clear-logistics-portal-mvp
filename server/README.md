@@ -5,6 +5,14 @@ Quick start:
 2) Run: npm install
 3) Start API: npm run dev:backend
 
+Preventing account data loss in production (required):
+1) Add a persistent disk to the API service in Render.
+2) Mount the disk to /var/data.
+3) Set DATA_FILE_PATH=/var/data/data.json.
+4) Set UPLOAD_DIR=/var/data/uploads if uploaded files must survive deploys.
+5) Keep REQUIRE_PERSISTENT_DATA_PATH=true so the API refuses to boot on ephemeral storage.
+6) Verify with GET /api/health and confirm dataStorage.likelyEphemeral=false.
+
 Endpoints:
 - GET /api/health
 - POST /api/accounts

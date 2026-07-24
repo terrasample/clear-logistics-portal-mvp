@@ -45,14 +45,18 @@ const publicApiBase = process.env.PUBLIC_API_BASE || `http://localhost:${port}`;
 const allowDemoSeed = String(
   process.env.ALLOW_DEMO_SEED || (process.env.NODE_ENV === 'production' ? 'false' : 'true')
 ).toLowerCase() === 'true';
-const dataFile = path.resolve(process.cwd(), 'server', 'data.json');
-const uploadDir = path.resolve(process.cwd(), 'server', 'uploads');
+const defaultDataFile = path.resolve(process.cwd(), 'server', 'data.json');
+const dataFile = path.resolve(String(process.env.DATA_FILE_PATH || defaultDataFile));
+const uploadDir = path.resolve(String(process.env.UPLOAD_DIR || path.resolve(process.cwd(), 'server', 'uploads')));
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
 let dataWriteQueue = Promise.resolve();
 let quoteNudgeWorkerTimer = null;
 let quoteNudgeTickInProgress = false;
 let scanAlertWorkerTimer = null;
 let scanAlertTickInProgress = false;
+const requirePersistentDataPath = String(
+  process.env.REQUIRE_PERSISTENT_DATA_PATH || 'false'
+).toLowerCase() === 'true';
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || 'business@example.com')
     .split(',')
@@ -89,6 +93,82 @@ const emailProviderPreference = String(process.env.EMAIL_PROVIDER || 'resend').t
 const emailRequestTimeoutMs = Math.max(3000, Number(process.env.EMAIL_REQUEST_TIMEOUT_MS || 12000));
 const passwordResetTokenTtlMinutes = Math.max(5, Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30));
 
+function isLikelyEphemeralDataPath(targetPath) {
+  const normalized = path.resolve(targetPath);
+  const cwdPath = path.resolve(process.cwd());
+
+  if (normalized.startsWith(cwdPath)) {
+    return true;
+  }
+
+  // Render source directory is recreated on each deploy/restart unless a disk mount is used.
+  return normalized.includes(`${path.sep}opt${path.sep}render${path.sep}project${path.sep}src${path.sep}`);
+}
+
+function validateDataPathConfiguration() {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
+
+  if (!isLikelyEphemeralDataPath(dataFile)) {
+    return;
+  }
+
+  const message =
+    `DATA_FILE_PATH is using an ephemeral path (${dataFile}). ` +
+    'Set DATA_FILE_PATH to a persistent disk mount (for example, /var/data/data.json on Render) to avoid account data loss.';
+
+  if (requirePersistentDataPath) {
+    throw new Error(message);
+  }
+
+  console.warn(`[startup-warning] ${message}`);
+}
+
+function createInitialDataPayload() {
+  const demoAccounts = allowDemoSeed
+    ? [
+        {
+          id: 'test-user-001',
+          fullName: 'Test Customer',
+          email: 'test@example.com',
+          passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
+          phone: '+1-555-0100',
+          address: '123 Test Street, New York, NY 10001',
+          customerReference: 'CLF-TEST001',
+          usReceivingAddress: DEFAULT_US_RECEIVING_ADDRESS,
+          createdAt: new Date().toISOString()
+        }
+      ]
+    : [];
+
+  const demoShipments = allowDemoSeed
+    ? [
+        {
+          shipmentId: 'CLF-10025',
+          fullName: 'John',
+          status: 'At Miami Warehouse',
+          cargoType: 'Box',
+          quantity: '3',
+          unitType: 'Box',
+          milestones: DEFAULT_MILESTONES
+        }
+      ]
+    : [];
+
+  return {
+    accounts: demoAccounts,
+    drivers: [],
+    quotes: [],
+    bookings: [],
+    purchaseRequests: [],
+    supportTickets: [],
+    scanEvents: [],
+    routes: [],
+    shipments: demoShipments
+  };
+}
+
 function getFrontendBaseUrl(req) {
   const configured = String(process.env.FRONTEND_URL || '').trim();
   if (configured) {
@@ -104,51 +184,13 @@ function getFrontendBaseUrl(req) {
 }
 
 async function ensureDataFile() {
+  validateDataPathConfiguration();
   await fs.mkdir(uploadDir, { recursive: true });
+  await fs.mkdir(path.dirname(dataFile), { recursive: true });
   try {
     await fs.access(dataFile);
   } catch {
-    const demoAccounts = allowDemoSeed
-      ? [
-          {
-            id: 'test-user-001',
-            fullName: 'Test Customer',
-            email: 'test@example.com',
-            passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
-            phone: '+1-555-0100',
-            address: '123 Test Street, New York, NY 10001',
-            customerReference: 'CLF-TEST001',
-            usReceivingAddress: DEFAULT_US_RECEIVING_ADDRESS,
-            createdAt: new Date().toISOString()
-          }
-        ]
-      : [];
-
-    const demoShipments = allowDemoSeed
-      ? [
-          {
-            shipmentId: 'CLF-10025',
-            fullName: 'John',
-            status: 'At Miami Warehouse',
-            cargoType: 'Box',
-            quantity: '3',
-            unitType: 'Box',
-            milestones: DEFAULT_MILESTONES
-          }
-        ]
-      : [];
-
-    const initial = {
-      accounts: demoAccounts,
-      drivers: [],
-      quotes: [],
-      bookings: [],
-      purchaseRequests: [],
-      supportTickets: [],
-      scanEvents: [],
-      routes: [],
-      shipments: demoShipments
-    };
+    const initial = createInitialDataPayload();
     await fs.writeFile(dataFile, JSON.stringify(initial, null, 2), 'utf-8');
   }
 }
@@ -1492,6 +1534,11 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     stripe: Boolean(stripe),
     stripePaymentMethodTypes,
+    dataStorage: {
+      fileConfigured: Boolean(dataFile),
+      likelyEphemeral: isLikelyEphemeralDataPath(dataFile),
+      requirePersistentDataPath,
+    },
     timestamp: new Date().toISOString(),
   });
 });
