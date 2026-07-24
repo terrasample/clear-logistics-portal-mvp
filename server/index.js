@@ -1725,6 +1725,36 @@ app.post('/api/admin/accounts/password-reset', requireAuth, async (req, res) => 
   res.json({ ok: true, email });
 });
 
+app.post('/api/admin/accounts/update-name', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const email = normalizeEmail(req.body?.email);
+  const fullName = String(req.body?.fullName || '').trim();
+
+  if (!email || !fullName) {
+    return res.status(400).json({ error: 'email and fullName are required.' });
+  }
+
+  if (fullName.length < 2) {
+    return res.status(400).json({ error: 'fullName must be at least 2 characters.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex < 0) {
+    return res.status(404).json({ error: 'Account not found.' });
+  }
+
+  data.accounts[accountIndex].fullName = fullName;
+  await writeData(data);
+
+  await sendNotification('Customer Name Updated', `Admin ${req.user.email} updated account name for ${email} to ${fullName}.`);
+
+  res.json({ ok: true, email, fullName });
+});
+
 app.post('/api/admin/rfqs/:quoteId/review', requireAuth, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required.' });
