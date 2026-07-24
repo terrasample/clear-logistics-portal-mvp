@@ -106,6 +106,8 @@ async function ensureDataFile() {
             passwordHash: '$2b$10$.d83MyDSI9A2.qdDznEuduq3BbKpOIDkmczU6IZSCUndUBHLI9HG.', // password: password123
             phone: '+1-555-0100',
             address: '123 Test Street, New York, NY 10001',
+            customerReference: 'CLF-TEST001',
+            usReceivingAddress: DEFAULT_US_RECEIVING_ADDRESS,
             createdAt: new Date().toISOString()
           }
         ]
@@ -423,8 +425,6 @@ async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
   const destination = String(to || '').trim();
   if (!destination || !subject || (!text && !html)) {
     return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
-            customerReference: 'CLF-TEST001',
-            usReceivingAddress: DEFAULT_US_RECEIVING_ADDRESS,
   }
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.NOTIFY_EMAIL) {
