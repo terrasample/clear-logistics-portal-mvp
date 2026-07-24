@@ -520,21 +520,40 @@ async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
     secure: false,
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000),
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
     }
   });
 
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: destination,
-    subject,
-    text: text || String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-    html
-  });
-
-  return { delivered: true, mode: 'smtp' };
+  try {
+    await transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: destination,
+      subject,
+      text: text || String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+      html
+    });
+    return { delivered: true, mode: 'smtp' };
+  } catch (error) {
+    console.error(`[${mockTag}:smtp-error]`, {
+      to: destination,
+      subject,
+      message: error?.message || String(error),
+      code: error?.code || null,
+      responseCode: error?.responseCode || null,
+    });
+    return {
+      delivered: false,
+      mode: 'smtp-error',
+      reason: error?.message || 'smtp-send-failed',
+      code: error?.code || null,
+      responseCode: error?.responseCode || null,
+    };
+  }
 }
 
 function formatUsd(value) {
@@ -1504,22 +1523,23 @@ app.post('/api/quotes', async (req, res) => {
   await writeData(data);
 
   const adminEmail = buildPremiumQuoteAdminEmail(quote);
-  await sendEmail({
-    to: process.env.NOTIFY_EMAIL,
-    subject: adminEmail.subject,
-    text: adminEmail.text,
-    html: adminEmail.html,
-    mockTag: 'notification',
-  });
-
   const customerEmail = buildPremiumQuoteCustomerEmail(quote);
-  await sendEmail({
-    to: quote.email,
-    subject: customerEmail.subject,
-    text: customerEmail.text,
-    html: customerEmail.html,
-    mockTag: 'quote-customer',
-  });
+  await Promise.allSettled([
+    sendEmail({
+      to: process.env.NOTIFY_EMAIL,
+      subject: adminEmail.subject,
+      text: adminEmail.text,
+      html: adminEmail.html,
+      mockTag: 'notification',
+    }),
+    sendEmail({
+      to: quote.email,
+      subject: customerEmail.subject,
+      text: customerEmail.text,
+      html: customerEmail.html,
+      mockTag: 'quote-customer',
+    })
+  ]);
 
   res.status(201).json({ quote, message: 'Quote request submitted.' });
 });
