@@ -682,6 +682,12 @@ function App() {
       }
     }
   }, [statusMessage]);
+
+  useEffect(() => {
+    // Prevent cross-page status leaks (for example, shop form warnings shown on dashboard).
+    setStatusMessage('');
+  }, [location.pathname]);
+
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [scanInput, setScanInput] = useState('');
   const [pickupConfirmation, setPickupConfirmation] = useState({ notes: '', photoUrl: '' });
@@ -1124,7 +1130,10 @@ function App() {
 
       const response = await fetch(`${API_BASE}/quotes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify(quotePayload),
       });
       const result = await response.json();
@@ -1585,7 +1594,10 @@ function App() {
       };
       const response = await fetch(`${API_BASE}/quotes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
       const result = await response.json();

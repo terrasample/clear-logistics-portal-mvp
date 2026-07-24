@@ -353,6 +353,19 @@ function getAuthTokenFromHeader(headerValue) {
   return raw.startsWith('Bearer ') ? raw.slice(7) : '';
 }
 
+function getOptionalAuthUser(req) {
+  const token = getAuthTokenFromHeader(req?.headers?.authorization);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    return jwt.verify(token, jwtSecret);
+  } catch {
+    return null;
+  }
+}
+
 function looksLikeShopPayload(body) {
   if (!body || typeof body !== 'object') {
     return false;
@@ -2176,6 +2189,7 @@ app.post('/api/admin/bookings/:bookingId/payment', requireAuth, async (req, res)
 
 app.post('/api/quotes', async (req, res) => {
   const payload = req.body || {};
+  const authUser = getOptionalAuthUser(req);
   const required = ['fullName', 'email', 'phone', 'cargoType', 'origin', 'destination', 'deliveryParish', 'itemCategory'];
   const missing = required.filter((k) => !payload[k]);
 
@@ -2203,6 +2217,8 @@ app.post('/api/quotes', async (req, res) => {
   const quote = {
     quoteId: `Q-${Date.now()}`,
     ...payload,
+    userId: authUser?.sub || null,
+    accountEmail: normalizeEmail(authUser?.email || ''),
     pricingMode: weightUnknown ? 'estimated' : 'weight-based',
     estimatedRangeUsd,
     quotedPriceUsd,
