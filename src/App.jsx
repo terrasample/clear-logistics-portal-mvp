@@ -1,10 +1,52 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 
-const API_BASE = import.meta.env.VITE_API_BASE
-  || (window.location.hostname === 'localhost'
+const API_BASE_CANDIDATES = Array.from(new Set([
+  String(import.meta.env.VITE_API_BASE || '').trim(),
+  window.location.hostname === 'localhost'
     ? 'http://localhost:8787/api'
-    : `${window.location.origin}/api`);
+    : `${window.location.origin}/api`,
+  'https://clear-logistics-api.onrender.com/api',
+].filter(Boolean).map((base) => base.replace(/\/$/, ''))));
+
+const API_BASE = API_BASE_CANDIDATES[0];
+
+function isGatewayStatus(statusCode) {
+  return statusCode === 502 || statusCode === 503 || statusCode === 504;
+}
+
+async function fetchWithApiFallback(pathname, options = {}) {
+  const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  let lastError = null;
+  let lastGatewayResponse = null;
+
+  for (const baseUrl of API_BASE_CANDIDATES) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, options);
+
+      // If the static site path doesn't proxy /api, try the next candidate.
+      if (response.status === 404 && baseUrl === `${window.location.origin}/api`) {
+        continue;
+      }
+
+      // Retry against fallback API hosts for transient edge/proxy failures.
+      if (isGatewayStatus(response.status)) {
+        lastGatewayResponse = response;
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastGatewayResponse) {
+    return lastGatewayResponse;
+  }
+
+  throw lastError || new Error('Unable to reach API. Please try again.');
+}
 
 const NAV_ITEMS = [
   {
@@ -2139,7 +2181,7 @@ function App() {
         throw new Error('Please enter your email first.');
       }
 
-      const response = await fetch(`${API_BASE}/password/forgot`, {
+      const response = await fetchWithApiFallback('/password/forgot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -2154,7 +2196,10 @@ function App() {
       setLoginForm((prev) => ({ ...prev, email }));
       setStatusMessage(result.message || 'If an account exists for this email, reset instructions have been sent.');
     } catch (error) {
-      setStatusMessage(error.message);
+      const message = String(error?.message || '').includes('Failed to fetch')
+        ? 'Network connection issue while sending reset instructions. Please try again in a moment.'
+        : (error?.message || 'Unable to send reset instructions.');
+      setStatusMessage(message);
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -2176,7 +2221,7 @@ function App() {
         throw new Error('Email, reset token, and new password are required.');
       }
 
-      const response = await fetch(`${API_BASE}/password/reset`, {
+      const response = await fetchWithApiFallback('/password/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -2192,7 +2237,10 @@ function App() {
       setForgotPasswordOpen(false);
       setStatusMessage(result.message || 'Password updated. Please log in with your new password.');
     } catch (error) {
-      setStatusMessage(error.message);
+      const message = String(error?.message || '').includes('Failed to fetch')
+        ? 'Network connection issue while resetting password. Please try again in a moment.'
+        : (error?.message || 'Unable to reset password.');
+      setStatusMessage(message);
     } finally {
       setForgotPasswordLoading(false);
     }
