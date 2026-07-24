@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID, randomBytes, createHash } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { resolveTxt } from 'dns/promises';
 
 dotenv.config();
 
@@ -92,6 +93,24 @@ const purgeDemoDataOnStart = String(
 const emailProviderPreference = String(process.env.EMAIL_PROVIDER || 'resend').trim().toLowerCase();
 const emailRequestTimeoutMs = Math.max(3000, Number(process.env.EMAIL_REQUEST_TIMEOUT_MS || 12000));
 const passwordResetTokenTtlMinutes = Math.max(5, Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30));
+const emailDkimSelector = String(process.env.EMAIL_DKIM_SELECTOR || 'default').trim().toLowerCase();
+const emailAuthCacheMs = Math.max(60 * 1000, Number(process.env.EMAIL_AUTH_CACHE_MS || 5 * 60 * 1000));
+let cachedEmailHealth = { expiresAt: 0, value: null };
+
+const FREE_MAILBOX_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'ymail.com',
+  'rocketmail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'aol.com',
+  'icloud.com',
+  'me.com',
+  'msn.com',
+]);
 
 function isLikelyEphemeralDataPath(targetPath) {
   const normalized = path.resolve(targetPath);
@@ -557,6 +576,159 @@ function buildPlainTextEmail(text, html) {
   return String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function getDefaultFromAddress() {
+  return String(
+    process.env.EMAIL_FROM ||
+    process.env.RESEND_FROM ||
+    process.env.SENDGRID_FROM ||
+    process.env.SMTP_FROM ||
+    process.env.SMTP_USER ||
+    ''
+  ).trim();
+}
+
+function getReplyToAddress() {
+  return String(process.env.EMAIL_REPLY_TO || process.env.SMTP_REPLY_TO || '').trim();
+}
+
+function getAuditBccAddress() {
+  return String(process.env.EMAIL_AUDIT_BCC || '').trim();
+}
+
+function extractEmailAddress(rawValue) {
+  const input = String(rawValue || '').trim();
+  if (!input) return '';
+  const bracketMatch = input.match(/<([^>]+)>/);
+  return (bracketMatch?.[1] || input).trim().toLowerCase();
+}
+
+function extractDomain(rawValue) {
+  const email = extractEmailAddress(rawValue);
+  if (!email.includes('@')) return '';
+  return email.split('@').pop().trim().toLowerCase();
+}
+
+function maskEmail(rawValue) {
+  const email = extractEmailAddress(rawValue);
+  if (!email || !email.includes('@')) return '';
+  const [localPart, domain] = email.split('@');
+  const safeLocal = localPart.length <= 2
+    ? `${localPart[0] || '*'}*`
+    : `${localPart.slice(0, 2)}***`;
+  return `${safeLocal}@${domain}`;
+}
+
+function normalizeTxtRecords(records) {
+  if (!Array.isArray(records)) return [];
+  return records
+    .map((parts) => (Array.isArray(parts) ? parts.join('') : String(parts || '')))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+async function readTxtRecords(hostname) {
+  try {
+    const records = await resolveTxt(hostname);
+    return { ok: true, records: normalizeTxtRecords(records), error: '' };
+  } catch (error) {
+    return { ok: false, records: [], error: String(error?.code || error?.message || 'dns-lookup-failed') };
+  }
+}
+
+async function buildEmailHealthSnapshot() {
+  const fromAddress = getDefaultFromAddress();
+  const replyTo = getReplyToAddress();
+  const fromDomain = extractDomain(fromAddress);
+  const replyToDomain = extractDomain(replyTo);
+
+  const providerConfigured = {
+    resend: Boolean(String(process.env.RESEND_API_KEY || '').trim()),
+    sendgrid: Boolean(String(process.env.SENDGRID_API_KEY || '').trim()),
+    smtp: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+  };
+
+  const checks = {
+    spf: { host: '', found: false, error: 'not-applicable' },
+    dmarc: { host: '', found: false, error: 'not-applicable' },
+    dkim: { host: '', selector: emailDkimSelector || 'default', found: false, error: 'not-applicable' },
+  };
+
+  if (fromDomain) {
+    const spfLookup = await readTxtRecords(fromDomain);
+    checks.spf = {
+      host: fromDomain,
+      found: spfLookup.records.some((record) => /^v=spf1\s/i.test(record)),
+      error: spfLookup.ok ? '' : spfLookup.error,
+    };
+
+    const dmarcHost = `_dmarc.${fromDomain}`;
+    const dmarcLookup = await readTxtRecords(dmarcHost);
+    checks.dmarc = {
+      host: dmarcHost,
+      found: dmarcLookup.records.some((record) => /^v=DMARC1\s*;/i.test(record)),
+      error: dmarcLookup.ok ? '' : dmarcLookup.error,
+    };
+
+    const selector = emailDkimSelector || 'default';
+    const dkimHost = `${selector}._domainkey.${fromDomain}`;
+    const dkimLookup = await readTxtRecords(dkimHost);
+    checks.dkim = {
+      host: dkimHost,
+      selector,
+      found: dkimLookup.records.length > 0,
+      error: dkimLookup.ok ? '' : dkimLookup.error,
+    };
+  }
+
+  const recommendations = [];
+  if (!fromAddress) {
+    recommendations.push('Set EMAIL_FROM or SMTP_FROM to a branded sender address (for example, quotes@yourdomain.com).');
+  }
+  if (fromDomain && FREE_MAILBOX_DOMAINS.has(fromDomain)) {
+    recommendations.push('Avoid free mailbox sender domains (gmail/yahoo/outlook). Use your branded domain for better inbox placement.');
+  }
+  if (fromDomain && !checks.spf.found) {
+    recommendations.push(`Add an SPF TXT record on ${fromDomain}.`);
+  }
+  if (fromDomain && !checks.dkim.found) {
+    recommendations.push(`Publish DKIM TXT for selector ${checks.dkim.selector} on ${checks.dkim.host}.`);
+  }
+  if (fromDomain && !checks.dmarc.found) {
+    recommendations.push(`Add a DMARC TXT record on ${checks.dmarc.host}.`);
+  }
+  if (!replyTo) {
+    recommendations.push('Set EMAIL_REPLY_TO so customers can reply directly to your support inbox.');
+  }
+
+  return {
+    providerPreference: emailProviderPreference,
+    providerConfigured,
+    fromAddressMasked: maskEmail(fromAddress),
+    fromDomain,
+    replyToMasked: maskEmail(replyTo),
+    replyToDomain,
+    auditBccConfigured: Boolean(getAuditBccAddress()),
+    senderDomainIsFreeMailbox: Boolean(fromDomain && FREE_MAILBOX_DOMAINS.has(fromDomain)),
+    checks,
+    recommendations,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+async function getEmailHealthSnapshot() {
+  const now = Date.now();
+  if (cachedEmailHealth.value && cachedEmailHealth.expiresAt > now) {
+    return cachedEmailHealth.value;
+  }
+
+  const snapshot = await buildEmailHealthSnapshot();
+  cachedEmailHealth = {
+    value: snapshot,
+    expiresAt: now + emailAuthCacheMs,
+  };
+  return snapshot;
+}
+
 async function fetchWithTimeout(url, options = {}, timeoutMs = emailRequestTimeoutMs) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -586,6 +758,14 @@ async function sendViaResend({ destination, subject, text, html, mockTag }) {
   };
   if (String(html || '').trim()) {
     body.html = html;
+  }
+  const replyTo = getReplyToAddress();
+  if (replyTo) {
+    body.reply_to = replyTo;
+  }
+  const bcc = getAuditBccAddress();
+  if (bcc) {
+    body.bcc = [bcc];
   }
 
   try {
@@ -655,6 +835,14 @@ async function sendViaSendGrid({ destination, subject, text, html, mockTag }) {
   if (String(html || '').trim()) {
     body.content.push({ type: 'text/html', value: html });
   }
+  const replyTo = getReplyToAddress();
+  if (replyTo) {
+    body.reply_to = { email: replyTo };
+  }
+  const bcc = getAuditBccAddress();
+  if (bcc) {
+    body.personalizations[0].bcc = [{ email: bcc }];
+  }
 
   try {
     const response = await fetchWithTimeout('https://api.sendgrid.com/v3/mail/send', {
@@ -717,9 +905,13 @@ async function sendViaSmtp({ destination, subject, text, html, mockTag }) {
   });
 
   try {
+    const replyTo = getReplyToAddress();
+    const bcc = getAuditBccAddress();
     const info = await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: destination,
+      replyTo: replyTo || undefined,
+      bcc: bcc || undefined,
       subject,
       text: buildPlainTextEmail(text, html),
       html
@@ -1529,7 +1721,8 @@ app.get('/', (_req, res) => {
   });
 });
 
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
+  const email = await getEmailHealthSnapshot();
   res.json({
     ok: true,
     stripe: Boolean(stripe),
@@ -1539,6 +1732,7 @@ app.get('/api/health', (_req, res) => {
       likelyEphemeral: isLikelyEphemeralDataPath(dataFile),
       requirePersistentDataPath,
     },
+    email,
     timestamp: new Date().toISOString(),
   });
 });
@@ -3457,6 +3651,13 @@ ensureDataFile()
   .then(async () => {
     await purgeDemoDataIfNeeded();
     await seedDriverDemoData();
+    const emailHealth = await getEmailHealthSnapshot();
+    if (emailHealth.recommendations.length) {
+      console.warn('[email-health:warnings]', {
+        fromDomain: emailHealth.fromDomain || '(missing)',
+        recommendations: emailHealth.recommendations,
+      });
+    }
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
       startQuoteNudgeWorker();

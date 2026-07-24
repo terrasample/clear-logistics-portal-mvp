@@ -33,3 +33,16 @@ Production payments checklist:
 Verification:
 - GET /api/health returns stripe=true and the configured stripePaymentMethodTypes array.
 - Successful Stripe redirects now include session_id and server confirmation verifies the Stripe session is paid before marking orders paid.
+
+Email deliverability hardening (recommended):
+1) Use a branded sender address (example: quotes@yourdomain.com) and set EMAIL_FROM (or SMTP_FROM).
+2) Set EMAIL_REPLY_TO to your support inbox.
+3) Publish DNS records for sender domain authentication:
+	- SPF TXT on root domain (example): v=spf1 include:_spf.google.com ~all
+	- DKIM TXT on selector host (example): default._domainkey.yourdomain.com
+	- DMARC TXT on _dmarc.yourdomain.com (example): v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com
+4) Optional: set EMAIL_AUDIT_BCC to archive outbound customer emails.
+5) Verify with GET /api/health and review the email object:
+	- email.senderDomainIsFreeMailbox should be false.
+	- email.checks.spf.found, email.checks.dkim.found, email.checks.dmarc.found should all be true.
+	- email.recommendations should be empty.
