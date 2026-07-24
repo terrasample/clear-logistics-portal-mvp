@@ -594,6 +594,8 @@ function App() {
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
   const [selectedAdminItem, setSelectedAdminItem] = useState(null);
   const [shopAccessMode, setShopAccessMode] = useState('');
+  const [showShopBookingPrompt, setShowShopBookingPrompt] = useState(false);
+  const [shopBookingPromptDismissedKey, setShopBookingPromptDismissedKey] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([
@@ -605,6 +607,7 @@ function App() {
   ]);
   const chatMessageIdRef = useRef(0);
   const chatMessagesRef = useRef(null);
+  const shopCheckoutButtonRef = useRef(null);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -1267,6 +1270,47 @@ function App() {
     if (!docsRequired) return true;
     return uploadedRequiredDocs >= requiredDocCount;
   }, [docsRequired, uploadedRequiredDocs, requiredDocCount, shopDocs.declarationAccepted]);
+
+  const shopBookingPromptKey = useMemo(() => {
+    const itemCount = normalizedShopItems.length;
+    return `${itemCount}-${landedTotalUsd.toFixed(2)}-${customsReadyScore}`;
+  }, [normalizedShopItems.length, landedTotalUsd, customsReadyScore]);
+
+  useEffect(() => {
+    const canPrompt = (
+      location.pathname === '/shop'
+      && (isAuthenticated || shopAccessMode === 'guest')
+      && cartSubtotalUsd > 0
+      && isCustomsReady
+      && !isLoading
+    );
+
+    if (!canPrompt) {
+      setShowShopBookingPrompt(false);
+      return;
+    }
+
+    if (shopBookingPromptDismissedKey === shopBookingPromptKey) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowShopBookingPrompt(true);
+    }, 700);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    location.pathname,
+    isAuthenticated,
+    shopAccessMode,
+    cartSubtotalUsd,
+    isCustomsReady,
+    isLoading,
+    shopBookingPromptDismissedKey,
+    shopBookingPromptKey,
+  ]);
 
   function getNextChatMessageId(prefix) {
     chatMessageIdRef.current += 1;
@@ -3140,6 +3184,67 @@ function App() {
               {isAuthenticated && (
                 <p className="section-intro">Signed in as {currentUser?.fullName || 'Customer'}. Your account can be used for follow-up and approvals.</p>
               )}
+              {showShopBookingPrompt && (
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Book now prompt"
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.45)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1rem',
+                    zIndex: 120,
+                  }}
+                >
+                  <div
+                    className="card"
+                    style={{
+                      width: 'min(540px, 96vw)',
+                      border: '1px solid #cde3dc',
+                      boxShadow: '0 20px 48px rgba(15, 23, 42, 0.28)',
+                    }}
+                  >
+                    <p className="section-context-label">Ready To Book?</p>
+                    <h3 style={{ marginBottom: '0.45rem' }}>Lock in your landed total now</h3>
+                    <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                      Estimated landed total: <strong>${landedTotalUsd.toFixed(2)}</strong>
+                    </p>
+                    <p className="section-intro" style={{ marginBottom: '0.95rem' }}>
+                      Estimated transit to Jamaica: <strong>7-12 days</strong> after US purchase confirmation.
+                    </p>
+                    <div className="booking-summary" style={{ marginBottom: '0.95rem' }}>
+                      <p><strong>Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
+                      <p><strong>Duty + Fees + Shipping:</strong> ${(landedTotalUsd - cartSubtotalUsd).toFixed(2)}</p>
+                    </div>
+                    <div className="booking-nav" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        onClick={() => {
+                          setShowShopBookingPrompt(false);
+                          shopCheckoutButtonRef.current?.click();
+                        }}
+                      >
+                        Continue to Checkout
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => {
+                          setShowShopBookingPrompt(false);
+                          setShopBookingPromptDismissedKey(shopBookingPromptKey);
+                        }}
+                      >
+                        Not Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <form className="form" onSubmit={handlePurchaseSubmit}>
                 <label>
                   Full Name
@@ -3284,7 +3389,7 @@ function App() {
                   <p><strong>Landed Cost Lock Total:</strong> ${landedTotalUsd.toFixed(2)}</p>
                 </div>
 
-                <button type="submit" className="btn btn--solid" disabled={isLoading || !isCustomsReady}>Continue to Checkout</button>
+                <button ref={shopCheckoutButtonRef} type="submit" className="btn btn--solid" disabled={isLoading || !isCustomsReady}>Continue to Checkout</button>
               </form>
             </>
           )}
