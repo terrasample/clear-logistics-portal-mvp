@@ -346,6 +346,7 @@ function createEmptyShopItem() {
     link: '',
     quantity: 1,
     unitPriceUsd: '',
+    selectedForBooking: true,
   };
 }
 
@@ -1013,6 +1014,7 @@ function App() {
       link: 'https://clear-logistics-portal.onrender.com/shop#barrel-catalog',
       quantity: 1,
       unitPriceUsd: String(barrel.unitPriceUsd),
+      selectedForBooking: true,
     };
 
     setShopItems((prev) => {
@@ -1221,6 +1223,7 @@ function App() {
       link: item.link,
       quantity: String(item.quantity),
       unitPriceUsd: String(item.unitPriceUsd),
+      selectedForBooking: true,
     }));
     setShopItems(items);
     if (estimatorResult.estimatedItems[0]?.store) {
@@ -1237,18 +1240,31 @@ function App() {
         link: String(item.link || '').trim(),
         quantity: Math.max(1, Number(item.quantity || 1)),
         unitPriceUsd: Math.max(0, Number(item.unitPriceUsd || 0)),
+        selectedForBooking: item.selectedForBooking !== false,
       }))
       .filter((item) => item.name && item.link)
   ), [shopItems]);
 
-  const cartSubtotalUsd = useMemo(() => (
-    normalizedShopItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0)
+  const selectedShopItems = useMemo(() => (
+    normalizedShopItems.filter((item) => item.selectedForBooking)
   ), [normalizedShopItems]);
 
+  const remainingShopItems = useMemo(() => (
+    normalizedShopItems.filter((item) => !item.selectedForBooking)
+  ), [normalizedShopItems]);
+
+  const cartSubtotalUsd = useMemo(() => (
+    selectedShopItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0)
+  ), [selectedShopItems]);
+
+  const remainingItemTotalUsd = useMemo(() => (
+    remainingShopItems.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd, 0)
+  ), [remainingShopItems]);
+
   const hasLuxuryBrand = useMemo(() => {
-    const joined = `${purchaseForm.storeName} ${normalizedShopItems.map((item) => item.name).join(' ')}`.toLowerCase();
+    const joined = `${purchaseForm.storeName} ${selectedShopItems.map((item) => item.name).join(' ')}`.toLowerCase();
     return LUXURY_STORE_KEYWORDS.some((keyword) => joined.includes(keyword));
-  }, [purchaseForm.storeName, normalizedShopItems]);
+  }, [purchaseForm.storeName, selectedShopItems]);
 
   const customsDutyUsd = useMemo(() => Number((cartSubtotalUsd * (hasLuxuryBrand ? 0.24 : 0.16)).toFixed(2)), [cartSubtotalUsd, hasLuxuryBrand]);
   const brokerageFeeUsd = useMemo(() => Number((cartSubtotalUsd > 0 ? 35 : 0).toFixed(2)), [cartSubtotalUsd]);
@@ -1272,9 +1288,9 @@ function App() {
   }, [docsRequired, uploadedRequiredDocs, requiredDocCount, shopDocs.declarationAccepted]);
 
   const shopBookingPromptKey = useMemo(() => {
-    const itemCount = normalizedShopItems.length;
+    const itemCount = selectedShopItems.length;
     return `${itemCount}-${landedTotalUsd.toFixed(2)}-${customsReadyScore}`;
-  }, [normalizedShopItems.length, landedTotalUsd, customsReadyScore]);
+  }, [selectedShopItems.length, landedTotalUsd, customsReadyScore]);
 
   useEffect(() => {
     const canPrompt = (
@@ -1423,6 +1439,10 @@ function App() {
         throw new Error('Add at least one cart item with product name and link.');
       }
 
+      if (!selectedShopItems.length) {
+        throw new Error('Select at least one item to include in Book Now checkout.');
+      }
+
       if (cartSubtotalUsd <= 0) {
         throw new Error('Enter a unit price for at least one item to continue to checkout.');
       }
@@ -1439,8 +1459,10 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...purchaseForm,
-          productLinks: normalizedShopItems.map((item) => item.link),
-          items: normalizedShopItems,
+          productLinks: selectedShopItems.map((item) => item.link),
+          items: selectedShopItems,
+          deferredItems: remainingShopItems,
+          deferredItemTotalUsd: Number(remainingItemTotalUsd.toFixed(2)),
           budgetUsd: landedTotalUsd,
           cartSubtotalUsd,
           customsDutyUsd,
@@ -3286,14 +3308,22 @@ function App() {
                 <div className="shop-cart">
                   <h3>Cart Items</h3>
                   {shopItems.map((item, index) => (
-                    <div key={`shop-item-${index}`} className="shop-cart__item">
+                    <div key={`shop-item-${index}`} className="shop-cart__item" style={{ opacity: item.selectedForBooking === false ? 0.78 : 1 }}>
+                      <label className="checkbox-label" style={{ marginBottom: '0.55rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={item.selectedForBooking !== false}
+                          onChange={(event) => handleShopItemChange(index, 'selectedForBooking', event.target.checked)}
+                        />
+                        Include this item in Book Now checkout
+                      </label>
                       <label>
                         Product Name
                         <input
                           value={item.name}
                           onChange={(event) => handleShopItemChange(index, 'name', event.target.value)}
                           placeholder="Wireless headset"
-                          required
+                          required={item.selectedForBooking !== false}
                         />
                       </label>
                       <label>
@@ -3303,7 +3333,7 @@ function App() {
                           value={item.link}
                           onChange={(event) => handleShopItemChange(index, 'link', event.target.value)}
                           placeholder="https://www.amazon.com/..."
-                          required
+                          required={item.selectedForBooking !== false}
                         />
                       </label>
                       <div className="input-row">
@@ -3314,7 +3344,7 @@ function App() {
                             min="1"
                             value={item.quantity}
                             onChange={(event) => handleShopItemChange(index, 'quantity', event.target.value)}
-                            required
+                            required={item.selectedForBooking !== false}
                           />
                         </label>
                         <label>
@@ -3325,7 +3355,7 @@ function App() {
                             step="0.01"
                             value={item.unitPriceUsd}
                             onChange={(event) => handleShopItemChange(index, 'unitPriceUsd', event.target.value)}
-                            required
+                            required={item.selectedForBooking !== false}
                           />
                         </label>
                       </div>
@@ -3381,12 +3411,14 @@ function App() {
                 </div>
 
                 <div className="booking-summary">
-                  <p><strong>Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
+                  <p><strong>Selected Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
                   <p><strong>Estimated Customs Duty:</strong> ${customsDutyUsd.toFixed(2)}</p>
                   <p><strong>Brokerage Fee:</strong> ${brokerageFeeUsd.toFixed(2)}</p>
                   <p><strong>Processing Fee:</strong> ${processingFeeUsd.toFixed(2)}</p>
                   <p><strong>Estimated Shipping:</strong> ${shippingFeeUsd.toFixed(2)}</p>
-                  <p><strong>Landed Cost Lock Total:</strong> ${landedTotalUsd.toFixed(2)}</p>
+                  <p><strong>Book Now Total (selected items):</strong> ${landedTotalUsd.toFixed(2)}</p>
+                  <p><strong>Remaining Item Total (book later):</strong> ${remainingItemTotalUsd.toFixed(2)}</p>
+                  <p style={{ marginTop: '0.35rem' }}><strong>Note:</strong> Unselected items can be booked in a separate shipment.</p>
                 </div>
 
                 <button ref={shopCheckoutButtonRef} type="submit" className="btn btn--solid" disabled={isLoading || !isCustomsReady}>Continue to Checkout</button>
