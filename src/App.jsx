@@ -537,6 +537,8 @@ function App() {
     needsPackingSupplies: false,
     vipConcierge: false,
   });
+  const [showAdvancedQuoteOptions, setShowAdvancedQuoteOptions] = useState(false);
+  const [latestQuoteResult, setLatestQuoteResult] = useState(null);
 
   const [bookingForm, setBookingForm] = useState({
     fullName: '',
@@ -957,6 +959,47 @@ function App() {
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
     setQuoteForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  }
+
+  function parseCityFromLocation(value, fallback = '') {
+    const text = String(value || '').trim();
+    if (!text) return fallback;
+    const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
+    return parts[0] || fallback;
+  }
+
+  function handleBookThisQuote() {
+    if (!latestQuoteResult?.quote) {
+      return;
+    }
+
+    const quote = latestQuoteResult.quote;
+    const quoteQuantity = Math.max(1, Number(quote.quantity || 1));
+    const totalWeight = Math.max(0, Number(quote.weight || 0));
+    const fallbackWeightPerUnit = Math.max(1, Math.round(totalWeight / quoteQuantity));
+
+    setBookingForm((prev) => ({
+      ...prev,
+      fullName: String(quote.fullName || prev.fullName || ''),
+      email: String(quote.email || prev.email || ''),
+      phone: String(quote.phone || prev.phone || ''),
+      cargoType: String(quote.cargoType || prev.cargoType || 'Box'),
+      quantity: String(quote.quantity || prev.quantity || '1'),
+      serviceLevel: String(quote.serviceLevel || prev.serviceLevel || 'Standard'),
+      pickupCity: parseCityFromLocation(quote.origin, prev.pickupCity || 'Jacksonville'),
+      jamaicaLocation: parseCityFromLocation(quote.destination, prev.jamaicaLocation || 'Kingston'),
+      deliveryParish: String(quote.deliveryParish || prev.deliveryParish || 'Kingston'),
+      estimatedValue: String(quote.declaredValueUsd || prev.estimatedValue || ''),
+      weightPerUnit: totalWeight > 0 ? String(fallbackWeightPerUnit) : prev.weightPerUnit,
+      addonBarrels: String(quote.addonBarrels || prev.addonBarrels || '0'),
+      addonBoxes: String(quote.addonBoxes || prev.addonBoxes || '0'),
+      addonContainers: String(quote.addonContainers || prev.addonContainers || '0'),
+      addonPackingKits: String(quote.addonPackingKits || prev.addonPackingKits || '0'),
+    }));
+
+    setBookingStep(1);
+    setStatusMessage('Quote imported into booking. Complete pickup details to continue.');
+    navigate('/book-pickup');
   }
 
   function handleBookingChange(event) {
@@ -1592,6 +1635,7 @@ function App() {
     event.preventDefault();
     setIsLoading(true);
     setStatusMessage('');
+    setLatestQuoteResult(null);
     try {
       const quoteSupplyAddons = getSupplyAddons(quoteForm);
       const quoteSupplyAddonsTotalUsd = calculateSupplyAddonsTotal(quoteForm);
@@ -1637,7 +1681,12 @@ function App() {
       const zone = result.quote?.deliveryZone?.label
         ? ` Delivery zone: ${result.quote.deliveryZone.label}.`
         : '';
-      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${quoted}${range}${tier}${zone}${premiumLine}${emailLine}`);
+      setLatestQuoteResult({
+        quote: result.quote,
+        emailStatus: result.emailStatus,
+        summary: `${modeLabel} pricing mode.${quoted}${range}${tier}${zone}${premiumLine}${emailLine}`,
+      });
+      setStatusMessage('Quote ready. Review total below and continue to booking when ready.');
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -3181,6 +3230,15 @@ function App() {
   function QuotePage() {
     const quoteSupplyAddons = useMemo(() => getSupplyAddons(quoteForm), [quoteForm]);
     const quoteSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(quoteForm), [quoteForm]);
+    const quoteBreakdown = latestQuoteResult?.quote?.pricingBreakdown || null;
+    const quoteDeliveryStatus = latestQuoteResult?.emailStatus?.customer || latestQuoteResult?.quote?.emailStatus?.customer || null;
+    const quoteDeliverySummary = buildQuoteEmailStatusLine({
+      delivered: Boolean(quoteDeliveryStatus?.delivered),
+      mode: quoteDeliveryStatus?.mode,
+      provider: quoteDeliveryStatus?.provider,
+      reason: quoteDeliveryStatus?.reason,
+      code: quoteDeliveryStatus?.code,
+    });
 
     return (
       <section className="card card--split">
@@ -3227,14 +3285,37 @@ function App() {
               Item Category
               <input id="quote-itemCategory" name="itemCategory" value={quoteForm.itemCategory} onChange={handleQuoteChange} placeholder="Clothing, Electronics, Household, etc." required />
             </label>
-            <label htmlFor="quote-spaceTier">
-              Shared Space Tier
-              <select id="quote-spaceTier" name="spaceTier" value={quoteForm.spaceTier} onChange={handleQuoteChange}>
-                {SHARED_SPACE_TIERS.map((tier) => (
-                  <option key={tier.key} value={tier.key}>{tier.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className="booking-summary" style={{ padding: '0.65rem 0.8rem', border: '1px solid #d9e5df', background: '#f7fbf9', marginBottom: '0.4rem' }}>
+              <p style={{ margin: 0, fontSize: '0.86rem', color: '#2f5a4c' }}>
+                Best rate is selected automatically based on space and weight.
+              </p>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                style={{ marginTop: '0.55rem', padding: '0.35rem 0.7rem', fontSize: '0.78rem' }}
+                onClick={() => {
+                  setShowAdvancedQuoteOptions((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setQuoteForm((current) => ({ ...current, spaceTier: 'auto' }));
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {showAdvancedQuoteOptions ? 'Hide advanced options' : 'Show advanced options'}
+              </button>
+            </div>
+            {showAdvancedQuoteOptions && (
+              <label htmlFor="quote-spaceTier">
+                Shared Space Tier Override
+                <select id="quote-spaceTier" name="spaceTier" value={quoteForm.spaceTier} onChange={handleQuoteChange}>
+                  {SHARED_SPACE_TIERS.map((tier) => (
+                    <option key={tier.key} value={tier.key}>{tier.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label htmlFor="quote-origin-form">
               Origin
               <input id="quote-origin-form" name="origin" value={quoteForm.origin} onChange={handleQuoteChange} required />
@@ -3339,6 +3420,70 @@ function App() {
 
             <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Premium Quote Request'}</button>
           </form>
+
+          {latestQuoteResult?.quote && (
+            <section className="booking-summary" aria-live="polite" style={{ marginTop: '1rem', border: '1px solid #cfe7dd', background: 'linear-gradient(145deg, #f3faf7 0%, #ffffff 100%)' }}>
+              <p style={{ margin: 0, fontSize: '0.76rem', letterSpacing: '0.03em', color: '#1f6d5b', textTransform: 'uppercase', fontWeight: 700 }}>
+                Quote Ready
+              </p>
+              <h3 style={{ marginTop: '0.4rem', marginBottom: '0.35rem' }}>
+                Your total estimate: {
+                  Number.isFinite(Number(latestQuoteResult.quote.quotedPriceUsd))
+                    ? `$${Number(latestQuoteResult.quote.quotedPriceUsd).toFixed(2)}`
+                    : latestQuoteResult.quote.estimatedRangeUsd
+                      ? `$${latestQuoteResult.quote.estimatedRangeUsd.low} - $${latestQuoteResult.quote.estimatedRangeUsd.high}`
+                      : 'Pricing pending'
+                }
+              </h3>
+              <p className="section-intro" style={{ marginBottom: '0.5rem' }}>
+                Quote ID: {latestQuoteResult.quote.quoteId}.
+                {latestQuoteResult.quote.spaceTierLabel ? ` ${latestQuoteResult.quote.spaceTierLabel}.` : ''}
+                {latestQuoteResult.quote.deliveryZone?.label ? ` ${latestQuoteResult.quote.deliveryZone.label}.` : ''}
+                {quoteDeliverySummary}
+              </p>
+              <p style={{ marginBottom: '0.6rem', color: '#2f5a4c', fontSize: '0.84rem', fontWeight: 600 }}>
+                Price locked for 48 hours.
+              </p>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn--solid" onClick={handleBookThisQuote}>
+                  Book this shipment
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => {
+                    setLatestQuoteResult(null);
+                    setStatusMessage('');
+                  }}
+                >
+                  Start new quote
+                </button>
+              </div>
+              <details style={{ marginTop: '0.7rem' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>How this was calculated</summary>
+                <div style={{ marginTop: '0.55rem' }}>
+                  {quoteBreakdown ? (
+                    <ul style={{ paddingLeft: '1.1rem', margin: 0, lineHeight: 1.6 }}>
+                      <li>Strategy: {quoteBreakdown.strategy || 'n/a'}</li>
+                      <li>Space tier: {quoteBreakdown.spaceTierLabel || latestQuoteResult.quote.spaceTierLabel || 'n/a'}</li>
+                      <li>Billable space: {Number(quoteBreakdown.billableCubicFeet || 0).toFixed(2)} cu ft</li>
+                      <li>Weight: {Number(quoteBreakdown.weightLbs || 0).toFixed(2)} lbs</li>
+                      <li>Selected base: ${Number(quoteBreakdown?.chargesUsd?.selectedBase || 0).toFixed(2)}</li>
+                      <li>Delivery zone fee: ${Number(quoteBreakdown?.chargesUsd?.deliveryZoneFee || 0).toFixed(2)}</li>
+                      <li>Handling surcharges: ${(
+                        Number(quoteBreakdown?.chargesUsd?.fragileSurcharge || 0)
+                        + Number(quoteBreakdown?.chargesUsd?.heavySurcharge || 0)
+                        + Number(quoteBreakdown?.chargesUsd?.oversizeSurcharge || 0)
+                        + Number(quoteBreakdown?.chargesUsd?.customsComplexitySurcharge || 0)
+                      ).toFixed(2)}</li>
+                    </ul>
+                  ) : (
+                    <p className="section-intro" style={{ marginBottom: 0 }}>Detailed breakdown is available after warehouse verification.</p>
+                  )}
+                </div>
+              </details>
+            </section>
+          )}
         </div>
 
         <div>
