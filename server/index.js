@@ -1449,22 +1449,26 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/accounts', async (req, res) => {
   const { fullName, email, password } = req.body || {};
-  if (!fullName || !email || !password) {
+  const normalizedFullName = String(fullName || '').trim();
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = String(password || '');
+
+  if (!normalizedFullName || !normalizedEmail || !normalizedPassword) {
     return res.status(400).json({ error: 'fullName, email, and password are required.' });
   }
 
   const data = await readData();
-  const existing = data.accounts.find((a) => a.email.toLowerCase() === String(email).toLowerCase());
+  const existing = data.accounts.find((a) => normalizeEmail(a?.email) === normalizedEmail);
   if (existing) {
     return res.status(409).json({ error: 'Account already exists for this email.' });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(normalizedPassword, 10);
 
   const account = {
     id: randomUUID(),
-    fullName,
-    email,
+    fullName: normalizedFullName,
+    email: normalizedEmail,
     passwordHash,
     customerReference: '',
     usReceivingAddress: '',
@@ -1475,19 +1479,20 @@ app.post('/api/accounts', async (req, res) => {
 
   data.accounts.push(account);
   await writeData(data);
-  await sendNotification('New Portal Account', `New account: ${fullName} <${email}>`);
+  await sendNotification('New Portal Account', `New account: ${normalizedFullName} <${normalizedEmail}>`);
 
   res.status(201).json({ account: sanitizeAccount(account) });
 });
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail || !password) {
     return res.status(400).json({ error: 'email and password are required.' });
   }
 
   const data = await readData();
-  const accountIndex = data.accounts.findIndex((a) => a.email.toLowerCase() === String(email).toLowerCase());
+  const accountIndex = data.accounts.findIndex((a) => normalizeEmail(a?.email) === normalizedEmail);
   const account = accountIndex >= 0 ? data.accounts[accountIndex] : null;
   if (!account) {
     return res.status(401).json({ error: 'Invalid email or password.' });

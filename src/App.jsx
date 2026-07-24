@@ -1469,10 +1469,15 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const accountPayload = {
+        ...accountForm,
+        fullName: String(accountForm.fullName || '').trim(),
+        email: String(accountForm.email || '').trim().toLowerCase(),
+      };
       const response = await fetch(`${API_BASE}/accounts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(accountForm),
+        body: JSON.stringify(accountPayload),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to create account.');
@@ -2015,10 +2020,15 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const loginPayload = {
+        ...loginForm,
+        email: String(loginForm.email || '').trim(),
+      };
+
       const response = await fetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify(loginPayload),
       });
 
       const parseJsonResponse = async (res) => {
@@ -2037,7 +2047,7 @@ function App() {
         const driverFallbackResponse = await fetch(`${API_BASE}/drivers/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(loginForm),
+          body: JSON.stringify(loginPayload),
         });
         const driverResult = await parseJsonResponse(driverFallbackResponse);
 
