@@ -581,6 +581,12 @@ function App() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [customerShipments, setCustomerShipments] = useState([]);
+  const [customerProfile, setCustomerProfile] = useState({
+    fullName: '',
+    email: '',
+    customerReference: '',
+    usReceivingAddress: '',
+  });
   const [customerDashboardLoading, setCustomerDashboardLoading] = useState(false);
   const [dispatcherData, setDispatcherData] = useState(null);
   const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
@@ -628,6 +634,12 @@ function App() {
     setCurrentUser(null);
     setAuthToken('');
     setCustomerShipments([]);
+    setCustomerProfile({
+      fullName: '',
+      email: '',
+      customerReference: '',
+      usReceivingAddress: '',
+    });
     setCustomerDashboardLoading(false);
     setAdminOverview(null);
     setDispatcherData(null);
@@ -1671,11 +1683,42 @@ function App() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to load your dashboard.');
       setCustomerShipments(Array.isArray(result.shipments) ? result.shipments : []);
+      const profile = result.profile || {};
+      setCustomerProfile({
+        fullName: String(profile.fullName || currentUser?.fullName || ''),
+        email: String(profile.email || currentUser?.email || ''),
+        customerReference: String(profile.customerReference || currentUser?.customerReference || ''),
+        usReceivingAddress: String(profile.usReceivingAddress || currentUser?.usReceivingAddress || ''),
+      });
     } catch (error) {
       setStatusMessage(error.message);
       setCustomerShipments([]);
+      setCustomerProfile({
+        fullName: String(currentUser?.fullName || ''),
+        email: String(currentUser?.email || ''),
+        customerReference: String(currentUser?.customerReference || ''),
+        usReceivingAddress: String(currentUser?.usReceivingAddress || ''),
+      });
     } finally {
       setCustomerDashboardLoading(false);
+    }
+  }
+
+  async function copyTextToClipboard(value, label) {
+    const text = String(value || '').trim();
+    if (!text) {
+      setStatusMessage(`No ${label.toLowerCase()} is available yet on your profile.`);
+      return;
+    }
+
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error('Clipboard is unavailable');
+      }
+      await navigator.clipboard.writeText(text);
+      setStatusMessage(`${label} copied.`);
+    } catch {
+      setStatusMessage(`Copy failed. Please select and copy your ${label.toLowerCase()} manually.`);
     }
   }
 
@@ -2782,11 +2825,41 @@ function App() {
   }
 
   function ShopPage() {
+    const assignedReference = String(customerProfile.customerReference || currentUser?.customerReference || '').trim();
+    const assignedUsAddress = String(customerProfile.usReceivingAddress || currentUser?.usReceivingAddress || '').trim();
+
     return (
       <section className="card card--split">
         <div>
           <h2>Shop & Ship</h2>
           <p className="section-intro">Shop from popular US stores and ship to Jamaica with Clear Logistics & Freight Services.</p>
+
+          {isAuthenticated ? (
+            <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
+              <h3 style={{ marginBottom: '0.35rem' }}>Your Shipping Profile (Self-Serve)</h3>
+              <p className="section-intro" style={{ marginBottom: '0.6rem' }}>
+                Copy your assigned US receiving address and customer reference, then paste at store checkout.
+              </p>
+              <div style={{ display: 'grid', gap: '0.55rem' }}>
+                <div>
+                  <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>Customer Reference</p>
+                  <p style={{ margin: 0 }}>{assignedReference || 'Not assigned yet'}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>US Receiving Address</p>
+                  <p style={{ margin: 0 }}>{assignedUsAddress || 'Not assigned yet'}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                <button type="button" className="btn btn--ghost" onClick={() => copyTextToClipboard(assignedReference, 'Customer reference')}>
+                  Copy Reference
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={() => copyTextToClipboard(assignedUsAddress, 'US receiving address')}>
+                  Copy US Address
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="booking-summary" style={{ marginBottom: '0.9rem', borderLeft: '4px solid var(--brand)' }}>
             <h3 style={{ marginBottom: '0.35rem' }}>Where do I ship my online order?</h3>

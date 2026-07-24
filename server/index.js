@@ -25,6 +25,9 @@ const DEFAULT_MILESTONES = [
 const DRIVER_DEMO_EMAIL = String(process.env.DRIVER_DEMO_EMAIL || 'driver.demo@clearlogistics.test').trim().toLowerCase();
 const DRIVER_DEMO_PASSWORD = String(process.env.DRIVER_DEMO_PASSWORD || 'Driver123!');
 const DRIVER_DEMO_TOTAL_PICKUPS = 14;
+const DEFAULT_US_RECEIVING_ADDRESS = String(
+  process.env.US_RECEIVING_ADDRESS || 'Clear Logistics Freight Receiving, 7801 NW 37th St, Doral, FL 33166, USA'
+).trim();
 
 const QUOTE_NUDGE_DEFAULT_STEPS_MS = [
   60 * 60 * 1000, // 1 hour
@@ -184,6 +187,49 @@ function sanitizeAccount(account) {
     ...safeAccount,
     role: resolveAccountRole(account)
   };
+}
+
+function deriveCustomerReference(account) {
+  const existing = String(account?.customerReference || '').trim();
+  if (existing) {
+    return existing;
+  }
+
+  const fromId = String(account?.id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+  if (fromId) {
+    return `CLF-${fromId}`;
+  }
+
+  const fromEmail = String(account?.email || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 8);
+  return `CLF-${fromEmail || 'CUSTOMER'}`;
+}
+
+function deriveReceivingAddress(account) {
+  const existing = String(account?.usReceivingAddress || account?.receivingAddress || '').trim();
+  return existing || DEFAULT_US_RECEIVING_ADDRESS;
+}
+
+function ensureCustomerShippingProfile(account) {
+  if (!account || resolveAccountRole(account) !== 'customer') {
+    return false;
+  }
+
+  let changed = false;
+
+  if (!String(account.customerReference || '').trim()) {
+    account.customerReference = deriveCustomerReference(account);
+    changed = true;
+  }
+
+  if (!String(account.usReceivingAddress || '').trim()) {
+    account.usReceivingAddress = deriveReceivingAddress(account);
+    changed = true;
+  }
+
+  return changed;
 }
 
 function resolveAccountRole(account) {
@@ -377,6 +423,8 @@ async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
   const destination = String(to || '').trim();
   if (!destination || !subject || (!text && !html)) {
     return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
+            customerReference: 'CLF-TEST001',
+            usReceivingAddress: DEFAULT_US_RECEIVING_ADDRESS,
   }
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.NOTIFY_EMAIL) {
@@ -1101,8 +1149,12 @@ app.post('/api/accounts', async (req, res) => {
     fullName,
     email,
     passwordHash,
+    customerReference: '',
+    usReceivingAddress: '',
     createdAt: new Date().toISOString()
   };
+
+  ensureCustomerShippingProfile(account);
 
   data.accounts.push(account);
   await writeData(data);
@@ -1142,8 +1194,14 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  const token = createAuthToken(account);
-  res.json({ user: sanitizeAccount(account), token });
+  let accountForToken = account;
+  if (ensureCustomerShippingProfile(data.accounts[accountIndex])) {
+    await writeData(data);
+    accountForToken = data.accounts[accountIndex];
+  }
+
+  const token = createAuthToken(accountForToken);
+  res.json({ user: sanitizeAccount(accountForToken), token });
 });
 
 app.get('/api/admin/overview', requireAuth, async (req, res) => {
@@ -1649,6 +1707,13 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
   if (!Array.isArray(data.shipments)) data.shipments = [];
 
   const requesterEmail = normalizeEmail(req.user.email);
+  const accountById = data.accounts.find((account) => account?.id && req.user.sub && account.id === req.user.sub) || null;
+  const accountByEmail = data.accounts.find((account) => normalizeEmail(account?.email) === requesterEmail) || null;
+  const matchedAccount = accountById || accountByEmail;
+
+  if (matchedAccount && ensureCustomerShippingProfile(matchedAccount)) {
+    await writeData(data);
+  }
   const matchesUser = (booking) => {
     if (!booking) return false;
     if (booking.userId && req.user.sub && booking.userId === req.user.sub) return true;
@@ -1700,7 +1765,21 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
     })
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
 
-  return res.json({ shipments });
+  const profile = matchedAccount
+    ? {
+        fullName: matchedAccount.fullName || req.user.fullName || 'Customer',
+        email: matchedAccount.email || req.user.email || '',
+        customerReference: deriveCustomerReference(matchedAccount),
+        usReceivingAddress: deriveReceivingAddress(matchedAccount),
+      }
+    : {
+        fullName: req.user.fullName || 'Customer',
+        email: req.user.email || '',
+        customerReference: deriveCustomerReference(req.user),
+        usReceivingAddress: deriveReceivingAddress(req.user),
+      };
+
+  return res.json({ shipments, profile });
 });
 
 app.post('/api/support', async (req, res) => {
