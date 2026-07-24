@@ -19,10 +19,36 @@ async function fetchWithApiFallback(pathname, options = {}) {
   const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
   let lastError = null;
   let lastGatewayResponse = null;
+  const sameOriginApiBase = `${window.location.origin}/api`;
+  const method = String(options?.method || 'GET').toUpperCase();
 
   for (const baseUrl of API_BASE_CANDIDATES) {
     try {
       const response = await fetch(`${baseUrl}${path}`, options);
+
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      const contentLength = String(response.headers.get('content-length') || '').trim();
+      const isSameOriginApi = baseUrl === sameOriginApiBase;
+
+      // Some custom-domain setups answer /api POST calls with a blank 200 from the static site.
+      // Treat those as invalid API responses and continue to known API hosts.
+      if (
+        isSameOriginApi
+        && response.ok
+        && method !== 'GET'
+        && contentLength === '0'
+      ) {
+        continue;
+      }
+
+      // If same-origin /api responds with non-JSON success, it is likely a static-site fallback.
+      if (
+        isSameOriginApi
+        && response.ok
+        && !contentType.includes('application/json')
+      ) {
+        continue;
+      }
 
       // If the static site path doesn't proxy /api, try the next candidate.
       if (response.status === 404 && baseUrl === `${window.location.origin}/api`) {
