@@ -591,6 +591,7 @@ function App() {
     usReceivingAddress: '',
   });
   const [customerDashboardLoading, setCustomerDashboardLoading] = useState(false);
+  const [retryingQuoteId, setRetryingQuoteId] = useState('');
   const [dispatcherData, setDispatcherData] = useState(null);
   const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
@@ -651,6 +652,7 @@ function App() {
       usReceivingAddress: '',
     });
     setCustomerDashboardLoading(false);
+    setRetryingQuoteId('');
     setAdminOverview(null);
     setDispatcherData(null);
     window.localStorage.removeItem('clf_auth_token');
@@ -776,7 +778,7 @@ function App() {
   function buildQuoteEmailStatusLine(emailStatus) {
     const customerStatus = emailStatus?.customer || null;
     if (!customerStatus) {
-      return ' Confirmation email pending delivery status.';
+      return ' Quote saved. Email status unavailable.';
     }
 
     if (customerStatus.delivered) {
@@ -785,10 +787,82 @@ function App() {
     }
 
     if (customerStatus.mode === 'mock') {
-      return ' Quote saved, but email delivery is currently in test mode.';
+      return ' Quote saved, but email was not sent because the system is in test mode.';
     }
 
-    return ' Quote saved, but confirmation email could not be delivered right now. Support has been notified.';
+    return ' Quote saved, but confirmation email failed to send. You can retry from your dashboard.';
+  }
+
+  function getQuoteDeliveryPresentation(emailStatus) {
+    const status = emailStatus || null;
+
+    if (!status) {
+      return {
+        label: 'Email status unavailable',
+        color: '#6b7280',
+        canRetry: false,
+      };
+    }
+
+    if (status.delivered) {
+      return {
+        label: `Email sent (${status.provider || status.mode || 'delivery'})`,
+        color: '#0b6b61',
+        canRetry: false,
+      };
+    }
+
+    if (status.mode === 'mock') {
+      return {
+        label: 'Email not sent (test mode)',
+        color: '#6b7280',
+        canRetry: false,
+      };
+    }
+
+    const errorHint = status.code || status.reason || 'delivery failure';
+    return {
+      label: `Email failed (${errorHint})`,
+      color: '#8a4b08',
+      canRetry: true,
+    };
+  }
+
+  async function handleRetryQuoteEmail(quoteId) {
+    if (!authToken || !quoteId) {
+      return;
+    }
+
+    setRetryingQuoteId(quoteId);
+    setStatusMessage('Retrying confirmation email...');
+    try {
+      const response = await fetch(`${API_BASE}/customer/quotes/${encodeURIComponent(quoteId)}/retry-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to retry confirmation email.');
+
+      const customerStatus = result.emailStatus?.customer || null;
+      setCustomerQuotes((prev) => prev.map((quote) => (
+        quote.quoteId === quoteId
+          ? { ...quote, emailStatus: customerStatus }
+          : quote
+      )));
+
+      if (customerStatus?.delivered) {
+        setStatusMessage('Confirmation email sent successfully.');
+      } else if (customerStatus?.mode === 'mock') {
+        setStatusMessage('Retry executed, but email is in test mode and was not sent.');
+      } else {
+        const errorHint = customerStatus?.code || customerStatus?.reason || 'delivery failure';
+        setStatusMessage(`Retry failed: ${errorHint}.`);
+      }
+    } catch (error) {
+      setStatusMessage(error.message || 'Unable to retry confirmation email right now.');
+    } finally {
+      setRetryingQuoteId('');
+    }
   }
 
   function handleQuoteChange(event) {
@@ -4308,9 +4382,7 @@ function App() {
             <div style={{ display: 'grid', gap: '0.85rem' }}>
               {recentQuotes.map((quote) => {
                 const delivery = quote.emailStatus || {};
-                const deliveryLabel = delivery.delivered
-                  ? `Email sent (${delivery.provider || delivery.mode || 'delivery'})`
-                  : 'Email delivery pending';
+                const deliveryMeta = getQuoteDeliveryPresentation(delivery);
                 const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
                   ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
                   : Number.isFinite(Number(quote.quotedPriceUsd))
@@ -4326,8 +4398,8 @@ function App() {
                           {quote.origin} to {quote.destination}
                         </p>
                       </div>
-                      <p style={{ margin: '0', color: delivery.delivered ? '#0b6b61' : '#8a4b08', fontSize: '0.85rem', fontWeight: 600 }}>
-                        {deliveryLabel}
+                      <p style={{ margin: '0', color: deliveryMeta.color, fontSize: '0.85rem', fontWeight: 600 }}>
+                        {deliveryMeta.label}
                       </p>
                     </div>
                     <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
@@ -4336,6 +4408,17 @@ function App() {
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
                       Submitted {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}
                     </p>
+                    {deliveryMeta.canRetry ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        style={{ marginTop: '0.75rem' }}
+                        onClick={() => handleRetryQuoteEmail(quote.quoteId)}
+                        disabled={retryingQuoteId === quote.quoteId || isLoading}
+                      >
+                        {retryingQuoteId === quote.quoteId ? 'Retrying...' : 'Retry Email'}
+                      </button>
+                    ) : null}
                   </article>
                 );
               })}

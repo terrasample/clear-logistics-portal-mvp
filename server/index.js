@@ -2134,6 +2134,55 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
   return res.json({ shipments, profile, quotes });
 });
 
+app.post('/api/customer/quotes/:quoteId/retry-email', requireAuth, async (req, res) => {
+  if (req.user.role === 'driver') {
+    return res.status(403).json({ error: 'Customer access required.' });
+  }
+
+  const quoteId = String(req.params.quoteId || '').trim();
+  if (!quoteId) {
+    return res.status(400).json({ error: 'quoteId is required.' });
+  }
+
+  const data = await readData();
+  const requesterEmail = normalizeEmail(req.user.email);
+
+  const quote = (data.quotes || []).find((item) => {
+    if (!item) return false;
+    if (String(item.quoteId || '').trim() !== quoteId) return false;
+    if (item.userId && req.user.sub && item.userId === req.user.sub) return true;
+    return normalizeEmail(item.email) === requesterEmail;
+  });
+
+  if (!quote) {
+    return res.status(404).json({ error: 'Quote not found.' });
+  }
+
+  const customerEmail = buildPremiumQuoteCustomerEmail(quote);
+  const retryResult = await sendEmail({
+    to: quote.email,
+    subject: customerEmail.subject,
+    text: customerEmail.text,
+    html: customerEmail.html,
+    mockTag: 'quote-customer-retry',
+  });
+
+  if (!quote.emailStatus || typeof quote.emailStatus !== 'object') {
+    quote.emailStatus = {};
+  }
+  quote.emailStatus.customer = normalizeDeliveryStatus(retryResult);
+  quote.emailStatus.updatedAt = new Date().toISOString();
+  quote.lastEmailRetryAt = new Date().toISOString();
+  quote.emailRetryCount = Number(quote.emailRetryCount || 0) + 1;
+  await writeData(data);
+
+  return res.json({
+    ok: true,
+    quoteId,
+    emailStatus: quote.emailStatus,
+  });
+});
+
 app.post('/api/support', async (req, res) => {
   const { fullName, email, message, shipmentId } = req.body || {};
   if (!fullName || !email || !message) {
