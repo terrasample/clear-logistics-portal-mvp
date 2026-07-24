@@ -1118,6 +1118,7 @@ function App() {
         unitPriceUsd: inferredPrice,
         category,
         store,
+        sourceType: 'inferred-product-link',
       };
     });
 
@@ -1130,6 +1131,7 @@ function App() {
             unitPriceUsd: Number(manualSubtotal.toFixed(2)),
             category: 'General',
             store: getStoreNameFromUrl(cartLinks[0]),
+            sourceType: 'cart-subtotal',
           },
         ]
       : [];
@@ -1165,6 +1167,18 @@ function App() {
       confidenceLabel,
       missing,
       hasLuxury,
+      inputSummary: {
+        totalLinks: links.length,
+        cartLinks: cartLinks.length,
+        productLinks: productLinks.length,
+        manualSubtotalUsed: hasCartLink && hasValidManualSubtotal,
+      },
+      rateSummary: {
+        customsRate: hasLuxury ? 0.24 : 0.16,
+        processingRate: 0.05,
+        shippingRate: 0.09,
+        brokerageFlat: brokerage,
+      },
     });
     setStatusMessage(`Estimate generated with ${confidenceLabel} confidence.`);
   }
@@ -1212,7 +1226,8 @@ function App() {
   const customsDutyUsd = useMemo(() => Number((cartSubtotalUsd * (hasLuxuryBrand ? 0.24 : 0.16)).toFixed(2)), [cartSubtotalUsd, hasLuxuryBrand]);
   const brokerageFeeUsd = useMemo(() => Number((cartSubtotalUsd > 0 ? 35 : 0).toFixed(2)), [cartSubtotalUsd]);
   const processingFeeUsd = useMemo(() => Number((cartSubtotalUsd * 0.05).toFixed(2)), [cartSubtotalUsd]);
-  const landedTotalUsd = useMemo(() => Number((cartSubtotalUsd + customsDutyUsd + brokerageFeeUsd + processingFeeUsd).toFixed(2)), [cartSubtotalUsd, customsDutyUsd, brokerageFeeUsd, processingFeeUsd]);
+  const shippingFeeUsd = useMemo(() => Number((cartSubtotalUsd * 0.09).toFixed(2)), [cartSubtotalUsd]);
+  const landedTotalUsd = useMemo(() => Number((cartSubtotalUsd + customsDutyUsd + brokerageFeeUsd + processingFeeUsd + shippingFeeUsd).toFixed(2)), [cartSubtotalUsd, customsDutyUsd, brokerageFeeUsd, processingFeeUsd, shippingFeeUsd]);
 
   const docsRequired = useMemo(() => cartSubtotalUsd >= 500 || hasLuxuryBrand, [cartSubtotalUsd, hasLuxuryBrand]);
   const requiredDocCount = docsRequired ? 2 : 0;
@@ -1363,6 +1378,7 @@ function App() {
           customsDutyUsd,
           brokerageFeeUsd,
           processingFeeUsd,
+          shippingFeeUsd,
           totalUsd: landedTotalUsd,
           needsAdminReview,
           docsRequired,
@@ -2835,23 +2851,34 @@ function App() {
           <p className="section-intro">Shop from popular US stores and ship to Jamaica with Clear Logistics & Freight Services.</p>
 
           {isAuthenticated ? (
-            <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
-              <h3 style={{ marginBottom: '0.35rem' }}>Your Shipping Profile (Self-Serve)</h3>
-              <p className="section-intro" style={{ marginBottom: '0.6rem' }}>
-                Copy your assigned US receiving address and customer reference, then paste at store checkout.
+            <div
+              className="booking-summary"
+              style={{
+                marginBottom: '0.9rem',
+                border: '1px solid rgba(12, 108, 94, 0.28)',
+                background: 'linear-gradient(145deg, rgba(240, 250, 247, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%)',
+                boxShadow: '0 14px 26px rgba(12, 108, 94, 0.08)',
+              }}
+            >
+              <p style={{ margin: 0, color: '#0b6b61', fontWeight: 700, letterSpacing: '0.02em', fontSize: '0.78rem', textTransform: 'uppercase' }}>
+                Premium Self-Serve
               </p>
-              <div style={{ display: 'grid', gap: '0.55rem' }}>
-                <div>
-                  <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>Customer Reference</p>
+              <h3 style={{ marginTop: '0.35rem', marginBottom: '0.35rem' }}>Your Shipping Profile</h3>
+              <p className="section-intro" style={{ marginBottom: '0.6rem' }}>
+                We auto-attach this profile to your Shop request. You can still copy it for direct store checkout.
+              </p>
+              <div style={{ display: 'grid', gap: '0.65rem' }}>
+                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(12, 108, 94, 0.16)' }}>
+                  <p style={{ margin: '0 0 0.2rem', fontWeight: 700 }}>Customer Reference</p>
                   <p style={{ margin: 0 }}>{assignedReference || 'Not assigned yet'}</p>
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>US Receiving Address</p>
+                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(12, 108, 94, 0.16)' }}>
+                  <p style={{ margin: '0 0 0.2rem', fontWeight: 700 }}>US Receiving Address</p>
                   <p style={{ margin: 0 }}>{assignedUsAddress || 'Not assigned yet'}</p>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-                <button type="button" className="btn btn--ghost" onClick={() => copyTextToClipboard(assignedReference, 'Customer reference')}>
+                <button type="button" className="btn btn--solid" onClick={() => copyTextToClipboard(assignedReference, 'Customer reference')}>
                   Copy Reference
                 </button>
                 <button type="button" className="btn btn--ghost" onClick={() => copyTextToClipboard(assignedUsAddress, 'US receiving address')}>
@@ -3108,6 +3135,7 @@ function App() {
                   <p><strong>Estimated Customs Duty:</strong> ${customsDutyUsd.toFixed(2)}</p>
                   <p><strong>Brokerage Fee:</strong> ${brokerageFeeUsd.toFixed(2)}</p>
                   <p><strong>Processing Fee:</strong> ${processingFeeUsd.toFixed(2)}</p>
+                  <p><strong>Estimated Shipping:</strong> ${shippingFeeUsd.toFixed(2)}</p>
                   <p><strong>Landed Cost Lock Total:</strong> ${landedTotalUsd.toFixed(2)}</p>
                 </div>
 
@@ -3209,6 +3237,29 @@ function App() {
                       </ul>
                     </div>
                   )}
+
+                  <div className="estimator-notes" style={{ marginTop: '1rem' }}>
+                    <p><strong>How Your Links Were Interpreted</strong></p>
+                    <p style={{ marginBottom: '0.45rem' }}>
+                      Links parsed: {estimatorResult.inputSummary.totalLinks}. Cart links: {estimatorResult.inputSummary.cartLinks}. Product links: {estimatorResult.inputSummary.productLinks}.
+                    </p>
+                    <ul className="type-list">
+                      {estimatorResult.estimatedItems.map((item, idx) => (
+                        <li key={`${item.link}-${idx}`}>
+                          {item.sourceType === 'cart-subtotal'
+                            ? `${item.store} cart subtotal: $${item.unitPriceUsd.toFixed(2)} (from your manual subtotal)`
+                            : `${item.store} product link: ${item.name} -> $${item.unitPriceUsd.toFixed(2)} inferred baseline (${item.category})`}
+                        </li>
+                      ))}
+                    </ul>
+                    <p style={{ marginTop: '0.55rem', marginBottom: '0.2rem' }}>
+                      Formula used: subtotal + customs + brokerage + processing + shipping
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--muted)' }}>
+                      Rates: customs {(estimatorResult.rateSummary.customsRate * 100).toFixed(0)}%, processing {(estimatorResult.rateSummary.processingRate * 100).toFixed(0)}%, shipping {(estimatorResult.rateSummary.shippingRate * 100).toFixed(0)}%, brokerage ${estimatorResult.rateSummary.brokerageFlat.toFixed(2)} flat.
+                    </p>
+                  </div>
+
                   <button type="button" className="btn btn--solid" onClick={handleImportAndGoToShop} style={{ marginTop: '1.5rem', width: '100%' }}>
                     📦 Add to Shop & Ship Cart
                   </button>
