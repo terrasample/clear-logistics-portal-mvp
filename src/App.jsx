@@ -559,6 +559,7 @@ function App() {
   });
   const [estimatorLinks, setEstimatorLinks] = useState('');
   const [estimatorSubtotalInput, setEstimatorSubtotalInput] = useState('');
+  const [estimatorProductPricesInput, setEstimatorProductPricesInput] = useState('');
   const [estimatorResult, setEstimatorResult] = useState(null);
 
   const [instantQuoteForm, setInstantQuoteForm] = useState({
@@ -1098,15 +1099,26 @@ function App() {
     const hasCartLink = cartLinks.length > 0;
     const manualSubtotal = Number(estimatorSubtotalInput);
     const hasValidManualSubtotal = Number.isFinite(manualSubtotal) && manualSubtotal > 0;
+    const productPriceLines = estimatorProductPricesInput
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const parsedProductPrices = productPriceLines.map((line) => Number(line.replace(/[$,]/g, '')));
+    const hasValidProductPrices = parsedProductPrices.length === productLinks.length
+      && parsedProductPrices.every((price) => Number.isFinite(price) && price > 0);
 
     if (hasCartLink && !hasValidManualSubtotal) {
       setStatusMessage('Cart links detected. Enter the actual store subtotal to improve accuracy.');
       return;
     }
 
+    if (productLinks.length > 0 && !hasValidProductPrices) {
+      setStatusMessage('Product links detected. Enter exact item prices (USD), one per product link, in the same order.');
+      return;
+    }
+
     const inferredItems = productLinks.map((link, index) => {
       const category = inferCategoryFromUrl(link);
-      const inferredPrice = inferDefaultPrice(category);
       const store = getStoreNameFromUrl(link);
       const extractedName = extractProductNameFromUrl(link);
       const name = extractedName || `${category} item` || `Item ${index + 1}`;
@@ -1115,10 +1127,10 @@ function App() {
         name,
         link,
         quantity: 1,
-        unitPriceUsd: inferredPrice,
+        unitPriceUsd: Number(parsedProductPrices[index].toFixed(2)),
         category,
         store,
-        sourceType: 'inferred-product-link',
+        sourceType: 'manual-product-price',
       };
     });
 
@@ -1146,7 +1158,7 @@ function App() {
     const shipping = subtotal * 0.09;
     const total = subtotal + customs + brokerage + processing + shipping;
     const unknownCount = inferredItems.filter((item) => item.category === 'General').length;
-    const confidence = Math.max(55, Math.min(92, Math.round(90 - unknownCount * 9 - (hasLuxury ? 8 : 0))));
+    const confidence = Math.max(72, Math.min(95, Math.round(93 - unknownCount * 5 - (hasLuxury ? 8 : 0))));
     const confidenceLabel = confidence >= 82 ? 'High' : confidence >= 68 ? 'Medium' : 'Low';
 
     const missing = [];
@@ -1172,6 +1184,7 @@ function App() {
         cartLinks: cartLinks.length,
         productLinks: productLinks.length,
         manualSubtotalUsed: hasCartLink && hasValidManualSubtotal,
+        exactProductPricesUsed: productLinks.length > 0,
       },
       rateSummary: {
         customsRate: hasLuxury ? 0.24 : 0.16,
@@ -1442,6 +1455,7 @@ function App() {
       });
       setEstimatorLinks('');
       setEstimatorSubtotalInput('');
+      setEstimatorProductPricesInput('');
       setEstimatorResult(null);
       window.location.assign(checkoutResult.url);
     } catch (error) {
@@ -3179,7 +3193,7 @@ function App() {
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(11, 107, 97, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--brand)' }}>
               <p style={{ margin: '0', fontSize: '0.95rem', fontWeight: '500' }}>
                 💡 <strong>Pro Tip:</strong> For cart links (like Amazon), paste your actual cart subtotal below. 
-                For individual product links, just paste the link.
+                For product links, add the exact item price list so your estimate is precise.
               </p>
             </div>
           </div>
@@ -3208,6 +3222,15 @@ function App() {
                   value={estimatorSubtotalInput}
                   onChange={(event) => setEstimatorSubtotalInput(event.target.value)}
                   placeholder="e.g. 224.40"
+                />
+              </label>
+              <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
+                Exact Product Prices (USD) - Required for product links (one per line, same order)
+                <textarea
+                  rows="4"
+                  value={estimatorProductPricesInput}
+                  onChange={(event) => setEstimatorProductPricesInput(event.target.value)}
+                  placeholder="799.99&#10;1299.00"
                 />
               </label>
               <div className="estimator-panel__actions">
@@ -3248,7 +3271,7 @@ function App() {
                         <li key={`${item.link}-${idx}`}>
                           {item.sourceType === 'cart-subtotal'
                             ? `${item.store} cart subtotal: $${item.unitPriceUsd.toFixed(2)} (from your manual subtotal)`
-                            : `${item.store} product link: ${item.name} -> $${item.unitPriceUsd.toFixed(2)} inferred baseline (${item.category})`}
+                            : `${item.store} product link: ${item.name} -> $${item.unitPriceUsd.toFixed(2)} (from your exact product price input)`}
                         </li>
                       ))}
                     </ul>
@@ -3274,6 +3297,7 @@ function App() {
               <ul className="type-list">
                 <li><strong>Paste Links:</strong> One per line from US stores</li>
                 <li><strong>Enter Subtotal:</strong> Required for cart URLs only</li>
+                <li><strong>Enter Product Prices:</strong> Required for product URLs</li>
                 <li><strong>Get Estimate:</strong> Instant landed-cost breakdown</li>
                 <li><strong>Import & Ship:</strong> Add to Shop & Ship and checkout</li>
               </ul>
