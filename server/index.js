@@ -85,6 +85,8 @@ const scanNoScanCutoffHour = Math.min(23, Math.max(0, Number(process.env.SCAN_NO
 const purgeDemoDataOnStart = String(
   process.env.PURGE_DEMO_DATA_ON_START || (process.env.NODE_ENV === 'production' ? 'true' : 'false')
 ).toLowerCase() === 'true';
+const emailProviderPreference = String(process.env.EMAIL_PROVIDER || 'resend').trim().toLowerCase();
+const emailRequestTimeoutMs = Math.max(3000, Number(process.env.EMAIL_REQUEST_TIMEOUT_MS || 12000));
 
 function getFrontendBaseUrl(req) {
   const configured = String(process.env.FRONTEND_URL || '').trim();
@@ -505,21 +507,163 @@ async function sendNotification(subject, body) {
   });
 }
 
-async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
-  const destination = String(to || '').trim();
-  if (!destination || !subject || (!text && !html)) {
-    return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
+function buildPlainTextEmail(text, html) {
+  if (String(text || '').trim()) {
+    return text;
+  }
+  return String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = emailRequestTimeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function sendViaResend({ destination, subject, text, html, mockTag }) {
+  const apiKey = String(process.env.RESEND_API_KEY || '').trim();
+  if (!apiKey) {
+    return { delivered: false, mode: 'skipped', provider: 'resend', reason: 'missing-resend-api-key' };
   }
 
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.NOTIFY_EMAIL) {
-    console.log(`[${mockTag}:mock]`, { to: destination, subject, text: text || '(html-only email)' });
-    return { delivered: false, mode: 'mock' };
+  const fromAddress = String(process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  if (!fromAddress) {
+    return { delivered: false, mode: 'skipped', provider: 'resend', reason: 'missing-from-address' };
+  }
+
+  const body = {
+    from: fromAddress,
+    to: [destination],
+    subject,
+    text: buildPlainTextEmail(text, html),
+  };
+  if (String(html || '').trim()) {
+    body.html = html;
+  }
+
+  try {
+    const response = await fetchWithTimeout('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const reason = result?.message || result?.error || `Resend HTTP ${response.status}`;
+      console.error(`[${mockTag}:resend-error]`, { to: destination, subject, reason, status: response.status });
+      return {
+        delivered: false,
+        mode: 'provider-error',
+        provider: 'resend',
+        reason,
+        responseCode: response.status,
+      };
+    }
+
+    return {
+      delivered: true,
+      mode: 'provider',
+      provider: 'resend',
+      messageId: result?.id || null,
+    };
+  } catch (error) {
+    const isTimeout = error?.name === 'AbortError';
+    const reason = isTimeout ? 'provider-request-timeout' : (error?.message || 'resend-send-failed');
+    console.error(`[${mockTag}:resend-error]`, { to: destination, subject, reason });
+    return {
+      delivered: false,
+      mode: 'provider-error',
+      provider: 'resend',
+      reason,
+      code: isTimeout ? 'ETIMEDOUT' : (error?.code || null),
+    };
+  }
+}
+
+async function sendViaSendGrid({ destination, subject, text, html, mockTag }) {
+  const apiKey = String(process.env.SENDGRID_API_KEY || '').trim();
+  if (!apiKey) {
+    return { delivered: false, mode: 'skipped', provider: 'sendgrid', reason: 'missing-sendgrid-api-key' };
+  }
+
+  const fromAddress = String(process.env.SENDGRID_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  if (!fromAddress) {
+    return { delivered: false, mode: 'skipped', provider: 'sendgrid', reason: 'missing-from-address' };
+  }
+
+  const plainText = buildPlainTextEmail(text, html);
+  const body = {
+    personalizations: [{ to: [{ email: destination }] }],
+    from: { email: fromAddress },
+    subject,
+    content: [
+      { type: 'text/plain', value: plainText || subject },
+    ],
+  };
+
+  if (String(html || '').trim()) {
+    body.content.push({ type: 'text/html', value: html });
+  }
+
+  try {
+    const response = await fetchWithTimeout('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      const reason = bodyText || `SendGrid HTTP ${response.status}`;
+      console.error(`[${mockTag}:sendgrid-error]`, { to: destination, subject, reason, status: response.status });
+      return {
+        delivered: false,
+        mode: 'provider-error',
+        provider: 'sendgrid',
+        reason,
+        responseCode: response.status,
+      };
+    }
+
+    return {
+      delivered: true,
+      mode: 'provider',
+      provider: 'sendgrid',
+    };
+  } catch (error) {
+    const isTimeout = error?.name === 'AbortError';
+    const reason = isTimeout ? 'provider-request-timeout' : (error?.message || 'sendgrid-send-failed');
+    console.error(`[${mockTag}:sendgrid-error]`, { to: destination, subject, reason });
+    return {
+      delivered: false,
+      mode: 'provider-error',
+      provider: 'sendgrid',
+      reason,
+      code: isTimeout ? 'ETIMEDOUT' : (error?.code || null),
+    };
+  }
+}
+
+async function sendViaSmtp({ destination, subject, text, html, mockTag }) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return { delivered: false, mode: 'skipped', provider: 'smtp', reason: 'missing-smtp-config' };
   }
 
   const transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
+    secure: String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
     connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
     greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
     socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000),
@@ -530,14 +674,14 @@ async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
   });
 
   try {
-    await transport.sendMail({
+    const info = await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: destination,
       subject,
-      text: text || String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+      text: buildPlainTextEmail(text, html),
       html
     });
-    return { delivered: true, mode: 'smtp' };
+    return { delivered: true, mode: 'smtp', provider: 'smtp', messageId: info?.messageId || null };
   } catch (error) {
     console.error(`[${mockTag}:smtp-error]`, {
       to: destination,
@@ -549,11 +693,70 @@ async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
     return {
       delivered: false,
       mode: 'smtp-error',
+      provider: 'smtp',
       reason: error?.message || 'smtp-send-failed',
       code: error?.code || null,
       responseCode: error?.responseCode || null,
     };
   }
+}
+
+function normalizeDeliveryStatus(result) {
+  return {
+    delivered: Boolean(result?.delivered),
+    mode: String(result?.mode || 'unknown'),
+    provider: String(result?.provider || ''),
+    reason: result?.reason ? String(result.reason) : '',
+    code: result?.code ? String(result.code) : '',
+    responseCode: Number.isFinite(Number(result?.responseCode)) ? Number(result.responseCode) : null,
+    messageId: result?.messageId ? String(result.messageId) : '',
+  };
+}
+
+async function sendEmail({ to, subject, text, html, mockTag = 'email' }) {
+  const destination = String(to || '').trim();
+  if (!destination || !subject || (!text && !html)) {
+    return { delivered: false, mode: 'skipped', reason: 'missing-required-fields' };
+  }
+
+  const attempts = [];
+  const resendAttempt = () => sendViaResend({ destination, subject, text, html, mockTag });
+  const sendGridAttempt = () => sendViaSendGrid({ destination, subject, text, html, mockTag });
+  const smtpAttempt = () => sendViaSmtp({ destination, subject, text, html, mockTag });
+
+  const attemptOrder = emailProviderPreference === 'smtp'
+    ? [smtpAttempt, resendAttempt, sendGridAttempt]
+    : emailProviderPreference === 'sendgrid'
+      ? [sendGridAttempt, resendAttempt, smtpAttempt]
+      : [resendAttempt, sendGridAttempt, smtpAttempt];
+
+  for (const sendAttempt of attemptOrder) {
+    const result = await sendAttempt();
+    attempts.push(normalizeDeliveryStatus(result));
+    if (result.delivered) {
+      return {
+        ...normalizeDeliveryStatus(result),
+        attempts,
+      };
+    }
+  }
+
+  const hasConfiguredTransport = attempts.some((attempt) => attempt.mode !== 'skipped');
+  if (!hasConfiguredTransport) {
+    console.log(`[${mockTag}:mock]`, { to: destination, subject, text: buildPlainTextEmail(text, html) || '(empty body)' });
+    return { delivered: false, mode: 'mock', provider: 'none', reason: 'no-email-provider-configured', attempts };
+  }
+
+  const lastFailure = attempts[attempts.length - 1] || {};
+  return {
+    delivered: false,
+    mode: lastFailure.mode || 'failed',
+    provider: lastFailure.provider || '',
+    reason: lastFailure.reason || 'all-email-attempts-failed',
+    code: lastFailure.code || '',
+    responseCode: lastFailure.responseCode || null,
+    attempts,
+  };
 }
 
 function formatUsd(value) {
@@ -1524,7 +1727,7 @@ app.post('/api/quotes', async (req, res) => {
 
   const adminEmail = buildPremiumQuoteAdminEmail(quote);
   const customerEmail = buildPremiumQuoteCustomerEmail(quote);
-  await Promise.allSettled([
+  const [adminResult, customerResult] = await Promise.all([
     sendEmail({
       to: process.env.NOTIFY_EMAIL,
       subject: adminEmail.subject,
@@ -1541,7 +1744,18 @@ app.post('/api/quotes', async (req, res) => {
     })
   ]);
 
-  res.status(201).json({ quote, message: 'Quote request submitted.' });
+  quote.emailStatus = {
+    admin: normalizeDeliveryStatus(adminResult),
+    customer: normalizeDeliveryStatus(customerResult),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeData(data);
+
+  res.status(201).json({
+    quote,
+    message: 'Quote request submitted.',
+    emailStatus: quote.emailStatus,
+  });
 });
 
 app.post('/api/quotes/:quoteId/nudges/unsubscribe', async (req, res) => {
@@ -1880,6 +2094,29 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
     })
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
 
+  const quotes = (data.quotes || [])
+    .filter((quote) => {
+      if (!quote) return false;
+      if (quote.userId && req.user.sub && quote.userId === req.user.sub) {
+        return true;
+      }
+      return normalizeEmail(quote.email) === requesterEmail;
+    })
+    .map((quote) => ({
+      quoteId: String(quote.quoteId || 'N/A'),
+      cargoType: String(quote.cargoType || quote.itemCategory || 'Shipment'),
+      origin: String(quote.origin || ''),
+      destination: String(quote.destination || ''),
+      deliveryParish: String(quote.deliveryParish || ''),
+      pricingMode: String(quote.pricingMode || ''),
+      quotedPriceUsd: Number.isFinite(Number(quote.quotedPriceUsd)) ? Number(quote.quotedPriceUsd) : null,
+      estimatedRangeUsd: quote.estimatedRangeUsd || null,
+      createdAt: quote.createdAt || new Date().toISOString(),
+      status: String(quote.status || 'Submitted'),
+      emailStatus: quote?.emailStatus?.customer ? normalizeDeliveryStatus(quote.emailStatus.customer) : null,
+    }))
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+
   const profile = matchedAccount
     ? {
         fullName: matchedAccount.fullName || req.user.fullName || 'Customer',
@@ -1894,7 +2131,7 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
         usReceivingAddress: deriveReceivingAddress(req.user),
       };
 
-  return res.json({ shipments, profile });
+  return res.json({ shipments, profile, quotes });
 });
 
 app.post('/api/support', async (req, res) => {

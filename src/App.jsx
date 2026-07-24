@@ -583,6 +583,7 @@ function App() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [customerShipments, setCustomerShipments] = useState([]);
+  const [customerQuotes, setCustomerQuotes] = useState([]);
   const [customerProfile, setCustomerProfile] = useState({
     fullName: '',
     email: '',
@@ -642,6 +643,7 @@ function App() {
     setCurrentUser(null);
     setAuthToken('');
     setCustomerShipments([]);
+    setCustomerQuotes([]);
     setCustomerProfile({
       fullName: '',
       email: '',
@@ -767,8 +769,27 @@ function App() {
 
     if (!isAuthenticated || currentUser?.role === 'admin') {
       setCustomerShipments([]);
+      setCustomerQuotes([]);
     }
   }, [isAuthenticated, currentUser?.role, authToken]);
+
+  function buildQuoteEmailStatusLine(emailStatus) {
+    const customerStatus = emailStatus?.customer || null;
+    if (!customerStatus) {
+      return ' Confirmation email pending delivery status.';
+    }
+
+    if (customerStatus.delivered) {
+      const route = customerStatus.provider || customerStatus.mode || 'email';
+      return ` Confirmation email sent via ${route}.`;
+    }
+
+    if (customerStatus.mode === 'mock') {
+      return ' Quote saved, but email delivery is currently in test mode.';
+    }
+
+    return ' Quote saved, but confirmation email could not be delivered right now. Support has been notified.';
+  }
 
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
@@ -1422,7 +1443,8 @@ function App() {
       if (result.quote?.vipConcierge) premiumFlags.push('VIP concierge');
       if (Number(result.quote?.supplyAddonsTotalUsd || 0) > 0) premiumFlags.push(`supplies total $${Number(result.quote.supplyAddonsTotalUsd).toFixed(2)}`);
       const premiumLine = premiumFlags.length ? ` Premium options: ${premiumFlags.join(', ')}.` : '';
-      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}${premiumLine} Confirmation email sent.`);
+      const emailLine = buildQuoteEmailStatusLine(result.emailStatus);
+      setStatusMessage(`Quote request submitted: ${result.quote.quoteId}. ${modeLabel} pricing mode.${range}${premiumLine}${emailLine}`);
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -1790,6 +1812,7 @@ function App() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to load your dashboard.');
       setCustomerShipments(Array.isArray(result.shipments) ? result.shipments : []);
+      setCustomerQuotes(Array.isArray(result.quotes) ? result.quotes : []);
       const profile = result.profile || {};
       setCustomerProfile({
         fullName: String(profile.fullName || currentUser?.fullName || ''),
@@ -1800,6 +1823,7 @@ function App() {
     } catch (error) {
       setStatusMessage(error.message);
       setCustomerShipments([]);
+      setCustomerQuotes([]);
       setCustomerProfile({
         fullName: String(currentUser?.fullName || ''),
         email: String(currentUser?.email || ''),
@@ -4043,6 +4067,7 @@ function App() {
 
     const activeShipment = customerShipments[0] || null;
     const recentShipments = customerShipments.slice(1, 4);
+    const recentQuotes = customerQuotes.slice(0, 5);
     const activeShipmentProgress = activeShipment?.steps?.length
       ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
       : 0;
@@ -4079,7 +4104,7 @@ function App() {
 
         {customerDashboardLoading ? (
           <section className="card">
-            <p className="section-intro">Loading your shipments...</p>
+            <p className="section-intro">Loading your shipments and quotes...</p>
           </section>
         ) : null}
 
@@ -4274,6 +4299,49 @@ function App() {
             </div>
           </section>
         )}
+
+        <section className="card">
+          <h2 style={{ marginBottom: '1rem' }}>My Quotes</h2>
+          {recentQuotes.length === 0 ? (
+            <p className="section-intro">No quotes submitted yet. Use Get a Quote to request pricing and follow-up.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.85rem' }}>
+              {recentQuotes.map((quote) => {
+                const delivery = quote.emailStatus || {};
+                const deliveryLabel = delivery.delivered
+                  ? `Email sent (${delivery.provider || delivery.mode || 'delivery'})`
+                  : 'Email delivery pending';
+                const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
+                  ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
+                  : Number.isFinite(Number(quote.quotedPriceUsd))
+                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (weight-based)`
+                    : 'Pricing pending';
+
+                return (
+                  <article key={quote.quoteId} className="sample-shipment-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: '0', fontWeight: 700 }}>{quote.quoteId}</p>
+                        <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.92rem' }}>
+                          {quote.origin} to {quote.destination}
+                        </p>
+                      </div>
+                      <p style={{ margin: '0', color: delivery.delivered ? '#0b6b61' : '#8a4b08', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {deliveryLabel}
+                      </p>
+                    </div>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
+                      {quote.cargoType} • {pricingLabel}
+                    </p>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                      Submitted {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </>
     );
   }
