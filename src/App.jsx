@@ -684,6 +684,8 @@ function App() {
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
   const [selectedAdminItem, setSelectedAdminItem] = useState(null);
   const [shopAccessMode, setShopAccessMode] = useState('');
+  const [shopStoreInputMode, setShopStoreInputMode] = useState('catalog');
+  const [customStoreName, setCustomStoreName] = useState('');
   const [showShopBookingPrompt, setShowShopBookingPrompt] = useState(false);
   const [shopBookingPromptDismissedKey, setShopBookingPromptDismissedKey] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -1253,6 +1255,39 @@ function App() {
     setPurchaseForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   }
 
+  function handleCustomStoreNameChange(event) {
+    const value = String(event.target.value || '');
+    setCustomStoreName(value);
+    setPurchaseForm((prev) => ({ ...prev, storeName: value.trim() }));
+  }
+
+  function setStoreSelectionMode(mode) {
+    if (mode === 'custom') {
+      setShopStoreInputMode('custom');
+      setCustomStoreName((prev) => {
+        if (prev.trim()) return prev;
+        const currentStore = String(purchaseForm.storeName || '').trim();
+        const hasPopularMatch = POPULAR_STORES.some((store) => store.name === currentStore);
+        return hasPopularMatch ? '' : currentStore;
+      });
+      return;
+    }
+
+    setShopStoreInputMode('catalog');
+    setCustomStoreName('');
+    const currentStore = String(purchaseForm.storeName || '').trim();
+    const hasPopularMatch = POPULAR_STORES.some((store) => store.name === currentStore);
+    if (!hasPopularMatch) {
+      setPurchaseForm((prev) => ({ ...prev, storeName: POPULAR_STORES[0]?.name || 'Amazon' }));
+    }
+  }
+
+  function selectPopularStore(storeName) {
+    setShopStoreInputMode('catalog');
+    setCustomStoreName('');
+    setPurchaseForm((prev) => ({ ...prev, storeName: storeName }));
+  }
+
   function handleShopDocChange(event) {
     const { name, value, type, checked } = event.target;
     setShopDocs((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -1725,6 +1760,11 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
+      const resolvedStoreName = String(purchaseForm.storeName || '').trim();
+      if (!resolvedStoreName) {
+        throw new Error('Choose a store or type a store name to continue.');
+      }
+
       if (!normalizedShopItems.length) {
         throw new Error('Add at least one cart item with product name and link.');
       }
@@ -1749,6 +1789,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...purchaseForm,
+          storeName: resolvedStoreName,
           productLinks: selectedShopItems.map((item) => item.link),
           items: selectedShopItems,
           deferredItems: remainingShopItems,
@@ -1808,6 +1849,8 @@ function App() {
         notifyWhatsApp: true,
         notifySms: false,
       });
+      setShopStoreInputMode('catalog');
+      setCustomStoreName('');
       setShopItems([createEmptyShopItem()]);
       setShopDocs({
         invoiceUrl: '',
@@ -3748,6 +3791,67 @@ function App() {
                 </div>
               )}
               <form className="form" onSubmit={handlePurchaseSubmit}>
+                <div className="shop-store-step">
+                  <p className="shop-store-step__label">Step 1: Choose a store</p>
+                  <div className="shop-store-step__mode-toggle" role="tablist" aria-label="Store entry mode">
+                    <button
+                      type="button"
+                      className={shopStoreInputMode === 'catalog' ? 'shop-store-step__mode-btn active' : 'shop-store-step__mode-btn'}
+                      role="tab"
+                      aria-selected={shopStoreInputMode === 'catalog'}
+                      onClick={() => setStoreSelectionMode('catalog')}
+                    >
+                      Choose a store
+                    </button>
+                    <button
+                      type="button"
+                      className={shopStoreInputMode === 'custom' ? 'shop-store-step__mode-btn active' : 'shop-store-step__mode-btn'}
+                      role="tab"
+                      aria-selected={shopStoreInputMode === 'custom'}
+                      onClick={() => setStoreSelectionMode('custom')}
+                    >
+                      Type it in
+                    </button>
+                  </div>
+
+                  {shopStoreInputMode === 'catalog' ? (
+                    <>
+                      <label htmlFor="shop-store-select">
+                        Popular Stores
+                        <select id="shop-store-select" name="storeName" value={purchaseForm.storeName} onChange={handlePurchaseChange}>
+                          {POPULAR_STORES.map((store) => (
+                            <option key={store.name} value={store.name}>{store.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="shop-store-step__quick-grid" aria-label="Quick store options">
+                        {POPULAR_STORES.slice(0, 10).map((store) => (
+                          <button
+                            key={`quick-store-${store.name}`}
+                            type="button"
+                            className={purchaseForm.storeName === store.name ? 'shop-store-step__quick-chip active' : 'shop-store-step__quick-chip'}
+                            onClick={() => selectPopularStore(store.name)}
+                          >
+                            {store.name}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <label htmlFor="shop-custom-store-name">
+                      Store Name
+                      <input
+                        id="shop-custom-store-name"
+                        type="text"
+                        value={customStoreName}
+                        onChange={handleCustomStoreNameChange}
+                        placeholder="Type any store name (for example, Temu or Shein)"
+                        required
+                      />
+                    </label>
+                  )}
+                </div>
+
                 <label>
                   Full Name
                   <input name="fullName" value={purchaseForm.fullName} onChange={handlePurchaseChange} required />
@@ -3759,14 +3863,6 @@ function App() {
                 <label>
                   Phone
                   <input type="tel" name="phone" value={purchaseForm.phone} onChange={handlePurchaseChange} required />
-                </label>
-                <label>
-                  Preferred Store
-                  <select name="storeName" value={purchaseForm.storeName} onChange={handlePurchaseChange}>
-                    {POPULAR_STORES.map((store) => (
-                      <option key={store.name}>{store.name}</option>
-                    ))}
-                  </select>
                 </label>
                 <label>
                   Size/Color Specs
