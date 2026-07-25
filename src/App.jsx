@@ -2259,7 +2259,7 @@ function App() {
         email: String(loginForm.email || '').trim(),
       };
 
-      const response = await fetch(`${API_BASE}/login`, {
+      const response = await fetchWithApiFallback('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginPayload),
@@ -2271,14 +2271,14 @@ function App() {
         try {
           return JSON.parse(raw);
         } catch {
-          throw new Error(`Login service returned an unexpected response (${res.status}). Please verify the API server is running on port 8787.`);
+          throw new Error(`Login service returned an unexpected response (${res.status}). Please refresh and try again.`);
         }
       };
 
       let result = await parseJsonResponse(response);
 
       if (!response.ok) {
-        const driverFallbackResponse = await fetch(`${API_BASE}/drivers/login`, {
+        const driverFallbackResponse = await fetchWithApiFallback('/drivers/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loginPayload),
