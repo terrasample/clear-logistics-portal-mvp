@@ -624,6 +624,8 @@ function App() {
     token: '',
     newPassword: '',
   });
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationBusy, setVerificationBusy] = useState(false);
 
   const [purchaseForm, setPurchaseForm] = useState({
     fullName: '',
@@ -702,6 +704,7 @@ function App() {
   const chatMessageIdRef = useRef(0);
   const chatMessagesRef = useRef(null);
   const shopCheckoutButtonRef = useRef(null);
+  const verificationAttemptRef = useRef('');
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -831,21 +834,52 @@ function App() {
     }
 
     const params = new URLSearchParams(location.search);
-    if (params.get('reset') !== '1') {
-      return;
-    }
 
     const emailFromQuery = String(params.get('email') || '').trim().toLowerCase();
     const tokenFromQuery = String(params.get('token') || '').trim();
 
-    setForgotPasswordOpen(true);
-    setForgotPasswordForm((prev) => ({
-      ...prev,
-      email: emailFromQuery || prev.email,
-      token: tokenFromQuery || prev.token,
-    }));
-    if (emailFromQuery) {
+    if (params.get('reset') === '1') {
+      setForgotPasswordOpen(true);
+      setForgotPasswordForm((prev) => ({
+        ...prev,
+        email: emailFromQuery || prev.email,
+        token: tokenFromQuery || prev.token,
+      }));
+      if (emailFromQuery) {
+        setLoginForm((prev) => ({ ...prev, email: emailFromQuery }));
+      }
+    }
+
+    if (params.get('verify') === '1' && emailFromQuery && tokenFromQuery) {
+      const attemptKey = `${emailFromQuery}:${tokenFromQuery}`;
+      if (verificationAttemptRef.current === attemptKey) {
+        return;
+      }
+      verificationAttemptRef.current = attemptKey;
+
+      setVerificationBusy(true);
+      setVerificationEmail(emailFromQuery);
+      setStatusMessage('Verifying your email...');
       setLoginForm((prev) => ({ ...prev, email: emailFromQuery }));
+
+      fetchWithApiFallback('/email/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailFromQuery, token: tokenFromQuery }),
+      })
+        .then(async (response) => {
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.error || 'Unable to verify email. Please request a new verification email.');
+          }
+          setStatusMessage(result.message || 'Email verified successfully. You can now log in.');
+        })
+        .catch((error) => {
+          setStatusMessage(error.message || 'Unable to verify email. Please request a new verification email.');
+        })
+        .finally(() => {
+          setVerificationBusy(false);
+        });
     }
   }, [location.pathname, location.search]);
 
@@ -1678,14 +1712,21 @@ function App() {
         fullName: String(accountForm.fullName || '').trim(),
         email: String(accountForm.email || '').trim().toLowerCase(),
       };
-      const response = await fetch(`${API_BASE}/accounts`, {
+      const response = await fetchWithApiFallback('/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(accountPayload),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to create account.');
-      setStatusMessage(`Account created for ${result.account.fullName}.`);
+      setVerificationEmail(accountPayload.email);
+      if (result.emailVerification?.delivered) {
+        setStatusMessage(`Account created for ${result.account.fullName}. Check your email and verify your account before login.`);
+      } else if (result.emailVerification?.mode === 'mock') {
+        setStatusMessage(`Account created for ${result.account.fullName}. Verification email is in test mode (not delivered).`);
+      } else {
+        setStatusMessage(result.message || `Account created for ${result.account.fullName}. Please verify your email before login.`);
+      }
       setAccountForm({ fullName: '', email: '', password: '' });
     } catch (error) {
       setStatusMessage(error.message);
@@ -2278,6 +2319,13 @@ function App() {
       let result = await parseJsonResponse(response);
 
       if (!response.ok) {
+        if (result.code === 'EMAIL_NOT_VERIFIED') {
+          const verificationError = new Error(result.error || 'Please verify your email before logging in.');
+          verificationError.code = result.code;
+          verificationError.email = result.email || loginPayload.email;
+          throw verificationError;
+        }
+
         const driverFallbackResponse = await fetchWithApiFallback('/drivers/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2320,9 +2368,43 @@ function App() {
           : '/dashboard';
       navigate(destination);
     } catch (error) {
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        const pendingEmail = String(error.email || loginForm.email || '').trim().toLowerCase();
+        if (pendingEmail) {
+          setVerificationEmail(pendingEmail);
+        }
+      }
       setStatusMessage(error.message);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleResendVerificationEmail() {
+    const email = String(verificationEmail || loginForm.email || '').trim().toLowerCase();
+    if (!email) {
+      setStatusMessage('Enter your email first, then request a new verification link.');
+      return;
+    }
+
+    setVerificationBusy(true);
+    setStatusMessage('Sending a new verification email...');
+    try {
+      const response = await fetchWithApiFallback('/email/verify/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to resend verification email right now.');
+      }
+      setVerificationEmail(email);
+      setStatusMessage(result.message || 'Verification email sent. Check your inbox.');
+    } catch (error) {
+      setStatusMessage(error.message || 'Unable to resend verification email right now.');
+    } finally {
+      setVerificationBusy(false);
     }
   }
 
@@ -5453,6 +5535,9 @@ function App() {
           </label>
           <button type="submit" className="btn btn--solid" disabled={isLoading}>Create Account</button>
         </form>
+        <p className="section-intro" style={{ marginTop: '0.75rem' }}>
+          New accounts require email verification before first login.
+        </p>
       </section>
     );
   }
@@ -5474,6 +5559,16 @@ function App() {
             </label>
             <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
           </form>
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={handleResendVerificationEmail}
+              disabled={verificationBusy}
+            >
+              {verificationBusy ? 'Sending...' : 'Resend Verification Email'}
+            </button>
+          </div>
           <div style={{ marginTop: '0.75rem' }}>
             <button
               type="button"

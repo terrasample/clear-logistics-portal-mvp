@@ -93,6 +93,7 @@ const purgeDemoDataOnStart = String(
 const emailProviderPreference = String(process.env.EMAIL_PROVIDER || 'resend').trim().toLowerCase();
 const emailRequestTimeoutMs = Math.max(3000, Number(process.env.EMAIL_REQUEST_TIMEOUT_MS || 12000));
 const passwordResetTokenTtlMinutes = Math.max(5, Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30));
+const emailVerificationTokenTtlMinutes = Math.max(10, Number(process.env.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES || 1440));
 const emailDkimSelector = String(process.env.EMAIL_DKIM_SELECTOR || 'default').trim().toLowerCase();
 const emailAuthCacheMs = Math.max(60 * 1000, Number(process.env.EMAIL_AUTH_CACHE_MS || 5 * 60 * 1000));
 let cachedEmailHealth = { expiresAt: 0, value: null };
@@ -256,7 +257,17 @@ async function writeData(data) {
 }
 
 function sanitizeAccount(account) {
-  const { password, passwordHash, ...safeAccount } = account;
+  const {
+    password,
+    passwordHash,
+    passwordResetTokenHash,
+    passwordResetRequestedAt,
+    passwordResetExpiresAt,
+    emailVerificationTokenHash,
+    emailVerificationRequestedAt,
+    emailVerificationExpiresAt,
+    ...safeAccount
+  } = account;
   return {
     ...safeAccount,
     role: resolveAccountRole(account)
@@ -1340,8 +1351,77 @@ function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function hashToken(value) {
+  return createHash('sha256').update(String(value || '')).digest('hex');
+}
+
 function hashPasswordResetToken(token) {
-  return createHash('sha256').update(String(token || '')).digest('hex');
+  return hashToken(token);
+}
+
+function hashEmailVerificationToken(token) {
+  return hashToken(token);
+}
+
+function buildWelcomeVerificationCustomerEmail({ fullName, email, verificationToken, expiresAtIso, req }) {
+  const recipientName = String(fullName || 'there').trim();
+  const frontendBase = getFrontendBaseUrl(req);
+  const verifyLink = `${frontendBase}/login?verify=1&email=${encodeURIComponent(email)}&token=${encodeURIComponent(verificationToken)}`;
+  const expiresAt = new Date(expiresAtIso);
+  const expiresLabel = Number.isFinite(expiresAt.getTime()) ? expiresAt.toUTCString() : 'soon';
+
+  const subject = 'Welcome to Clear Logistics - Please verify your email';
+  const text = [
+    `Hi ${recipientName},`,
+    '',
+    'Welcome to Clear Logistics & Freight Services. Your account is ready.',
+    'Please verify your email to activate secure login and shipment updates.',
+    `Verify now: ${verifyLink}`,
+    `Verification token: ${verificationToken}`,
+    `This verification link expires at: ${expiresLabel}`,
+    '',
+    'Once verified, you can book pickups, track shipments, and manage your dashboard.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#f4f7fb;padding:20px;">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #dde4ee;border-radius:10px;overflow:hidden;">
+        <div style="background:linear-gradient(120deg,#0e7a5f 0%, #0b5f90 100%);color:#ffffff;padding:18px 22px;">
+          <h2 style="margin:0;font-size:22px;">Welcome to Clear Logistics</h2>
+          <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">Premium shipping experience from the USA to Jamaica</p>
+        </div>
+        <div style="padding:18px 22px;color:#1d2939;font-size:14px;line-height:1.55;">
+          <p style="margin:0 0 12px 0;">Hi ${escapeHtml(recipientName)},</p>
+          <p style="margin:0 0 12px 0;">Your account has been created successfully. Please verify your email to activate secure login and shipment updates.</p>
+          <p style="margin:0 0 14px 0;">
+            <a href="${escapeHtml(verifyLink)}" style="display:inline-block;background:#0e7a5f;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;">
+              Verify My Email
+            </a>
+          </p>
+          <p style="margin:0 0 8px 0;"><strong>Verification token:</strong> ${escapeHtml(verificationToken)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Expires:</strong> ${escapeHtml(expiresLabel)}</p>
+          <p style="margin:0 0 8px 0;"><strong>What you unlock after verification:</strong></p>
+          <ul style="margin:0 0 10px 18px;padding:0;">
+            <li>Fast online booking and checkout</li>
+            <li>Real-time shipment tracking</li>
+            <li>Priority support on your account</li>
+          </ul>
+          <p style="margin:0;">Need help? Reply to this email and our team will assist you right away.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
+
+function issueEmailVerificationToken(account) {
+  const verificationToken = randomBytes(24).toString('hex');
+  const expiresAtIso = new Date(Date.now() + emailVerificationTokenTtlMinutes * 60 * 1000).toISOString();
+  account.emailVerificationTokenHash = hashEmailVerificationToken(verificationToken);
+  account.emailVerificationRequestedAt = new Date().toISOString();
+  account.emailVerificationExpiresAt = expiresAtIso;
+  return { verificationToken, expiresAtIso };
 }
 
 function buildPasswordResetCustomerEmail({ fullName, email, resetToken, expiresAtIso, req }) {
@@ -1965,18 +2045,48 @@ app.post('/api/accounts', async (req, res) => {
     fullName: normalizedFullName,
     email: normalizedEmail,
     passwordHash,
+    emailVerificationRequired: true,
+    emailVerifiedAt: '',
+    emailVerificationTokenHash: '',
+    emailVerificationRequestedAt: '',
+    emailVerificationExpiresAt: '',
     customerReference: '',
     usReceivingAddress: '',
     createdAt: new Date().toISOString()
   };
 
+  const { verificationToken, expiresAtIso } = issueEmailVerificationToken(account);
   ensureCustomerShippingProfile(account);
 
   data.accounts.push(account);
   await writeData(data);
   await sendNotification('New Portal Account', `New account: ${normalizedFullName} <${normalizedEmail}>`);
 
-  res.status(201).json({ account: sanitizeAccount(account) });
+  const welcomeVerificationEmail = buildWelcomeVerificationCustomerEmail({
+    fullName: account.fullName,
+    email: account.email,
+    verificationToken,
+    expiresAtIso,
+    req,
+  });
+
+  const verificationEmailStatus = await sendEmail({
+    to: account.email,
+    subject: welcomeVerificationEmail.subject,
+    text: welcomeVerificationEmail.text,
+    html: welcomeVerificationEmail.html,
+    mockTag: 'welcome-verification',
+  });
+
+  res.status(201).json({
+    account: sanitizeAccount(account),
+    emailVerification: {
+      required: true,
+      delivered: Boolean(verificationEmailStatus?.delivered),
+      mode: verificationEmailStatus?.mode || null,
+    },
+    message: 'Account created. Please verify your email using the link we sent.',
+  });
 });
 
 app.post('/api/login', async (req, res) => {
@@ -2014,6 +2124,16 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  const verificationRequired = Boolean(account.emailVerificationRequired);
+  const isVerified = Boolean(String(account.emailVerifiedAt || '').trim());
+  if (verificationRequired && !isVerified) {
+    return res.status(403).json({
+      error: 'Please verify your email before logging in. Check your inbox or request a new verification email.',
+      code: 'EMAIL_NOT_VERIFIED',
+      email: account.email,
+    });
+  }
+
   let accountForToken = account;
   if (ensureCustomerShippingProfile(data.accounts[accountIndex])) {
     await writeData(data);
@@ -2022,6 +2142,90 @@ app.post('/api/login', async (req, res) => {
 
   const token = createAuthToken(accountForToken);
   res.json({ user: sanitizeAccount(accountForToken), token });
+});
+
+app.post('/api/email/verify', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const token = String(req.body?.token || '').trim();
+
+  if (!email || !token) {
+    return res.status(400).json({ error: 'email and token are required.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex < 0) {
+    return res.status(400).json({ error: 'Invalid or expired verification token.' });
+  }
+
+  const account = data.accounts[accountIndex];
+  if (!account.emailVerificationRequired || String(account.emailVerifiedAt || '').trim()) {
+    return res.json({
+      ok: true,
+      alreadyVerified: true,
+      message: 'Email already verified. You can log in now.',
+    });
+  }
+
+  const expiresAtMs = Date.parse(String(account?.emailVerificationExpiresAt || ''));
+  const savedTokenHash = String(account?.emailVerificationTokenHash || '');
+  const providedTokenHash = hashEmailVerificationToken(token);
+  const tokenExpired = !Number.isFinite(expiresAtMs) || Date.now() > expiresAtMs;
+
+  if (!savedTokenHash || tokenExpired || savedTokenHash !== providedTokenHash) {
+    return res.status(400).json({ error: 'Invalid or expired verification token.' });
+  }
+
+  account.emailVerifiedAt = new Date().toISOString();
+  delete account.emailVerificationTokenHash;
+  delete account.emailVerificationRequestedAt;
+  delete account.emailVerificationExpiresAt;
+
+  await writeData(data);
+  await sendNotification('Customer Email Verified', `Customer ${email} verified account email.`);
+
+  return res.json({
+    ok: true,
+    message: 'Email verified successfully. You can now log in.',
+  });
+});
+
+app.post('/api/email/verify/resend', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!email) {
+    return res.status(400).json({ error: 'email is required.' });
+  }
+
+  const data = await readData();
+  const accountIndex = data.accounts.findIndex((account) => normalizeEmail(account?.email) === email);
+  if (accountIndex >= 0) {
+    const account = data.accounts[accountIndex];
+    if (account.emailVerificationRequired && !String(account.emailVerifiedAt || '').trim()) {
+      const { verificationToken, expiresAtIso } = issueEmailVerificationToken(account);
+      await writeData(data);
+
+      const welcomeVerificationEmail = buildWelcomeVerificationCustomerEmail({
+        fullName: account.fullName,
+        email: account.email,
+        verificationToken,
+        expiresAtIso,
+        req,
+      });
+
+      await sendEmail({
+        to: account.email,
+        subject: welcomeVerificationEmail.subject,
+        text: welcomeVerificationEmail.text,
+        html: welcomeVerificationEmail.html,
+        mockTag: 'welcome-verification-resend',
+      });
+    }
+  }
+
+  return res.json({
+    ok: true,
+    message: 'If your account needs verification, we sent a fresh verification email.',
+  });
 });
 
 app.post('/api/password/forgot', async (req, res) => {
