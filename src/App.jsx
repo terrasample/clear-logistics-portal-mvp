@@ -5,8 +5,10 @@ const API_BASE_CANDIDATES = Array.from(new Set([
   String(import.meta.env.VITE_API_BASE || '').trim(),
   window.location.hostname === 'localhost'
     ? 'http://localhost:8787/api'
+    : 'https://clear-logistics-api.onrender.com/api',
+  window.location.hostname === 'localhost'
+    ? ''
     : `${window.location.origin}/api`,
-  'https://clear-logistics-api.onrender.com/api',
 ].filter(Boolean).map((base) => base.replace(/\/$/, ''))));
 
 const API_BASE = API_BASE_CANDIDATES[0];
