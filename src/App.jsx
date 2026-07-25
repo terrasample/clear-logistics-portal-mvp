@@ -3641,6 +3641,10 @@ function App() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="store-card"
+                onClick={() => {
+                  selectPopularStore(store.name);
+                  setStatusMessage(`${store.name} selected for your request. Store opened in a new tab.`);
+                }}
               >
                 <div className="store-card__head">
                   <span className="store-card__icon" aria-hidden="true">
