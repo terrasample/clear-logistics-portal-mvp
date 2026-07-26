@@ -667,6 +667,11 @@ function containsDemoMarker(value) {
       return true;
     }
 
+    // Filter synthetic QA/demo records that still use production-like IDs.
+    if (/\b(test|demo|qa)\b/.test(normalized)) {
+      return true;
+    }
+
     return normalized.startsWith('clf-drv-') || normalized.startsWith('bkg-drv-');
   }
 

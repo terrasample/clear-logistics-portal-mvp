@@ -5237,6 +5237,9 @@ function App() {
                   onClick={() => {
                     setActiveAdminSection('rfqs');
                     setSelectedAdminItem({ sectionKey: 'rfqs', item: quote });
+                    if (overviewOnly) {
+                      navigate('/admin');
+                    }
                   }}
                 >
                   <p><strong>{quote.quoteId}</strong> - {quote.fullName}</p>
@@ -5261,6 +5264,9 @@ function App() {
                   onClick={() => {
                     setActiveAdminSection('bookings');
                     setSelectedAdminItem({ sectionKey: 'bookings', item: booking });
+                    if (overviewOnly) {
+                      navigate('/admin');
+                    }
                   }}
                 >
                   <p><strong>{booking.shipmentId}</strong> - {booking.fullName}</p>
@@ -5286,6 +5292,9 @@ function App() {
                   onClick={() => {
                     setActiveAdminSection('purchaseRequests');
                     setSelectedAdminItem({ sectionKey: 'purchaseRequests', item: request });
+                    if (overviewOnly) {
+                      navigate('/admin');
+                    }
                   }}
                 >
                   <p><strong>{request.requestId}</strong> - {request.fullName}</p>
@@ -5312,6 +5321,9 @@ function App() {
                   onClick={() => {
                     setActiveAdminSection('supportTickets');
                     setSelectedAdminItem({ sectionKey: 'supportTickets', item: ticket });
+                    if (overviewOnly) {
+                      navigate('/admin');
+                    }
                   }}
                 >
                   <p><strong>{ticket.ticketId}</strong> - {ticket.fullName}</p>
