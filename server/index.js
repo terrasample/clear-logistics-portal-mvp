@@ -681,6 +681,39 @@ function containsDemoMarker(value) {
   return false;
 }
 
+function shouldShowDemoDataForEmail(email) {
+  const normalized = normalizeEmail(email);
+  if (!normalized) {
+    return false;
+  }
+
+  const [localPart = '', domain = ''] = normalized.split('@');
+  if (
+    normalized === 'test@example.com' ||
+    normalized === DRIVER_DEMO_EMAIL ||
+    domain === 'example.com' ||
+    domain.endsWith('.test') ||
+    localPart.startsWith('test') ||
+    localPart.includes('+test')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function filterDemoRecordsForEmail(records, email) {
+  if (!Array.isArray(records)) {
+    return [];
+  }
+
+  if (shouldShowDemoDataForEmail(email)) {
+    return records;
+  }
+
+  return records.filter((entry) => !containsDemoMarker(entry));
+}
+
 async function purgeDemoDataIfNeeded() {
   if (allowDemoSeed || !purgeDemoDataOnStart) {
     return;
@@ -2389,23 +2422,30 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
 
+  const visibleQuotes = filterDemoRecordsForEmail(data.quotes, req.user.email);
+  const visibleBookings = filterDemoRecordsForEmail(data.bookings, req.user.email);
+  const visiblePurchaseRequests = filterDemoRecordsForEmail(data.purchaseRequests, req.user.email);
+  const visibleSupportTickets = filterDemoRecordsForEmail(data.supportTickets, req.user.email);
+  const visibleScanEvents = filterDemoRecordsForEmail(data.scanEvents, req.user.email);
+  const visibleShipments = filterDemoRecordsForEmail(data.shipments, req.user.email);
+
   const sortByCreated = (items) => [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   res.json({
     counts: {
-      rfqs: data.quotes.length,
-      bookings: data.bookings.length,
-      purchaseRequests: data.purchaseRequests.length,
-      supportTickets: data.supportTickets.length,
-      scanEvents: data.scanEvents.length,
-      shipments: data.shipments.length,
+      rfqs: visibleQuotes.length,
+      bookings: visibleBookings.length,
+      purchaseRequests: visiblePurchaseRequests.length,
+      supportTickets: visibleSupportTickets.length,
+      scanEvents: visibleScanEvents.length,
+      shipments: visibleShipments.length,
     },
-    rfqs: sortByCreated(data.quotes).slice(0, 12),
-    recentBookings: sortByCreated(data.bookings).slice(0, 12),
-    purchaseRequests: sortByCreated(data.purchaseRequests).slice(0, 12),
-    supportTickets: sortByCreated(data.supportTickets).slice(0, 12),
-    recentScans: sortByCreated(data.scanEvents).slice(0, 12),
-    shipments: sortByCreated(data.shipments).slice(0, 12),
+    rfqs: sortByCreated(visibleQuotes).slice(0, 12),
+    recentBookings: sortByCreated(visibleBookings).slice(0, 12),
+    purchaseRequests: sortByCreated(visiblePurchaseRequests).slice(0, 12),
+    supportTickets: sortByCreated(visibleSupportTickets).slice(0, 12),
+    recentScans: sortByCreated(visibleScanEvents).slice(0, 12),
+    shipments: sortByCreated(visibleShipments).slice(0, 12),
   });
 });
 
@@ -3408,9 +3448,16 @@ app.get('/api/admin/dispatcher', requireAuth, async (req, res) => {
   if (!Array.isArray(data.drivers)) data.drivers = [];
   if (!Array.isArray(data.routes)) data.routes = [];
 
-  const drivers = getActiveDrivers(data).map((d) => {
-    const pending = getPendingAssignmentCount(data, d.id);
-    const activeRoute = findActiveRouteForDriver(data, d.id);
+  const visibilityScopedData = {
+    ...data,
+    bookings: filterDemoRecordsForEmail(data.bookings, req.user.email),
+    drivers: filterDemoRecordsForEmail(data.drivers, req.user.email),
+    routes: filterDemoRecordsForEmail(data.routes, req.user.email),
+  };
+
+  const drivers = getActiveDrivers(visibilityScopedData).map((d) => {
+    const pending = getPendingAssignmentCount(visibilityScopedData, d.id);
+    const activeRoute = findActiveRouteForDriver(visibilityScopedData, d.id);
     const progress = activeRoute ? routeProgress(activeRoute) : null;
     return {
       id: d.id,
@@ -3424,7 +3471,7 @@ app.get('/api/admin/dispatcher', requireAuth, async (req, res) => {
     };
   });
 
-  const pendingBookings = (data.bookings || [])
+  const pendingBookings = (visibilityScopedData.bookings || [])
     .filter((b) => !b.pickedUp)
     .sort((a, b) => {
       const aDate = Date.parse(a.pickupDate) || 0;

@@ -945,7 +945,7 @@ function App() {
       fetchAdminOverview(authToken);
     }
 
-    if (isAuthenticated && currentUser?.role !== 'admin' && authToken) {
+    if (isAuthenticated && currentUser?.role !== 'driver' && authToken) {
       fetchCustomerDashboard(authToken);
     }
 
@@ -954,7 +954,7 @@ function App() {
       setDispatcherData(null);
     }
 
-    if (!isAuthenticated || currentUser?.role === 'admin') {
+    if (!isAuthenticated || currentUser?.role === 'driver') {
       setCustomerShipments([]);
       setCustomerQuotes([]);
     }
@@ -4742,12 +4742,6 @@ function App() {
   }
 
   function DashboardPage() {
-    const isAdminUser = currentUser?.role === 'admin';
-
-    if (isAdminUser) {
-      return AdminDashboardPage({ overviewOnly: true });
-    }
-
     const activeShipment = customerShipments[0] || null;
     const recentShipments = customerShipments.slice(1, 4);
     const recentQuotes = customerQuotes.slice(0, 5);
@@ -6407,10 +6401,10 @@ function App() {
           ) : isAuthenticated ? (
             <>
               <div className="nav-badge" aria-label="Signed in customer">
-                Signed in as {currentUser?.fullName || 'Customer'}
+                Signed in as {currentUser?.role === 'admin' ? 'Admin' : (currentUser?.fullName || 'Customer')}
               </div>
               <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
-                {currentUser?.role === 'admin' ? 'Customer View' : 'Dashboard'}
+                Dashboard
               </button>
               {currentUser?.role === 'admin' && (
                 <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>
