@@ -5055,6 +5055,11 @@ function App() {
       ? (adminOverview?.[sectionMap[activeAdminSection]?.key] || [])
       : [];
 
+    function formatCurrency(value) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? `$${numeric.toFixed(2)}` : 'N/A';
+    }
+
     function handleMetricSelect(sectionKey) {
       setActiveAdminSection(sectionKey);
       setSelectedAdminItem(null);
@@ -5362,32 +5367,78 @@ function App() {
                 <p><strong>Email:</strong> {selectedAdminItem.item.email || 'N/A'}</p>
 
                 {selectedAdminItem.sectionKey === 'rfqs' ? (
-                  <div className="admin-action-row">
-                    <button
-                      type="button"
-                      className="btn btn--solid"
-                      disabled={adminActionLoading}
-                      onClick={() => handleAdminRecordAction({
-                        endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
-                        body: { reviewStatus: 'Reviewed' },
-                        successMessage: `RFQ ${selectedAdminItem.item.quoteId} marked as reviewed.`
-                      })}
-                    >
-                      Mark Reviewed
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      disabled={adminActionLoading}
-                      onClick={() => handleAdminRecordAction({
-                        endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
-                        body: { reviewStatus: 'Needs Follow-up' },
-                        successMessage: `RFQ ${selectedAdminItem.item.quoteId} flagged for follow-up.`
-                      })}
-                    >
-                      Needs Follow-up
-                    </button>
-                  </div>
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.35rem 1rem', margin: '0.75rem 0' }}>
+                      <p><strong>Phone:</strong> {selectedAdminItem.item.phone || 'N/A'}</p>
+                      <p><strong>Customer ID:</strong> {selectedAdminItem.item.userId || 'N/A'}</p>
+                      <p><strong>Account Email:</strong> {selectedAdminItem.item.accountEmail || 'N/A'}</p>
+                      <p><strong>Created:</strong> {selectedAdminItem.item.createdAt ? new Date(selectedAdminItem.item.createdAt).toLocaleString() : 'N/A'}</p>
+                      <p><strong>Origin:</strong> {selectedAdminItem.item.origin || 'N/A'}</p>
+                      <p><strong>Destination:</strong> {selectedAdminItem.item.destination || 'N/A'}</p>
+                      <p><strong>Delivery Parish:</strong> {selectedAdminItem.item.deliveryParish || 'N/A'}</p>
+                      <p><strong>Cargo Type:</strong> {selectedAdminItem.item.cargoType || 'N/A'}</p>
+                      <p><strong>Service Level:</strong> {selectedAdminItem.item.serviceLevel || 'N/A'}</p>
+                      <p><strong>Item Category:</strong> {selectedAdminItem.item.itemCategory || 'N/A'}</p>
+                      <p><strong>Quantity:</strong> {selectedAdminItem.item.quantity || 'N/A'}</p>
+                      <p><strong>Declared Value:</strong> {formatCurrency(selectedAdminItem.item.declaredValueUsd)}</p>
+                      <p><strong>Weight:</strong> {selectedAdminItem.item.weight ? `${selectedAdminItem.item.weight} lbs` : (selectedAdminItem.item.dontKnowWeight ? 'Unknown (estimated)' : 'N/A')}</p>
+                      <p><strong>Dimensions:</strong> {selectedAdminItem.item.dimensionsLength && selectedAdminItem.item.dimensionsWidth && selectedAdminItem.item.dimensionsHeight
+                        ? `${selectedAdminItem.item.dimensionsLength} x ${selectedAdminItem.item.dimensionsWidth} x ${selectedAdminItem.item.dimensionsHeight}`
+                        : 'N/A'}</p>
+                      <p><strong>Pricing Mode:</strong> {selectedAdminItem.item.pricingMode || 'N/A'}</p>
+                      <p><strong>Quote Total:</strong> {formatCurrency(selectedAdminItem.item.quotedPriceUsd)}</p>
+                      <p><strong>Estimated Range:</strong> {selectedAdminItem.item.estimatedRangeUsd?.low != null && selectedAdminItem.item.estimatedRangeUsd?.high != null
+                        ? `${formatCurrency(selectedAdminItem.item.estimatedRangeUsd.low)} - ${formatCurrency(selectedAdminItem.item.estimatedRangeUsd.high)}`
+                        : 'N/A'}</p>
+                      <p><strong>Space Tier:</strong> {selectedAdminItem.item.spaceTierLabel || 'N/A'}</p>
+                      <p><strong>Delivery Zone:</strong> {selectedAdminItem.item.deliveryZone?.label || 'N/A'}</p>
+                      <p><strong>VIP Concierge:</strong> {selectedAdminItem.item.vipConcierge ? 'Yes' : 'No'}</p>
+                      <p><strong>Packing Supplies:</strong> {selectedAdminItem.item.needsPackingSupplies ? 'Yes' : 'No'}</p>
+                      <p><strong>Barrel Add-On:</strong> {Number(selectedAdminItem.item.barrelPurchaseQty || 0) > 0 ? selectedAdminItem.item.barrelPurchaseQty : 'No'}</p>
+                      <p><strong>Nudges Opt-out:</strong> {selectedAdminItem.item.nudgesOptOutAt ? 'Yes' : 'No'}</p>
+                    </div>
+
+                    {Array.isArray(selectedAdminItem.item.supplyAddons) && selectedAdminItem.item.supplyAddons.length > 0 ? (
+                      <p><strong>Supply Add-ons:</strong> {selectedAdminItem.item.supplyAddons.map((entry) => `${entry.quantity || 0} ${entry.label || 'item'}`).join(', ')}</p>
+                    ) : null}
+
+                    {selectedAdminItem.item.pricingBreakdown ? (
+                      <p>
+                        <strong>Pricing Breakdown:</strong>{' '}
+                        Billable {Number(selectedAdminItem.item.pricingBreakdown.billableCubicFeet || 0).toFixed(2)} cu ft,{' '}
+                        {Number(selectedAdminItem.item.pricingBreakdown.weightLbs || 0).toFixed(2)} lbs,{' '}
+                        selected base {formatCurrency(selectedAdminItem.item.pricingBreakdown?.chargesUsd?.selectedBase)},{' '}
+                        final {formatCurrency(selectedAdminItem.item.pricingBreakdown.finalPriceUsd)}.
+                      </p>
+                    ) : null}
+
+                    <div className="admin-action-row">
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
+                          body: { reviewStatus: 'Reviewed' },
+                          successMessage: `RFQ ${selectedAdminItem.item.quoteId} marked as reviewed.`
+                        })}
+                      >
+                        Mark Reviewed
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/rfqs/${selectedAdminItem.item.quoteId}/review`,
+                          body: { reviewStatus: 'Needs Follow-up' },
+                          successMessage: `RFQ ${selectedAdminItem.item.quoteId} flagged for follow-up.`
+                        })}
+                      >
+                        Needs Follow-up
+                      </button>
+                    </div>
+                  </>
                 ) : null}
 
                 {selectedAdminItem.sectionKey === 'purchaseRequests' ? (
