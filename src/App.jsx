@@ -5845,6 +5845,112 @@ function App() {
     );
   }
 
+  function DriverLoginPage() {
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Driver Login</h2>
+          <p className="section-intro">Sign in to access pickup assignments and complete deliveries.</p>
+          <form className="form" onSubmit={handleDriverLogin}>
+            <label>
+              Email
+              <input
+                type="email"
+                value={driverLoginForm.email}
+                onChange={(e) => setDriverLoginForm({ ...driverLoginForm, email: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={driverLoginForm.password}
+                onChange={(e) => setDriverLoginForm({ ...driverLoginForm, password: e.target.value })}
+                required
+              />
+            </label>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
+          </form>
+        </div>
+
+        <div>
+          <h2>New Driver?</h2>
+          <p className="section-intro">Create a driver account to start accepting pickups.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('register')}>
+            Create Driver Account
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  function DriverRegisterPage() {
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Driver Registration</h2>
+          <p className="section-intro">Sign up to become a driver and start earning.</p>
+          <form className="form" onSubmit={handleDriverRegister}>
+            <label>
+              Full Name
+              <input
+                value={driverRegisterForm.fullName}
+                onChange={(e) => setDriverRegisterForm({ ...driverRegisterForm, fullName: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                value={driverRegisterForm.email}
+                onChange={(e) => setDriverRegisterForm({ ...driverRegisterForm, email: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Phone
+              <input
+                type="tel"
+                value={driverRegisterForm.phone}
+                onChange={(e) => setDriverRegisterForm({ ...driverRegisterForm, phone: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Vehicle
+              <input
+                placeholder="e.g., Honda Civic 2020"
+                value={driverRegisterForm.vehicle}
+                onChange={(e) => setDriverRegisterForm({ ...driverRegisterForm, vehicle: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={driverRegisterForm.password}
+                onChange={(e) => setDriverRegisterForm({ ...driverRegisterForm, password: e.target.value })}
+                required
+              />
+            </label>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>Create Account</button>
+          </form>
+        </div>
+
+        <div>
+          <h2>Already a Driver?</h2>
+          <p className="section-intro">Login to your existing account.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('login')}>
+            Back to Login
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   function DriverDashboardPage() {
     const scannedPickup = (() => {
       const exactPickup = driverPickups.find((p) => p.shipmentId === scannedShipmentId);
