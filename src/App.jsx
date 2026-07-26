@@ -3858,7 +3858,7 @@ function App() {
           ) : (
             <>
               {isAuthenticated && (
-                <p className="section-intro">Signed in as {currentUser?.fullName || 'Customer'}. Your account can be used for follow-up and approvals.</p>
+                <p className="section-intro">Signed in as {currentUser?.role === 'admin' ? 'Admin' : (currentUser?.fullName || 'Customer')}. Your account can be used for follow-up and approvals.</p>
               )}
               {showShopBookingPrompt && (
                 <div
