@@ -707,6 +707,7 @@ function App() {
   const shopCheckoutButtonRef = useRef(null);
   const verificationAttemptRef = useRef('');
   const pendingRouteStatusRef = useRef(null);
+  const adminWorkspaceRef = useRef(null);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -748,6 +749,12 @@ function App() {
     // Prevent cross-page status leaks (for example, shop form warnings shown on dashboard).
     setStatusMessage('');
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (selectedAdminItem && currentPath === 'admin') {
+      adminWorkspaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedAdminItem, currentPath]);
 
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [scanInput, setScanInput] = useState('');
@@ -5356,7 +5363,7 @@ function App() {
         </section>
 
         {!overviewOnly ? (
-          <section className="card" aria-live="polite">
+          <section className="card" aria-live="polite" ref={adminWorkspaceRef}>
             <h2>{sectionMap[activeAdminSection].label} Workspace</h2>
             <p className="section-intro">{selectedSectionData.length} record(s) in this section.</p>
 
