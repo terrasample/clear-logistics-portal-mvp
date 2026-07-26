@@ -5722,6 +5722,30 @@ function App() {
       return <Navigate to="/" replace />;
     }
 
+    const ctaPathByStep = {
+      'book-online': '/book-pickup',
+      pickup: '/dashboard',
+      ship: '/tracking',
+      customs: '/tracking',
+      delivery: '/tracking',
+    };
+    const ctaLabelByStep = {
+      'book-online': 'Start Booking',
+      pickup: 'Open Dashboard',
+      ship: 'Track Shipment',
+      customs: 'Check Tracking',
+      delivery: 'View Dashboard',
+    };
+    const ctaPath = step.ctaPath || ctaPathByStep[step.key] || '/book-pickup';
+    const ctaLabel = step.ctaLabel || ctaLabelByStep[step.key] || 'Continue';
+    const detailItems = Array.isArray(step.details) && step.details.length
+      ? step.details
+      : [
+          step.summary,
+          'Follow each step in sequence for the smoothest shipping experience.',
+          'Need help at any stage? Contact support and we will guide you.',
+        ];
+
     return (
       <section className="card card--split">
         <div>
@@ -5729,7 +5753,7 @@ function App() {
           <h2>{step.title}</h2>
           <p className="section-intro">{step.summary}</p>
           <ul className="status-list">
-                    setStatusMessage('Guest mode enabled. Next step: choose your store and add your item links.');
+            {detailItems.map((detail) => (
               <li key={detail} className="done">
                 <span>•</span> {detail}
               </li>
@@ -5740,58 +5764,12 @@ function App() {
         <div>
           <h2>Next Step</h2>
           <p className="section-intro">Continue your shipment flow directly from here.</p>
-          <button type="button" className="btn btn--solid" onClick={() => navigate(step.ctaPath)}>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={() => navigate('/login', { state: { from: '/shop', authStep: 'login' } })}
-                >
-                  I Already Have an Account
-                </button>
-            {step.ctaLabel}
+          <button type="button" className="btn btn--solid" onClick={() => navigate(ctaPath)}>
+            {ctaLabel}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => navigate('/')}>
             Back to Home
           </button>
-        </div>
-      </section>
-    );
-                <div className="booking-summary" style={{ marginBottom: '0.85rem', border: '1px solid #cde3dc', background: '#f6fbf9' }}>
-                  <p className="section-context-label">Ready To Book?</p>
-                  <h3 style={{ marginBottom: '0.45rem' }}>Your next step is checkout</h3>
-                  <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
-                    Estimated landed total: <strong>${landedTotalUsd.toFixed(2)}</strong>
-                  </p>
-                  <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
-                    <p><strong>Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
-                    <p><strong>Duty + Fees + Shipping:</strong> ${(landedTotalUsd - cartSubtotalUsd).toFixed(2)}</p>
-        </div>
-                  <div className="booking-nav" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
-                    <button
-                      type="button"
-                      className="btn btn--solid"
-                      onClick={() => {
-                        setShowShopBookingPrompt(false);
-                        shopCheckoutButtonRef.current?.click();
-                      }}
-                    >
-                      Continue to Checkout
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      onClick={() => {
-                        setShowShopBookingPrompt(false);
-                        setShopBookingPromptDismissedKey(shopBookingPromptKey);
-                      }}
-                    >
-                      Keep Editing Cart
-                    </button>
-                  </div>
-        <div>
-          <h2>Already a Driver?</h2>
-          <p className="section-intro">Login to your existing account.</p>
-          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('login')}>Back to Login</button>
         </div>
       </section>
     );
