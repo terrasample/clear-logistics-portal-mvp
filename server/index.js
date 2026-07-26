@@ -1363,24 +1363,74 @@ function hashEmailVerificationToken(token) {
   return hashToken(token);
 }
 
-function buildWelcomeVerificationCustomerEmail({ fullName, email, verificationToken, expiresAtIso, req }) {
+function buildVerificationCustomerEmail({ fullName, email, verificationToken, expiresAtIso, req }) {
   const recipientName = String(fullName || 'there').trim();
   const frontendBase = getFrontendBaseUrl(req);
   const verifyLink = `${frontendBase}/login?verify=1&email=${encodeURIComponent(email)}&token=${encodeURIComponent(verificationToken)}`;
   const expiresAt = new Date(expiresAtIso);
   const expiresLabel = Number.isFinite(expiresAt.getTime()) ? expiresAt.toUTCString() : 'soon';
 
-  const subject = 'Welcome to Clear Logistics - Please verify your email';
+  const subject = 'Verify your email to activate your Clear Logistics account';
   const text = [
     `Hi ${recipientName},`,
     '',
-    'Welcome to Clear Logistics & Freight Services. Your account is ready.',
-    'Please verify your email to activate secure login and shipment updates.',
+    'Please verify your email to activate your Clear Logistics account.',
+    'Click the verification link below:',
     `Verify now: ${verifyLink}`,
+    '',
+    'If the button/link does not open, copy and paste this full URL into your browser:',
+    verifyLink,
+    '',
     `Verification token: ${verificationToken}`,
     `This verification link expires at: ${expiresLabel}`,
     '',
-    'Once verified, you can book pickups, track shipments, and manage your dashboard.',
+    'After you verify, we will send your full welcome email automatically.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#f4f7fb;padding:20px;">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #dde4ee;border-radius:10px;overflow:hidden;">
+        <div style="background:linear-gradient(120deg,#0e7a5f 0%, #0b5f90 100%);color:#ffffff;padding:18px 22px;">
+          <h2 style="margin:0;font-size:22px;">Verify Your Email</h2>
+          <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">One quick step to activate your account</p>
+        </div>
+        <div style="padding:18px 22px;color:#1d2939;font-size:14px;line-height:1.55;">
+          <p style="margin:0 0 12px 0;">Hi ${escapeHtml(recipientName)},</p>
+          <p style="margin:0 0 12px 0;">Please verify your email to activate secure login and shipment updates.</p>
+          <p style="margin:0 0 14px 0;">
+            <a href="${escapeHtml(verifyLink)}" style="display:inline-block;background:#0e7a5f;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;">
+              Verify My Email
+            </a>
+          </p>
+          <p style="margin:0 0 6px 0;"><strong>Fallback link (copy/paste):</strong></p>
+          <p style="margin:0 0 12px 0;word-break:break-all;">
+            <a href="${escapeHtml(verifyLink)}" style="color:#0b5f90;text-decoration:underline;">${escapeHtml(verifyLink)}</a>
+          </p>
+          <p style="margin:0 0 8px 0;"><strong>Verification token:</strong> ${escapeHtml(verificationToken)}</p>
+          <p style="margin:0 0 12px 0;"><strong>Expires:</strong> ${escapeHtml(expiresLabel)}</p>
+          <p style="margin:0;">After verification, we will immediately send your full welcome email.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
+
+function buildWelcomeCustomerEmail({ fullName }) {
+  const recipientName = String(fullName || 'there').trim();
+  const subject = 'Welcome to Clear Logistics';
+  const text = [
+    `Hi ${recipientName},`,
+    '',
+    'Welcome to Clear Logistics & Freight Services. Your account is now fully active.',
+    '',
+    'What you can do now:',
+    '- Book pickups and checkout online',
+    '- Track shipments in real time',
+    '- Manage your dashboard and support requests',
+    '',
+    'Need help? Reply to this email and our team will assist you right away.',
   ].join('\n');
 
   const html = `
@@ -1388,23 +1438,16 @@ function buildWelcomeVerificationCustomerEmail({ fullName, email, verificationTo
       <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #dde4ee;border-radius:10px;overflow:hidden;">
         <div style="background:linear-gradient(120deg,#0e7a5f 0%, #0b5f90 100%);color:#ffffff;padding:18px 22px;">
           <h2 style="margin:0;font-size:22px;">Welcome to Clear Logistics</h2>
-          <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">Premium shipping experience from the USA to Jamaica</p>
+          <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">Your account is active and ready</p>
         </div>
         <div style="padding:18px 22px;color:#1d2939;font-size:14px;line-height:1.55;">
           <p style="margin:0 0 12px 0;">Hi ${escapeHtml(recipientName)},</p>
-          <p style="margin:0 0 12px 0;">Your account has been created successfully. Please verify your email to activate secure login and shipment updates.</p>
-          <p style="margin:0 0 14px 0;">
-            <a href="${escapeHtml(verifyLink)}" style="display:inline-block;background:#0e7a5f;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;">
-              Verify My Email
-            </a>
-          </p>
-          <p style="margin:0 0 8px 0;"><strong>Verification token:</strong> ${escapeHtml(verificationToken)}</p>
-          <p style="margin:0 0 12px 0;"><strong>Expires:</strong> ${escapeHtml(expiresLabel)}</p>
-          <p style="margin:0 0 8px 0;"><strong>What you unlock after verification:</strong></p>
+          <p style="margin:0 0 12px 0;">Thanks for verifying your email. Your account is now fully active.</p>
+          <p style="margin:0 0 8px 0;"><strong>What you can do now:</strong></p>
           <ul style="margin:0 0 10px 18px;padding:0;">
-            <li>Fast online booking and checkout</li>
-            <li>Real-time shipment tracking</li>
-            <li>Priority support on your account</li>
+            <li>Book pickups and checkout online</li>
+            <li>Track shipments in real time</li>
+            <li>Manage your dashboard and support requests</li>
           </ul>
           <p style="margin:0;">Need help? Reply to this email and our team will assist you right away.</p>
         </div>
@@ -2062,7 +2105,7 @@ app.post('/api/accounts', async (req, res) => {
   await writeData(data);
   await sendNotification('New Portal Account', `New account: ${normalizedFullName} <${normalizedEmail}>`);
 
-  const welcomeVerificationEmail = buildWelcomeVerificationCustomerEmail({
+  const verificationEmail = buildVerificationCustomerEmail({
     fullName: account.fullName,
     email: account.email,
     verificationToken,
@@ -2072,10 +2115,10 @@ app.post('/api/accounts', async (req, res) => {
 
   const verificationEmailStatus = await sendEmail({
     to: account.email,
-    subject: welcomeVerificationEmail.subject,
-    text: welcomeVerificationEmail.text,
-    html: welcomeVerificationEmail.html,
-    mockTag: 'welcome-verification',
+    subject: verificationEmail.subject,
+    text: verificationEmail.text,
+    html: verificationEmail.html,
+    mockTag: 'email-verification',
   });
 
   res.status(201).json({
@@ -2182,11 +2225,33 @@ app.post('/api/email/verify', async (req, res) => {
   delete account.emailVerificationExpiresAt;
 
   await writeData(data);
+
+  const welcomeEmail = buildWelcomeCustomerEmail({
+    fullName: account.fullName,
+  });
+
+  let welcomeEmailStatus = null;
+  try {
+    welcomeEmailStatus = await sendEmail({
+      to: account.email,
+      subject: welcomeEmail.subject,
+      text: welcomeEmail.text,
+      html: welcomeEmail.html,
+      mockTag: 'welcome-post-verification',
+    });
+  } catch (error) {
+    console.error('Post-verification welcome email failed:', error?.message || error);
+  }
+
   await sendNotification('Customer Email Verified', `Customer ${email} verified account email.`);
 
   return res.json({
     ok: true,
-    message: 'Email verified successfully. You can now log in.',
+    welcomeEmail: {
+      delivered: Boolean(welcomeEmailStatus?.delivered),
+      mode: welcomeEmailStatus?.mode || null,
+    },
+    message: 'Email verified successfully. Your welcome email has been sent, and you can now log in.',
   });
 });
 
@@ -2204,7 +2269,7 @@ app.post('/api/email/verify/resend', async (req, res) => {
       const { verificationToken, expiresAtIso } = issueEmailVerificationToken(account);
       await writeData(data);
 
-      const welcomeVerificationEmail = buildWelcomeVerificationCustomerEmail({
+      const verificationEmail = buildVerificationCustomerEmail({
         fullName: account.fullName,
         email: account.email,
         verificationToken,
@@ -2214,10 +2279,10 @@ app.post('/api/email/verify/resend', async (req, res) => {
 
       await sendEmail({
         to: account.email,
-        subject: welcomeVerificationEmail.subject,
-        text: welcomeVerificationEmail.text,
-        html: welcomeVerificationEmail.html,
-        mockTag: 'welcome-verification-resend',
+        subject: verificationEmail.subject,
+        text: verificationEmail.text,
+        html: verificationEmail.html,
+        mockTag: 'email-verification-resend',
       });
     }
   }
