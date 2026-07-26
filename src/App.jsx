@@ -617,6 +617,7 @@ function App() {
     email: '',
     password: '',
   });
+  const [authGuideMode, setAuthGuideMode] = useState('login');
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordForm, setForgotPasswordForm] = useState({
@@ -705,6 +706,7 @@ function App() {
   const chatMessagesRef = useRef(null);
   const shopCheckoutButtonRef = useRef(null);
   const verificationAttemptRef = useRef('');
+  const pendingRouteStatusRef = useRef(null);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -728,7 +730,21 @@ function App() {
     }
   }, [statusMessage]);
 
+  function queueRouteStatus(targetPath, message) {
+    pendingRouteStatusRef.current = {
+      targetPath,
+      message,
+    };
+  }
+
   useEffect(() => {
+    const pending = pendingRouteStatusRef.current;
+    if (pending && location.pathname === pending.targetPath) {
+      setStatusMessage(pending.message);
+      pendingRouteStatusRef.current = null;
+      return;
+    }
+
     // Prevent cross-page status leaks (for example, shop form warnings shown on dashboard).
     setStatusMessage('');
   }, [location.pathname]);
@@ -833,12 +849,25 @@ function App() {
       return;
     }
 
+    const requestedAuthStep = String(location.state?.authStep || '').toLowerCase();
+    if (requestedAuthStep === 'verify') {
+      setAuthGuideMode('verify');
+      setForgotPasswordOpen(false);
+    } else if (requestedAuthStep === 'reset') {
+      setAuthGuideMode('reset');
+      setForgotPasswordOpen(true);
+    } else if (requestedAuthStep === 'login') {
+      setAuthGuideMode('login');
+      setForgotPasswordOpen(false);
+    }
+
     const params = new URLSearchParams(location.search);
 
     const emailFromQuery = String(params.get('email') || '').trim().toLowerCase();
     const tokenFromQuery = String(params.get('token') || '').trim();
 
     if (params.get('reset') === '1') {
+      setAuthGuideMode('reset');
       setForgotPasswordOpen(true);
       setForgotPasswordForm((prev) => ({
         ...prev,
@@ -851,6 +880,7 @@ function App() {
     }
 
     if (params.get('verify') === '1' && emailFromQuery && tokenFromQuery) {
+      setAuthGuideMode('verify');
       const attemptKey = `${emailFromQuery}:${tokenFromQuery}`;
       if (verificationAttemptRef.current === attemptKey) {
         return;
@@ -2034,8 +2064,8 @@ function App() {
     }
 
     if (!isAuthenticated || !authToken) {
-      setStatusMessage('Please log in to finalize your shipment and proceed to payment.');
-      navigate('/login', { state: { from: '/book-pickup' } });
+      queueRouteStatus('/login', 'Please log in to finalize your shipment and proceed to payment.');
+      navigate('/login', { state: { from: '/book-pickup', authStep: 'login' } });
       return;
     }
 
@@ -2081,7 +2111,8 @@ function App() {
         setAuthToken('');
         window.localStorage.removeItem('clf_auth_token');
         window.localStorage.removeItem('clf_auth_user');
-        navigate('/login', { state: { from: '/book-pickup' } });
+        queueRouteStatus('/login', 'Your session expired. Log in to continue where you left off.');
+        navigate('/login', { state: { from: '/book-pickup', authStep: 'login' } });
       }
       setStatusMessage(error.message);
     } finally {
@@ -2366,6 +2397,15 @@ function App() {
         : result.user?.role === 'admin'
           ? '/admin'
           : '/dashboard';
+
+      if (destination === '/book-pickup') {
+        queueRouteStatus('/book-pickup', 'Welcome back. Continue from the final booking step, then proceed to payment.');
+      } else if (destination === '/dashboard') {
+        queueRouteStatus('/dashboard', `Welcome back, ${result.user?.fullName || 'Customer'}.`);
+      } else if (destination === '/admin') {
+        queueRouteStatus('/admin', `Welcome back, ${result.user?.fullName || 'Admin'}.`);
+      }
+
       navigate(destination);
     } catch (error) {
       if (error?.code === 'EMAIL_NOT_VERIFIED') {
@@ -2373,6 +2413,7 @@ function App() {
         if (pendingEmail) {
           setVerificationEmail(pendingEmail);
         }
+        setAuthGuideMode('verify');
       }
       setStatusMessage(error.message);
     } finally {
@@ -2381,6 +2422,7 @@ function App() {
   }
 
   async function handleResendVerificationEmail() {
+    setAuthGuideMode('verify');
     const email = String(verificationEmail || loginForm.email || '').trim().toLowerCase();
     if (!email) {
       setStatusMessage('Enter your email first, then request a new verification link.');
@@ -2473,6 +2515,7 @@ function App() {
       setLoginForm((prev) => ({ ...prev, email: payload.email, password: '' }));
       setForgotPasswordForm({ email: payload.email, token: '', newPassword: '' });
       setForgotPasswordOpen(false);
+      setAuthGuideMode('login');
       setStatusMessage(result.message || 'Password updated. Please log in with your new password.');
     } catch (error) {
       const message = String(error?.message || '').includes('Failed to fetch')
@@ -5547,7 +5590,44 @@ function App() {
       <section className="card card--split">
         <div>
           <h2>Login</h2>
-          <p className="section-intro">Sign in to access booking and dashboard features.</p>
+          <p className="section-intro">Choose one step below so your account access flow stays simple.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.85rem' }}>
+            <button
+              type="button"
+              className={authGuideMode === 'login' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => {
+                setAuthGuideMode('login');
+                setForgotPasswordOpen(false);
+              }}
+            >
+              1. Sign In
+            </button>
+            <button
+              type="button"
+              className={authGuideMode === 'verify' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => {
+                setAuthGuideMode('verify');
+                setForgotPasswordOpen(false);
+              }}
+            >
+              2. Verify Email
+            </button>
+            <button
+              type="button"
+              className={authGuideMode === 'reset' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => {
+                setAuthGuideMode('reset');
+                setForgotPasswordOpen(true);
+                setForgotPasswordForm((prev) => ({
+                  ...prev,
+                  email: String(prev.email || loginForm.email || '').trim().toLowerCase(),
+                }));
+              }}
+            >
+              3. Reset Password
+            </button>
+          </div>
+
           <form className="form" onSubmit={handleLoginSubmit}>
             <label>
               Email
@@ -5559,34 +5639,25 @@ function App() {
             </label>
             <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
           </form>
-          <div style={{ marginTop: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={handleResendVerificationEmail}
-              disabled={verificationBusy}
-            >
-              {verificationBusy ? 'Sending...' : 'Resend Verification Email'}
-            </button>
-          </div>
-          <div style={{ marginTop: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                setForgotPasswordOpen((prev) => !prev);
-                setForgotPasswordForm((prev) => ({
-                  ...prev,
-                  email: String(prev.email || loginForm.email || '').trim().toLowerCase(),
-                }));
-              }}
-              disabled={forgotPasswordLoading}
-            >
-              {forgotPasswordOpen ? 'Hide Password Reset' : 'Forgot Password?'}
-            </button>
-          </div>
 
-          {forgotPasswordOpen ? (
+          {authGuideMode === 'verify' ? (
+            <div style={{ marginTop: '1rem', borderTop: '1px solid #e6ebef', paddingTop: '1rem' }}>
+              <h3 style={{ marginTop: 0 }}>Verify Email</h3>
+              <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
+                If login says your email is not verified, request a fresh verification link.
+              </p>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={handleResendVerificationEmail}
+                disabled={verificationBusy}
+              >
+                {verificationBusy ? 'Sending...' : 'Resend Verification Email'}
+              </button>
+            </div>
+          ) : null}
+
+          {authGuideMode === 'reset' || forgotPasswordOpen ? (
             <div style={{ marginTop: '1rem', borderTop: '1px solid #e6ebef', paddingTop: '1rem' }}>
               <h3 style={{ marginTop: 0 }}>Reset Password</h3>
               <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
@@ -5664,7 +5735,7 @@ function App() {
           <h2>{step.title}</h2>
           <p className="section-intro">{step.summary}</p>
           <ul className="status-list">
-            {step.details.map((detail) => (
+                    setStatusMessage('Guest mode enabled. Next step: choose your store and add your item links.');
               <li key={detail} className="done">
                 <span>•</span> {detail}
               </li>
@@ -5676,6 +5747,13 @@ function App() {
           <h2>Next Step</h2>
           <p className="section-intro">Continue your shipment flow directly from here.</p>
           <button type="button" className="btn btn--solid" onClick={() => navigate(step.ctaPath)}>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => navigate('/login', { state: { from: '/shop', authStep: 'login' } })}
+                >
+                  I Already Have an Account
+                </button>
             {step.ctaLabel}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => navigate('/')}>
@@ -5684,65 +5762,38 @@ function App() {
         </div>
       </section>
     );
-  }
-
-  function DriverLoginPage() {
-    return (
-      <section className="card card--split">
-        <div>
-          <h2>Driver Login</h2>
-          <p className="section-intro">Sign in to access your pickup assignments and complete deliveries.</p>
-          <form className="form" onSubmit={handleDriverLogin}>
-            <label>
-              Email
-              <input type="email" value={driverLoginForm.email} onChange={(e) => setDriverLoginForm({...driverLoginForm, email: e.target.value})} required />
-            </label>
-            <label>
-              Password
-              <input type="password" value={driverLoginForm.password} onChange={(e) => setDriverLoginForm({...driverLoginForm, password: e.target.value})} required />
-            </label>
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>Login</button>
-          </form>
+                <div className="booking-summary" style={{ marginBottom: '0.85rem', border: '1px solid #cde3dc', background: '#f6fbf9' }}>
+                  <p className="section-context-label">Ready To Book?</p>
+                  <h3 style={{ marginBottom: '0.45rem' }}>Your next step is checkout</h3>
+                  <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                    Estimated landed total: <strong>${landedTotalUsd.toFixed(2)}</strong>
+                  </p>
+                  <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
+                    <p><strong>Item Subtotal:</strong> ${cartSubtotalUsd.toFixed(2)}</p>
+                    <p><strong>Duty + Fees + Shipping:</strong> ${(landedTotalUsd - cartSubtotalUsd).toFixed(2)}</p>
         </div>
-        <div>
-          <h2>New Driver?</h2>
-          <p className="section-intro">Create a driver account to start accepting pickups.</p>
-          <button type="button" className="btn btn--ghost" onClick={() => setDriverMode('register')}>Create Driver Account</button>
-        </div>
-      </section>
-    );
-  }
-
-  function DriverRegisterPage() {
-    return (
-      <section className="card card--split">
-        <div>
-          <h2>Driver Registration</h2>
-          <p className="section-intro">Sign up to become a driver and start earning.</p>
-          <form className="form" onSubmit={handleDriverRegister}>
-            <label>
-              Full Name
-              <input value={driverRegisterForm.fullName} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, fullName: e.target.value})} required />
-            </label>
-            <label>
-              Email
-              <input type="email" value={driverRegisterForm.email} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, email: e.target.value})} required />
-            </label>
-            <label>
-              Phone
-              <input type="tel" value={driverRegisterForm.phone} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, phone: e.target.value})} required />
-            </label>
-            <label>
-              Vehicle
-              <input placeholder="e.g., Honda Civic 2020" value={driverRegisterForm.vehicle} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, vehicle: e.target.value})} required />
-            </label>
-            <label>
-              Password
-              <input type="password" value={driverRegisterForm.password} onChange={(e) => setDriverRegisterForm({...driverRegisterForm, password: e.target.value})} required />
-            </label>
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>Create Account</button>
-          </form>
-        </div>
+                  <div className="booking-nav" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
+                    <button
+                      type="button"
+                      className="btn btn--solid"
+                      onClick={() => {
+                        setShowShopBookingPrompt(false);
+                        shopCheckoutButtonRef.current?.click();
+                      }}
+                    >
+                      Continue to Checkout
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      onClick={() => {
+                        setShowShopBookingPrompt(false);
+                        setShopBookingPromptDismissedKey(shopBookingPromptKey);
+                      }}
+                    >
+                      Keep Editing Cart
+                    </button>
+                  </div>
         <div>
           <h2>Already a Driver?</h2>
           <p className="section-intro">Login to your existing account.</p>
