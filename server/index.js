@@ -9,6 +9,7 @@ import { randomUUID, randomBytes, createHash } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { resolveTxt } from 'dns/promises';
+import PDFDocument from 'pdfkit';
 
 dotenv.config();
 
@@ -1385,6 +1386,214 @@ function buildPremiumQuoteCustomerEmail(quote) {
   return { subject, text, html };
 }
 
+function resolveAssistantCargoType(rawValue) {
+  const normalized = normalizeCargoKey(rawValue);
+  if (normalized === 'commercial_freight' || normalized === 'commercialfreight') {
+    return 'Commercial Freight';
+  }
+  if (normalized === 'pallet') return 'Pallet';
+  if (normalized === 'barrel') return 'Barrel';
+  return 'Box';
+}
+
+function extractAssistantDimensions(payload = {}) {
+  if (payload?.dimensions && typeof payload.dimensions === 'object') {
+    const length = normalizeNumber(payload.dimensions.length, 0);
+    const width = normalizeNumber(payload.dimensions.width, 0);
+    const height = normalizeNumber(payload.dimensions.height, 0);
+    if (length > 0 && width > 0 && height > 0) {
+      return { length, width, height };
+    }
+  }
+
+  const length = normalizeNumber(payload.dimensionsLength, 0);
+  const width = normalizeNumber(payload.dimensionsWidth, 0);
+  const height = normalizeNumber(payload.dimensionsHeight, 0);
+  if (length > 0 && width > 0 && height > 0) {
+    return { length, width, height };
+  }
+
+  const compactRaw = String(payload.dimensionString || payload.dimensionsText || '').trim();
+  const compactMatch = compactRaw.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/);
+  if (compactMatch) {
+    return {
+      length: normalizeNumber(compactMatch[1], 0),
+      width: normalizeNumber(compactMatch[2], 0),
+      height: normalizeNumber(compactMatch[3], 0),
+    };
+  }
+
+  return { length: 0, width: 0, height: 0 };
+}
+
+function buildAssistantPaperwork({ cargoType, declaredValueUsd, itemCategory, serviceLevel }) {
+  const paperwork = [
+    'Government-issued photo ID (shipper)',
+    'Commercial invoice or purchase receipts',
+    'Packing list with quantity and item descriptions',
+  ];
+
+  if (declaredValueUsd >= 1000) {
+    paperwork.push('Proof of value for high-value goods (bank receipt or order confirmation)');
+  }
+
+  if (cargoType === 'Commercial Freight' || cargoType === 'Pallet') {
+    paperwork.push('Consignee business details (TRN/company registration if applicable)');
+  }
+
+  if (/electronics?|appliance|screen|laptop|phone|tablet/i.test(String(itemCategory || ''))) {
+    paperwork.push('Electronics serial/model list for customs inspection');
+  }
+
+  if (String(serviceLevel || '').toLowerCase() === 'express') {
+    paperwork.push('Priority dispatch authorization and same-day pickup confirmation');
+  }
+
+  return paperwork;
+}
+
+function buildAssistantCustomsChecklist({ destination, declaredValueUsd, itemCategory }) {
+  const checklist = [
+    'Confirm receiver full legal name and delivery phone number',
+    `Confirm final Jamaica destination: ${destination || 'Kingston, Jamaica'}`,
+    'Verify every package item is listed with realistic value',
+    'Remove prohibited/restricted items before handoff',
+    'Keep copies of invoices and identification for clearance',
+  ];
+
+  if (declaredValueUsd >= 2500) {
+    checklist.push('Prepare for additional customs validation due to declared value threshold');
+  }
+
+  if (/commercial|bulk|resale|inventory/i.test(String(itemCategory || ''))) {
+    checklist.push('Mark shipment as commercial and provide importer business details');
+  }
+
+  return checklist;
+}
+
+function buildAssistantEstimateLabel(pricing) {
+  if (pricing?.pricingMode === 'estimated' && pricing?.estimatedRangeUsd) {
+    return `Estimated range: ${formatUsd(pricing.estimatedRangeUsd.low)} - ${formatUsd(pricing.estimatedRangeUsd.high)}`;
+  }
+  return `Estimated total: ${formatUsd(pricing?.quotedPriceUsd)}`;
+}
+
+function buildAssistantConfidence({ weightKnown, hasDimensions, hasDeclaredValue, hasPickupRequirements, hasDeliveryRequirements }) {
+  let score = weightKnown ? 88 : 76;
+  if (!hasDimensions) score -= 7;
+  if (!hasDeclaredValue) score -= 5;
+  if (!hasPickupRequirements) score -= 3;
+  if (!hasDeliveryRequirements) score -= 3;
+  return Math.max(55, Math.min(95, score));
+}
+
+function buildAssistantAssumptions({ pricing, quantity, weightLbs, dimensions, deliveryParish, serviceLevel }) {
+  const assumptions = [
+    'This is an estimate and final charges are confirmed after intake inspection.',
+    `Service level assumed: ${serviceLevel || 'Standard'}.`,
+    `Delivery parish assumed: ${deliveryParish || 'Kingston'}.`,
+    `Quantity used for pricing: ${Math.max(1, Number(quantity || 1))}.`,
+  ];
+
+  if (Number(weightLbs || 0) > 0) {
+    assumptions.push(`Weight-based input used: ${Number(weightLbs).toFixed(2)} lbs.`);
+  } else {
+    assumptions.push('Weight was not provided; dimensional/space-based estimate used.');
+  }
+
+  if (Number(dimensions.length || 0) > 0 && Number(dimensions.width || 0) > 0 && Number(dimensions.height || 0) > 0) {
+    assumptions.push(`Dimensions used: ${dimensions.length} x ${dimensions.width} x ${dimensions.height} in.`);
+  }
+
+  if (pricing?.spaceTierLabel) {
+    assumptions.push(`Calculated space tier: ${pricing.spaceTierLabel}.`);
+  }
+
+  return assumptions;
+}
+
+function buildAssistantCustomerEmailDraft({ customerName, assistantQuoteId, origin, destination, estimateLabel, requiredPaperwork, customsChecklist }) {
+  const greetingName = String(customerName || 'Customer').trim() || 'Customer';
+  const subject = `Your Freight Estimate ${assistantQuoteId} - Clear Logistics`;
+  const body = [
+    `Hi ${greetingName},`,
+    '',
+    `Thanks for your freight request from ${origin} to ${destination}.`,
+    `Here is your preliminary estimate: ${estimateLabel}.`,
+    '',
+    'Required paperwork:',
+    ...requiredPaperwork.map((item) => `- ${item}`),
+    '',
+    'Customs checklist:',
+    ...customsChecklist.map((item) => `- ${item}`),
+    '',
+    'Important: this estimate is valid for 48 hours and final pricing is confirmed after cargo inspection.',
+    'Reply to this email to lock your booking or request a pickup window.',
+    '',
+    'Clear Logistics & Freight Services',
+  ].join('\n');
+
+  return { subject, body };
+}
+
+async function buildAssistantQuotePdfBase64({
+  assistantQuoteId,
+  customerName,
+  origin,
+  destination,
+  cargoType,
+  estimateLabel,
+  confidence,
+  paperwork,
+  checklist,
+  assumptions,
+}) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 42, size: 'A4' });
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+    doc.on('error', reject);
+
+    doc.fontSize(18).text('Clear Logistics & Freight Services', { align: 'left' });
+    doc.moveDown(0.2);
+    doc.fontSize(13).text('AI Freight Quote Assistant', { align: 'left' });
+    doc.moveDown(0.7);
+
+    doc.fontSize(10).text(`Quote Reference: ${assistantQuoteId}`);
+    doc.text(`Customer: ${customerName || 'N/A'}`);
+    doc.text(`Route: ${origin} -> ${destination}`);
+    doc.text(`Cargo Type: ${cargoType}`);
+    doc.text(`Estimate Confidence: ${confidence}%`);
+    doc.moveDown(0.6);
+
+    doc.fontSize(12).text('Estimate');
+    doc.fontSize(10).text(estimateLabel);
+    doc.moveDown(0.6);
+
+    doc.fontSize(12).text('Required Paperwork');
+    paperwork.forEach((item) => doc.fontSize(10).text(`• ${item}`));
+    doc.moveDown(0.5);
+
+    doc.fontSize(12).text('Customs Checklist');
+    checklist.forEach((item) => doc.fontSize(10).text(`• ${item}`));
+    doc.moveDown(0.5);
+
+    doc.fontSize(12).text('Pricing Assumptions');
+    assumptions.forEach((item) => doc.fontSize(10).text(`• ${item}`));
+    doc.moveDown(0.8);
+
+    doc.fontSize(9).fillColor('#555555').text(
+      'Disclaimer: This document is an estimate only and does not represent a final invoice. Final charges are confirmed after cargo intake, inspection, and route validation.',
+      { align: 'left' }
+    );
+
+    doc.end();
+  });
+}
+
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -2722,6 +2931,148 @@ app.post('/api/quotes', async (req, res) => {
     quote,
     message: 'Quote request submitted.',
     emailStatus: quote.emailStatus,
+  });
+});
+
+app.post('/api/ai-freight-assistant', async (req, res) => {
+  const payload = req.body || {};
+
+  const origin = String(payload.origin || '').trim();
+  const destination = String(payload.destination || '').trim();
+  const cargoType = resolveAssistantCargoType(payload.itemType || payload.cargoType || 'Box');
+  const serviceLevel = String(payload.serviceLevel || 'Standard').trim() || 'Standard';
+  const itemCategory = String(payload.itemCategory || payload.itemType || cargoType).trim() || cargoType;
+  const deliveryParish = String(payload.deliveryParish || '').trim();
+  const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
+  const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
+  const pickupRequirements = String(payload.pickupRequirements || '').trim();
+  const deliveryRequirements = String(payload.deliveryRequirements || '').trim();
+  const customerName = String(payload.customerName || payload.fullName || '').trim();
+  const email = String(payload.email || '').trim();
+  const phone = String(payload.phone || '').trim();
+
+  const dimensions = extractAssistantDimensions(payload);
+  const weightLbs = Math.max(0, normalizeNumber(payload.weight, 0));
+  const hasDimensions = dimensions.length > 0 && dimensions.width > 0 && dimensions.height > 0;
+
+  const missingFields = [];
+  if (!origin) missingFields.push('origin');
+  if (!destination) missingFields.push('destination');
+  if (!cargoType) missingFields.push('itemType');
+  if (weightLbs <= 0 && !hasDimensions) missingFields.push('weight or dimensions');
+
+  if (missingFields.length) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missingFields.join(', ')}`,
+      missingFields,
+    });
+  }
+
+  const pricingPayload = {
+    cargoType,
+    serviceLevel,
+    itemCategory,
+    deliveryParish,
+    declaredValueUsd,
+    quantity,
+    weight: weightLbs > 0 ? weightLbs : '',
+    dimensionsLength: hasDimensions ? dimensions.length : '',
+    dimensionsWidth: hasDimensions ? dimensions.width : '',
+    dimensionsHeight: hasDimensions ? dimensions.height : '',
+  };
+
+  const estimateOnly = weightLbs <= 0;
+  const pricing = calculateHybridQuotePricing(pricingPayload, { estimateOnly });
+  const estimateLabel = buildAssistantEstimateLabel(pricing);
+  const requiredPaperwork = buildAssistantPaperwork({ cargoType, declaredValueUsd, itemCategory, serviceLevel });
+  const customsChecklist = buildAssistantCustomsChecklist({ destination, declaredValueUsd, itemCategory });
+  const confidence = buildAssistantConfidence({
+    weightKnown: weightLbs > 0,
+    hasDimensions,
+    hasDeclaredValue: declaredValueUsd > 0,
+    hasPickupRequirements: Boolean(pickupRequirements),
+    hasDeliveryRequirements: Boolean(deliveryRequirements),
+  });
+  const assumptions = buildAssistantAssumptions({
+    pricing,
+    quantity,
+    weightLbs,
+    dimensions,
+    deliveryParish,
+    serviceLevel,
+  });
+
+  if (pickupRequirements) {
+    assumptions.push(`Pickup requirements noted: ${pickupRequirements}.`);
+  }
+  if (deliveryRequirements) {
+    assumptions.push(`Delivery requirements noted: ${deliveryRequirements}.`);
+  }
+
+  const assistantQuoteId = `AIQ-${Date.now()}`;
+  const customerEmail = buildAssistantCustomerEmailDraft({
+    customerName,
+    assistantQuoteId,
+    origin,
+    destination,
+    estimateLabel,
+    requiredPaperwork,
+    customsChecklist,
+  });
+
+  const pdfBase64 = await buildAssistantQuotePdfBase64({
+    assistantQuoteId,
+    customerName,
+    origin,
+    destination,
+    cargoType,
+    estimateLabel,
+    confidence,
+    paperwork: requiredPaperwork,
+    checklist: customsChecklist,
+    assumptions,
+  });
+
+  return res.status(200).json({
+    assistantQuoteId,
+    freightEstimate: {
+      pricingMode: pricing.pricingMode,
+      quotedPriceUsd: pricing.quotedPriceUsd,
+      estimatedRangeUsd: pricing.estimatedRangeUsd,
+      confidence,
+      label: estimateLabel,
+      deliveryZone: pricing.deliveryZone,
+      spaceTierLabel: pricing.spaceTierLabel,
+    },
+    requiredPaperwork,
+    customsChecklist,
+    customerEmail,
+    assumptions,
+    quotePdf: {
+      fileName: `${assistantQuoteId}.pdf`,
+      mimeType: 'application/pdf',
+      base64: pdfBase64,
+    },
+    intakeSummary: {
+      origin,
+      destination,
+      cargoType,
+      quantity,
+      weightLbs,
+      dimensions,
+      declaredValueUsd,
+      pickupRequirements,
+      deliveryRequirements,
+      contact: {
+        customerName,
+        email,
+        phone,
+      },
+    },
+    nextStep: {
+      label: 'Continue to booking',
+      path: '/book-pickup',
+    },
   });
 });
 

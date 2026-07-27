@@ -567,6 +567,12 @@ function App() {
   });
   const [showAdvancedQuoteOptions, setShowAdvancedQuoteOptions] = useState(false);
   const [latestQuoteResult, setLatestQuoteResult] = useState(null);
+  const [assistantRequirements, setAssistantRequirements] = useState({
+    pickupRequirements: '',
+    deliveryRequirements: '',
+  });
+  const [aiAssistantResult, setAiAssistantResult] = useState(null);
+  const [aiAssistantLoading, setAiAssistantLoading] = useState(false);
 
   const [bookingForm, setBookingForm] = useState({
     fullName: '',
@@ -1060,6 +1066,80 @@ function App() {
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
     setQuoteForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  }
+
+  function handleAssistantRequirementsChange(event) {
+    const { name, value } = event.target;
+    setAssistantRequirements((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function downloadBase64Pdf(base64Content, fileName) {
+    const binary = window.atob(String(base64Content || ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName || `AI-Quote-${Date.now()}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleGenerateAiQuotePack(event) {
+    event.preventDefault();
+    setAiAssistantLoading(true);
+    setAiAssistantResult(null);
+    setStatusMessage('Generating AI freight quote pack...');
+
+    try {
+      const payload = {
+        customerName: quoteForm.fullName,
+        email: quoteForm.email,
+        phone: quoteForm.phone,
+        origin: quoteForm.origin,
+        destination: quoteForm.destination,
+        deliveryParish: quoteForm.deliveryParish,
+        itemType: quoteForm.cargoType,
+        cargoType: quoteForm.cargoType,
+        itemCategory: quoteForm.itemCategory,
+        serviceLevel: quoteForm.serviceLevel,
+        declaredValueUsd: quoteForm.declaredValueUsd,
+        weight: quoteForm.dontKnowWeight ? '' : quoteForm.weight,
+        quantity: quoteForm.quantity,
+        dimensionsLength: quoteForm.dimensionsLength,
+        dimensionsWidth: quoteForm.dimensionsWidth,
+        dimensionsHeight: quoteForm.dimensionsHeight,
+        pickupRequirements: assistantRequirements.pickupRequirements,
+        deliveryRequirements: assistantRequirements.deliveryRequirements,
+      };
+
+      const response = await fetchWithApiFallback('/ai-freight-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to generate AI freight quote pack.');
+      }
+
+      setAiAssistantResult(result);
+      setStatusMessage('AI freight quote pack is ready.');
+    } catch (error) {
+      setStatusMessage(error.message || 'Unable to generate AI freight quote pack right now.');
+    } finally {
+      setAiAssistantLoading(false);
+    }
   }
 
   function parseCityFromLocation(value, fallback = '') {
@@ -3703,6 +3783,115 @@ function App() {
               ))}
             </ul>
           </div>
+
+          <section className="booking-summary" style={{ marginTop: '1rem', border: '1px solid #cfe7dd', background: 'linear-gradient(145deg, #f3faf7 0%, #ffffff 100%)' }}>
+            <h3 style={{ marginTop: 0 }}>AI Freight Quote Assistant</h3>
+            <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+              Generate a freight estimate, paperwork list, customs checklist, customer email draft, and quote PDF in one step.
+            </p>
+
+            <form className="form" onSubmit={handleGenerateAiQuotePack}>
+              <label htmlFor="assistant-pickup-requirements">
+                Pickup Requirements
+                <textarea
+                  id="assistant-pickup-requirements"
+                  name="pickupRequirements"
+                  rows="3"
+                  placeholder="Gate code, elevator access, business-hour pickup, fragile handling, etc."
+                  value={assistantRequirements.pickupRequirements}
+                  onChange={handleAssistantRequirementsChange}
+                />
+              </label>
+              <label htmlFor="assistant-delivery-requirements">
+                Delivery Requirements
+                <textarea
+                  id="assistant-delivery-requirements"
+                  name="deliveryRequirements"
+                  rows="3"
+                  placeholder="Delivery window, call before arrival, rural route notes, consignee instructions, etc."
+                  value={assistantRequirements.deliveryRequirements}
+                  onChange={handleAssistantRequirementsChange}
+                />
+              </label>
+              <button type="submit" className="btn btn--solid" disabled={aiAssistantLoading}>
+                {aiAssistantLoading ? 'Generating...' : 'Generate AI Quote Pack'}
+              </button>
+            </form>
+
+            {aiAssistantResult && (
+              <div style={{ marginTop: '0.85rem' }}>
+                <p style={{ marginBottom: '0.35rem' }}>
+                  <strong>Reference:</strong> {aiAssistantResult.assistantQuoteId}
+                </p>
+                <p style={{ marginBottom: '0.35rem' }}>
+                  <strong>Estimate:</strong> {aiAssistantResult.freightEstimate?.label || 'N/A'}
+                </p>
+                <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                  Confidence: {aiAssistantResult.freightEstimate?.confidence || 'N/A'}%
+                </p>
+
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Required Paperwork</p>
+                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                      {(aiAssistantResult.requiredPaperwork || []).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Customs Checklist</p>
+                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                      {(aiAssistantResult.customsChecklist || []).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Assumptions</p>
+                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                      {(aiAssistantResult.assumptions || []).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Customer Email Draft</p>
+                    <p style={{ margin: '0.35rem 0', fontSize: '0.86rem' }}>
+                      <strong>Subject:</strong> {aiAssistantResult.customerEmail?.subject || 'N/A'}
+                    </p>
+                    <textarea
+                      readOnly
+                      rows="9"
+                      value={aiAssistantResult.customerEmail?.body || ''}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '0.7rem', display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn--solid"
+                    onClick={() => downloadBase64Pdf(aiAssistantResult.quotePdf?.base64, aiAssistantResult.quotePdf?.fileName)}
+                    disabled={!aiAssistantResult.quotePdf?.base64}
+                  >
+                    Download Quote PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => navigate(aiAssistantResult.nextStep?.path || '/book-pickup')}
+                  >
+                    Continue to Booking
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </section>
     );
