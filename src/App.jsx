@@ -3564,7 +3564,6 @@ function App() {
       code: quoteDeliveryStatus?.code,
     });
     const assistantConfidence = Number(aiAssistantResult?.freightEstimate?.confidence || 0);
-    const assistantConfidenceTone = assistantConfidence >= 85 ? 'high' : assistantConfidence >= 70 ? 'mid' : 'low';
     const assistantEmailPresentation = aiAssistantResult?.emailStatus?.customer
       ? getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer)
       : null;
@@ -3839,107 +3838,81 @@ function App() {
           <section className="booking-summary ai-assistant-panel" aria-live="polite">
             <div className="ai-assistant-panel__header">
               <div>
-                <p className="ai-assistant-panel__eyebrow">Premium Automation</p>
-                <h3 style={{ marginTop: 0 }}>AI Freight Quote Assistant</h3>
+                <h3 style={{ marginTop: 0 }}>AI Quote Assistant</h3>
                 <p className="section-intro" style={{ marginBottom: 0 }}>
-                  Generate a freight estimate, paperwork list, customs checklist, customer-ready email draft, and quote PDF in one guided flow.
+                  Generate estimate, paperwork, email draft, and PDF.
                 </p>
               </div>
-              <div className="ai-assistant-status-pills" role="status" aria-label="AI assistant status">
-                <span className={`ai-status-pill ${assistantIntakeReady ? 'is-on' : ''}`}>
-                  Intake {assistantIntakeReady ? 'Ready' : 'Needs quote data'}
-                </span>
-                <span className={`ai-status-pill ${aiAssistantLoading ? 'is-on' : ''}`}>
-                  {aiAssistantLoading ? 'Generating pack...' : 'Awaiting generation'}
-                </span>
-                <span className={`ai-status-pill ${aiAssistantResult ? 'is-on' : ''}`}>
-                  {aiAssistantResult ? 'Pack ready' : 'No pack yet'}
-                </span>
-              </div>
             </div>
-
-            <div className="ai-assistant-steps" aria-label="Assistant workflow steps">
-              <span className={`ai-assistant-step ${assistantIntakeReady ? 'is-complete' : 'is-active'}`}>1. Intake</span>
-              <span className={`ai-assistant-step ${aiAssistantLoading ? 'is-active' : aiAssistantResult ? 'is-complete' : ''}`}>2. AI Build</span>
-              <span className={`ai-assistant-step ${aiAssistantResult ? 'is-complete' : ''}`}>3. Deliver & Book</span>
-            </div>
+            <p className="ai-assistant-hint">Uses the quote details from your form.</p>
 
             <form className="form ai-assistant-form" onSubmit={handleGenerateAiQuotePack}>
-              <label htmlFor="assistant-pickup-requirements" className="ai-assistant-form__field">
-                Pickup Requirements
-                <textarea
-                  id="assistant-pickup-requirements"
-                  name="pickupRequirements"
-                  rows="3"
-                  placeholder="Gate code, elevator access, business-hour pickup, fragile handling, etc."
-                  value={assistantRequirements.pickupRequirements}
-                  onChange={handleAssistantRequirementsChange}
-                />
-              </label>
-              <label htmlFor="assistant-delivery-requirements" className="ai-assistant-form__field">
-                Delivery Requirements
-                <textarea
-                  id="assistant-delivery-requirements"
-                  name="deliveryRequirements"
-                  rows="3"
-                  placeholder="Delivery window, call before arrival, rural route notes, consignee instructions, etc."
-                  value={assistantRequirements.deliveryRequirements}
-                  onChange={handleAssistantRequirementsChange}
-                />
-              </label>
+              <details className="ai-assistant-optional">
+                <summary>Add special requirements (optional)</summary>
+                <label htmlFor="assistant-pickup-requirements" className="ai-assistant-form__field">
+                  Pickup Requirements
+                  <textarea
+                    id="assistant-pickup-requirements"
+                    name="pickupRequirements"
+                    rows="2"
+                    placeholder="Gate code, elevator, fragile handling, etc."
+                    value={assistantRequirements.pickupRequirements}
+                    onChange={handleAssistantRequirementsChange}
+                  />
+                </label>
+                <label htmlFor="assistant-delivery-requirements" className="ai-assistant-form__field">
+                  Delivery Requirements
+                  <textarea
+                    id="assistant-delivery-requirements"
+                    name="deliveryRequirements"
+                    rows="2"
+                    placeholder="Delivery window, call before arrival, etc."
+                    value={assistantRequirements.deliveryRequirements}
+                    onChange={handleAssistantRequirementsChange}
+                  />
+                </label>
+              </details>
               <button type="submit" className="btn btn--solid ai-assistant-submit" disabled={aiAssistantLoading || !assistantIntakeReady}>
-                {aiAssistantLoading ? 'Generating premium pack...' : 'Generate AI Quote Pack'}
+                {aiAssistantLoading ? 'Generating AI Quote Pack...' : 'Generate AI Quote Pack'}
               </button>
             </form>
 
             {aiAssistantResult && (
               <div className="ai-assistant-results">
-                <div className="ai-assistant-kpis">
-                  <article className="ai-assistant-kpi-card">
-                    <p className="ai-kpi-label">Reference</p>
-                    <p className="ai-kpi-value">{aiAssistantResult.assistantQuoteId}</p>
-                  </article>
-                  <article className="ai-assistant-kpi-card">
-                    <p className="ai-kpi-label">Estimate</p>
-                    <p className="ai-kpi-value">{aiAssistantResult.freightEstimate?.label || 'N/A'}</p>
-                  </article>
-                  <article className={`ai-assistant-kpi-card ai-assistant-kpi-card--${assistantConfidenceTone}`}>
-                    <p className="ai-kpi-label">Confidence</p>
-                    <p className="ai-kpi-value">{aiAssistantResult.freightEstimate?.confidence || 'N/A'}%</p>
-                  </article>
-                  <article className="ai-assistant-kpi-card">
-                    <p className="ai-kpi-label">Email Delivery</p>
-                    <p className="ai-kpi-value">{assistantEmailPresentation?.label || 'Not sent yet'}</p>
-                  </article>
+                <div className="ai-assistant-summary">
+                  <p><strong>Reference:</strong> {aiAssistantResult.assistantQuoteId}</p>
+                  <p><strong>Estimate:</strong> {aiAssistantResult.freightEstimate?.label || 'N/A'}</p>
+                  <p><strong>Confidence:</strong> {aiAssistantResult.freightEstimate?.confidence || 'N/A'}%</p>
+                  <p><strong>Email:</strong> {assistantEmailPresentation?.label || 'Not sent yet'}</p>
                 </div>
 
                 <div className="ai-assistant-grid">
-                  <details className="ai-assistant-card" open>
-                    <summary>Required Paperwork</summary>
+                  <div className="ai-assistant-card">
+                    <p className="ai-assistant-card__title">Required Paperwork</p>
                     <ul>
                       {(aiAssistantResult.requiredPaperwork || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </details>
+                  </div>
 
-                  <details className="ai-assistant-card" open>
-                    <summary>Customs Checklist</summary>
+                  <div className="ai-assistant-card">
+                    <p className="ai-assistant-card__title">Customs Checklist</p>
                     <ul>
                       {(aiAssistantResult.customsChecklist || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </details>
+                  </div>
 
-                  <details className="ai-assistant-card" open>
-                    <summary>Assumptions</summary>
+                  <div className="ai-assistant-card">
+                    <p className="ai-assistant-card__title">Assumptions</p>
                     <ul>
                       {(aiAssistantResult.assumptions || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </details>
+                  </div>
 
                   <div className="ai-assistant-card ai-assistant-card--email">
                     <p className="ai-assistant-card__title">Customer Email Draft</p>
