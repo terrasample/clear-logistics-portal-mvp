@@ -1089,6 +1089,10 @@ function App() {
     setAiAssistantResult(null);
     setStatusMessage('Generating AI freight quote pack...');
 
+    const controller = new AbortController();
+    const timeoutMs = 25000;
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const payload = {
         customerName: quoteForm.fullName,
@@ -1117,6 +1121,7 @@ function App() {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
+        signal: controller.signal,
         body: JSON.stringify(payload),
       });
 
@@ -1128,8 +1133,13 @@ function App() {
       setAiAssistantResult(result);
       setStatusMessage('AI freight quote pack is ready.');
     } catch (error) {
-      setStatusMessage(error.message || 'Unable to generate AI freight quote pack right now.');
+      if (error?.name === 'AbortError') {
+        setStatusMessage('AI quote request timed out. Please try again.');
+      } else {
+        setStatusMessage(error.message || 'Unable to generate AI freight quote pack right now.');
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setAiAssistantLoading(false);
     }
   }
