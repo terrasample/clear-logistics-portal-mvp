@@ -86,7 +86,7 @@ const NAV_ITEMS = [
   },
   {
     key: 'pricing',
-    label: 'Pricing',
+    label: 'Get a Quote',
     targetPath: '/quote',
     activePaths: ['quote'],
   },
@@ -196,11 +196,6 @@ const TRUST_INDICATORS = [
   'Professional Customer Support',
 ];
 
-const QUOTE_RESPONSE_GUARANTEE = {
-  title: '10-Minute Response Guarantee',
-  summary: 'A logistics specialist follows up within 10 minutes during business hours, or your quote is tagged VIP Priority at no extra cost.',
-};
-
 const SUPPLY_CATALOG = [
   {
     key: 'barrels',
@@ -266,11 +261,6 @@ const BOX_PRESETS = [
 
 const BOOKING_DRAFT_KEY = 'clf_booking_draft_v1';
 
-const PRICING = [
-  { lane: 'Barrel (Standard)', eta: '10-15 business days', from: '$85' },
-  { lane: 'Box (Medium)', eta: '7-12 business days', from: '$45' },
-  { lane: 'Pallet (Commercial)', eta: '12-18 business days', from: '$395' },
-];
 const SHARED_SPACE_TIERS = [
   { key: 'auto', label: 'Auto (recommended)' },
   { key: 'mini', label: 'Mini Space (up to 1.0 cu ft)' },
@@ -3578,13 +3568,6 @@ function App() {
       <section className="card card--split">
         <div>
           <h2>Request a Shipping Quote</h2>
-          <div className="booking-summary" style={{ marginBottom: '0.85rem', border: '1px solid #cfe7dd', background: 'linear-gradient(135deg, #f3faf7 0%, #ffffff 100%)' }}>
-            <p style={{ marginBottom: '0.25rem' }}><strong>{QUOTE_RESPONSE_GUARANTEE.title}</strong></p>
-            <p className="section-intro" style={{ marginBottom: '0.35rem' }}>{QUOTE_RESPONSE_GUARANTEE.summary}</p>
-            <p style={{ marginBottom: 0, fontSize: '0.84rem', color: '#2f5a4c' }}>
-              This is how we keep your shipment moving faster than typical freight providers.
-            </p>
-          </div>
           <form className="form" onSubmit={handleQuoteSubmit}>
             <label htmlFor="quote-fullName">
               Full Name
@@ -3745,14 +3728,14 @@ function App() {
                 </p>
               )}
               <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
-                This creates a premium one-stop request so your shipment and supplies are coordinated in one workflow.
+                This creates a one-stop request so your shipment and supplies are coordinated in one workflow.
               </p>
               <p className="section-intro" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
                 Pricing uses the greater of space or weight, plus parish delivery zone and handling surcharges.
               </p>
             </div>
 
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Premium Quote Request'}</button>
+            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Quote Request'}</button>
           </form>
 
           {latestQuoteResult?.quote && (
@@ -3821,20 +3804,6 @@ function App() {
         </div>
 
         <div>
-          <h2>Starter Pricing (MVP)</h2>
-          <p className="section-intro">Final rates can vary by dimensions, lane, and service level.</p>
-          <div className="pricing">
-            <ul>
-              {PRICING.map((item) => (
-                <li key={item.lane}>
-                  <span>{item.lane}</span>
-                  <span>{item.eta}</span>
-                  <strong>{item.from}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <section className="booking-summary ai-assistant-panel" aria-live="polite">
             <div className="ai-assistant-panel__header">
               <div>
