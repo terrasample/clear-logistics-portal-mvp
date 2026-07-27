@@ -181,6 +181,7 @@ function createInitialDataPayload() {
     accounts: demoAccounts,
     drivers: [],
     quotes: [],
+    aiQuotePacks: [],
     bookings: [],
     purchaseRequests: [],
     supportTickets: [],
@@ -237,6 +238,7 @@ async function readData() {
   if (!Array.isArray(data.accounts)) data.accounts = [];
   if (!Array.isArray(data.drivers)) data.drivers = [];
   if (!Array.isArray(data.quotes)) data.quotes = [];
+  if (!Array.isArray(data.aiQuotePacks)) data.aiQuotePacks = [];
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
   if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
@@ -730,6 +732,7 @@ async function purgeDemoDataIfNeeded() {
     'accounts',
     'drivers',
     'quotes',
+    'aiQuotePacks',
     'bookings',
     'purchaseRequests',
     'supportTickets',
@@ -1535,6 +1538,11 @@ function buildAssistantCustomerEmailDraft({ customerName, assistantQuoteId, orig
   ].join('\n');
 
   return { subject, body };
+}
+
+function buildSimpleHtmlFromText(text) {
+  const safe = escapeHtml(text || '');
+  return `<div style="font-family:Arial,sans-serif;line-height:1.55;white-space:pre-wrap;">${safe}</div>`;
 }
 
 async function buildAssistantQuotePdfBase64({
@@ -2630,6 +2638,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
 
   const data = await readData();
   if (!Array.isArray(data.quotes)) data.quotes = [];
+  if (!Array.isArray(data.aiQuotePacks)) data.aiQuotePacks = [];
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.purchaseRequests)) data.purchaseRequests = [];
   if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
@@ -2637,6 +2646,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   if (!Array.isArray(data.shipments)) data.shipments = [];
 
   const visibleQuotes = filterDemoRecordsForEmail(data.quotes, req.user.email);
+  const visibleAiQuotePacks = filterDemoRecordsForEmail(data.aiQuotePacks, req.user.email);
   const visibleBookings = filterDemoRecordsForEmail(data.bookings, req.user.email);
   const visiblePurchaseRequests = filterDemoRecordsForEmail(data.purchaseRequests, req.user.email);
   const visibleSupportTickets = filterDemoRecordsForEmail(data.supportTickets, req.user.email);
@@ -2648,6 +2658,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   res.json({
     counts: {
       rfqs: visibleQuotes.length,
+      aiQuotePacks: visibleAiQuotePacks.length,
       bookings: visibleBookings.length,
       purchaseRequests: visiblePurchaseRequests.length,
       supportTickets: visibleSupportTickets.length,
@@ -2655,6 +2666,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
       shipments: visibleShipments.length,
     },
     rfqs: sortByCreated(visibleQuotes).slice(0, 12),
+    aiQuotePacks: sortByCreated(visibleAiQuotePacks).slice(0, 12),
     recentBookings: sortByCreated(visibleBookings).slice(0, 12),
     purchaseRequests: sortByCreated(visiblePurchaseRequests).slice(0, 12),
     supportTickets: sortByCreated(visibleSupportTickets).slice(0, 12),
@@ -2936,6 +2948,7 @@ app.post('/api/quotes', async (req, res) => {
 
 app.post('/api/ai-freight-assistant', async (req, res) => {
   const payload = req.body || {};
+  const authUser = getOptionalAuthUser(req);
 
   const origin = String(payload.origin || '').trim();
   const destination = String(payload.destination || '').trim();
@@ -2950,6 +2963,7 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
   const customerName = String(payload.customerName || payload.fullName || '').trim();
   const email = String(payload.email || '').trim();
   const phone = String(payload.phone || '').trim();
+  const sendCustomerEmail = payload.sendCustomerEmail !== false;
 
   const dimensions = extractAssistantDimensions(payload);
   const weightLbs = Math.max(0, normalizeNumber(payload.weight, 0));
@@ -3020,6 +3034,34 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
     customsChecklist,
   });
 
+  const emailStatus = {
+    customer: {
+      delivered: false,
+      mode: 'skipped',
+      provider: '',
+      reason: !sendCustomerEmail
+        ? 'send-disabled'
+        : (!email ? 'missing-recipient-email' : 'not-attempted'),
+      code: '',
+      responseCode: null,
+      attempts: [],
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (sendCustomerEmail && email) {
+    const emailResult = await sendEmail({
+      to: email,
+      subject: customerEmail.subject,
+      text: customerEmail.body,
+      html: buildSimpleHtmlFromText(customerEmail.body),
+      mockTag: 'ai-freight-assistant-customer',
+    });
+
+    emailStatus.customer = normalizeDeliveryStatus(emailResult);
+    emailStatus.updatedAt = new Date().toISOString();
+  }
+
   const pdfBase64 = await buildAssistantQuotePdfBase64({
     assistantQuoteId,
     customerName,
@@ -3032,6 +3074,49 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
     checklist: customsChecklist,
     assumptions,
   });
+
+  const data = await readData();
+  const aiQuotePackRecord = {
+    assistantQuoteId,
+    userId: authUser?.sub || null,
+    accountEmail: normalizeEmail(authUser?.email || ''),
+    customerName,
+    email,
+    phone,
+    origin,
+    destination,
+    deliveryParish,
+    cargoType,
+    itemCategory,
+    serviceLevel,
+    quantity,
+    weightLbs,
+    dimensions,
+    declaredValueUsd,
+    pickupRequirements,
+    deliveryRequirements,
+    freightEstimate: {
+      pricingMode: pricing.pricingMode,
+      quotedPriceUsd: pricing.quotedPriceUsd,
+      estimatedRangeUsd: pricing.estimatedRangeUsd,
+      confidence,
+      label: estimateLabel,
+      deliveryZone: pricing.deliveryZone,
+      spaceTierLabel: pricing.spaceTierLabel,
+    },
+    requiredPaperwork,
+    customsChecklist,
+    assumptions,
+    customerEmail,
+    emailStatus,
+    followUpStatus: 'New',
+    source: 'ai-freight-assistant',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  data.aiQuotePacks.push(aiQuotePackRecord);
+  await writeData(data);
 
   return res.status(200).json({
     assistantQuoteId,
@@ -3047,6 +3132,7 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
     requiredPaperwork,
     customsChecklist,
     customerEmail,
+    emailStatus,
     assumptions,
     quotePdf: {
       fileName: `${assistantQuoteId}.pdf`,
@@ -3061,6 +3147,8 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
       weightLbs,
       dimensions,
       declaredValueUsd,
+      serviceLevel,
+      itemCategory,
       pickupRequirements,
       deliveryRequirements,
       contact: {
@@ -3074,6 +3162,41 @@ app.post('/api/ai-freight-assistant', async (req, res) => {
       path: '/book-pickup',
     },
   });
+});
+
+app.post('/api/admin/ai-quote-packs/:assistantQuoteId/follow-up', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const assistantQuoteId = String(req.params.assistantQuoteId || '').trim();
+  const followUpStatus = String(req.body?.followUpStatus || '').trim();
+  const note = String(req.body?.note || '').trim();
+  const allowed = new Set(['New', 'Contacted', 'Qualified', 'Converted', 'Closed']);
+
+  if (!assistantQuoteId) {
+    return res.status(400).json({ error: 'assistantQuoteId is required.' });
+  }
+  if (!allowed.has(followUpStatus)) {
+    return res.status(400).json({ error: 'Invalid follow-up status.' });
+  }
+
+  const data = await readData();
+  const pack = (data.aiQuotePacks || []).find((item) => String(item?.assistantQuoteId || '').trim() === assistantQuoteId);
+  if (!pack) {
+    return res.status(404).json({ error: 'AI quote pack not found.' });
+  }
+
+  pack.followUpStatus = followUpStatus;
+  pack.followUpUpdatedBy = req.user.fullName || req.user.email || 'admin';
+  pack.followUpUpdatedAt = new Date().toISOString();
+  pack.updatedAt = new Date().toISOString();
+  if (note) {
+    pack.followUpNote = note;
+  }
+
+  await writeData(data);
+  return res.json({ ok: true, assistantQuoteId, followUpStatus });
 });
 
 app.post('/api/quotes/:quoteId/nudges/unsubscribe', async (req, res) => {
@@ -3352,6 +3475,7 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
   const data = await readData();
   if (!Array.isArray(data.bookings)) data.bookings = [];
   if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.aiQuotePacks)) data.aiQuotePacks = [];
 
   const requesterEmail = normalizeEmail(req.user.email);
   const accountById = data.accounts.find((account) => account?.id && req.user.sub && account.id === req.user.sub) || null;
@@ -3439,6 +3563,44 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
     }))
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
 
+  const aiQuotePacks = (data.aiQuotePacks || [])
+    .filter((pack) => {
+      if (!pack) return false;
+      if (pack.userId && req.user.sub && pack.userId === req.user.sub) {
+        return true;
+      }
+      return normalizeEmail(pack.email) === requesterEmail;
+    })
+    .map((pack) => ({
+      assistantQuoteId: String(pack.assistantQuoteId || 'N/A'),
+      origin: String(pack.origin || ''),
+      destination: String(pack.destination || ''),
+      deliveryParish: String(pack.deliveryParish || ''),
+      cargoType: String(pack.cargoType || ''),
+      itemCategory: String(pack.itemCategory || ''),
+      serviceLevel: String(pack.serviceLevel || ''),
+      quantity: Number(pack.quantity || 1),
+      weightLbs: Number(pack.weightLbs || 0),
+      dimensions: pack.dimensions || null,
+      declaredValueUsd: Number(pack.declaredValueUsd || 0),
+      pickupRequirements: String(pack.pickupRequirements || ''),
+      deliveryRequirements: String(pack.deliveryRequirements || ''),
+      freightEstimate: pack.freightEstimate || null,
+      followUpStatus: String(pack.followUpStatus || 'New'),
+      createdAt: pack.createdAt || new Date().toISOString(),
+      emailStatus: pack?.emailStatus?.customer ? normalizeDeliveryStatus(pack.emailStatus.customer) : null,
+      intakeSummary: {
+        serviceLevel: String(pack.serviceLevel || ''),
+        itemCategory: String(pack.itemCategory || ''),
+        contact: {
+          customerName: String(pack.customerName || ''),
+          email: String(pack.email || ''),
+          phone: String(pack.phone || ''),
+        },
+      },
+    }))
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+
   const profile = matchedAccount
     ? {
         fullName: matchedAccount.fullName || req.user.fullName || 'Customer',
@@ -3453,7 +3615,7 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
         usReceivingAddress: deriveReceivingAddress(req.user),
       };
 
-  return res.json({ shipments, profile, quotes });
+  return res.json({ shipments, profile, quotes, aiQuotePacks });
 });
 
 app.post('/api/customer/quotes/:quoteId/retry-email', requireAuth, async (req, res) => {

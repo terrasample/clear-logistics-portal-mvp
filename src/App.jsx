@@ -682,6 +682,7 @@ function App() {
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [customerShipments, setCustomerShipments] = useState([]);
   const [customerQuotes, setCustomerQuotes] = useState([]);
+  const [customerAiQuotePacks, setCustomerAiQuotePacks] = useState([]);
   const [customerProfile, setCustomerProfile] = useState({
     fullName: '',
     email: '',
@@ -774,6 +775,7 @@ function App() {
     setAuthToken('');
     setCustomerShipments([]);
     setCustomerQuotes([]);
+    setCustomerAiQuotePacks([]);
     setCustomerProfile({
       fullName: '',
       email: '',
@@ -1180,6 +1182,43 @@ function App() {
 
     setBookingStep(1);
     setStatusMessage('');
+    navigate('/book-pickup');
+  }
+
+  function handleBookAiQuote(aiQuotePack) {
+    const summary = aiQuotePack?.intakeSummary || {};
+    const contact = summary.contact || {};
+    const qty = Math.max(1, Number(aiQuotePack?.quantity || 1));
+    const totalWeight = Math.max(0, Number(aiQuotePack?.weightLbs || 0));
+    const perUnitWeight = totalWeight > 0 ? Math.max(1, Math.round(totalWeight / qty)) : '';
+    const dims = aiQuotePack?.dimensions || {};
+
+    setBookingForm((prev) => ({
+      ...prev,
+      fullName: String(contact.customerName || currentUser?.fullName || prev.fullName || ''),
+      email: String(contact.email || currentUser?.email || prev.email || ''),
+      phone: String(contact.phone || prev.phone || ''),
+      cargoType: String(aiQuotePack?.cargoType || prev.cargoType || 'Box'),
+      quantity: String(qty),
+      serviceLevel: String(aiQuotePack?.serviceLevel || summary.serviceLevel || prev.serviceLevel || 'Standard'),
+      pickupCity: parseCityFromLocation(aiQuotePack?.origin, prev.pickupCity || 'Jacksonville'),
+      jamaicaLocation: parseCityFromLocation(aiQuotePack?.destination, prev.jamaicaLocation || 'Kingston'),
+      deliveryParish: String(aiQuotePack?.deliveryParish || prev.deliveryParish || 'Kingston'),
+      estimatedValue: String(aiQuotePack?.declaredValueUsd || prev.estimatedValue || ''),
+      weightPerUnit: perUnitWeight ? String(perUnitWeight) : prev.weightPerUnit,
+      dimensionsLength: dims?.length ? String(dims.length) : prev.dimensionsLength,
+      dimensionsWidth: dims?.width ? String(dims.width) : prev.dimensionsWidth,
+      dimensionsHeight: dims?.height ? String(dims.height) : prev.dimensionsHeight,
+      notes: [
+        prev.notes,
+        aiQuotePack?.pickupRequirements ? `Pickup requirement: ${aiQuotePack.pickupRequirements}` : '',
+        aiQuotePack?.deliveryRequirements ? `Delivery requirement: ${aiQuotePack.deliveryRequirements}` : '',
+        aiQuotePack?.assistantQuoteId ? `AI Quote Reference: ${aiQuotePack.assistantQuoteId}` : '',
+      ].filter(Boolean).join('\n'),
+    }));
+
+    setBookingStep(1);
+    setStatusMessage(`AI quote ${aiQuotePack?.assistantQuoteId || ''} prefilled into booking.`.trim());
     navigate('/book-pickup');
   }
 
@@ -2285,6 +2324,7 @@ function App() {
       if (!response.ok) throw new Error(result.error || 'Unable to load your dashboard.');
       setCustomerShipments(Array.isArray(result.shipments) ? result.shipments : []);
       setCustomerQuotes(Array.isArray(result.quotes) ? result.quotes : []);
+      setCustomerAiQuotePacks(Array.isArray(result.aiQuotePacks) ? result.aiQuotePacks : []);
       const profile = result.profile || {};
       setCustomerProfile({
         fullName: String(profile.fullName || currentUser?.fullName || ''),
@@ -2296,6 +2336,7 @@ function App() {
       setStatusMessage(error.message);
       setCustomerShipments([]);
       setCustomerQuotes([]);
+      setCustomerAiQuotePacks([]);
       setCustomerProfile({
         fullName: String(currentUser?.fullName || ''),
         email: String(currentUser?.email || ''),
@@ -3829,6 +3870,11 @@ function App() {
                 <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
                   Confidence: {aiAssistantResult.freightEstimate?.confidence || 'N/A'}%
                 </p>
+                {aiAssistantResult.emailStatus?.customer ? (
+                  <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                    Email status: {getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer).label}
+                  </p>
+                ) : null}
 
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   <div>
@@ -3884,9 +3930,28 @@ function App() {
                   <button
                     type="button"
                     className="btn btn--ghost"
-                    onClick={() => navigate(aiAssistantResult.nextStep?.path || '/book-pickup')}
+                    onClick={() => handleBookAiQuote({
+                      assistantQuoteId: aiAssistantResult.assistantQuoteId,
+                      origin: aiAssistantResult.intakeSummary?.origin,
+                      destination: aiAssistantResult.intakeSummary?.destination,
+                      deliveryParish: aiAssistantResult.intakeSummary?.deliveryParish,
+                      cargoType: aiAssistantResult.intakeSummary?.cargoType,
+                      quantity: aiAssistantResult.intakeSummary?.quantity,
+                      weightLbs: aiAssistantResult.intakeSummary?.weightLbs,
+                      dimensions: aiAssistantResult.intakeSummary?.dimensions,
+                      declaredValueUsd: aiAssistantResult.intakeSummary?.declaredValueUsd,
+                      pickupRequirements: aiAssistantResult.intakeSummary?.pickupRequirements,
+                      deliveryRequirements: aiAssistantResult.intakeSummary?.deliveryRequirements,
+                      serviceLevel: aiAssistantResult.intakeSummary?.serviceLevel,
+                      itemCategory: aiAssistantResult.intakeSummary?.itemCategory,
+                      intakeSummary: {
+                        serviceLevel: aiAssistantResult.intakeSummary?.serviceLevel,
+                        itemCategory: aiAssistantResult.intakeSummary?.itemCategory,
+                        contact: aiAssistantResult.intakeSummary?.contact || {},
+                      },
+                    })}
                   >
-                    Continue to Booking
+                    Book this AI Quote
                   </button>
                 </div>
               </div>
@@ -5231,6 +5296,58 @@ function App() {
             </div>
           )}
         </section>
+
+        <section className="card">
+          <h2 style={{ marginBottom: '1rem' }}>My AI Quote Packs</h2>
+          {customerAiQuotePacks.length === 0 ? (
+            <p className="section-intro">No AI quote packs yet. Generate one from the Quote page.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.85rem' }}>
+              {customerAiQuotePacks.slice(0, 5).map((pack) => {
+                const estimateLabel = pack?.freightEstimate?.label
+                  || (Number.isFinite(Number(pack?.freightEstimate?.quotedPriceUsd))
+                    ? `$${Number(pack.freightEstimate.quotedPriceUsd).toFixed(2)}`
+                    : 'Estimate pending');
+                const emailMeta = getQuoteDeliveryPresentation(pack?.emailStatus || null);
+
+                return (
+                  <article key={pack.assistantQuoteId} className="sample-shipment-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: '0', fontWeight: 700 }}>{pack.assistantQuoteId}</p>
+                        <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.92rem' }}>
+                          {pack.origin} to {pack.destination}
+                        </p>
+                      </div>
+                      <p style={{ margin: '0', color: emailMeta.color, fontSize: '0.85rem', fontWeight: 600 }}>
+                        {emailMeta.label}
+                      </p>
+                    </div>
+
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
+                      {pack.cargoType} • {estimateLabel}
+                    </p>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                      Follow-up: {pack.followUpStatus || 'New'}
+                    </p>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                      Generated {pack.createdAt ? new Date(pack.createdAt).toLocaleString() : 'N/A'}
+                    </p>
+
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      style={{ marginTop: '0.75rem' }}
+                      onClick={() => handleBookAiQuote(pack)}
+                    >
+                      Book This AI Quote
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </>
     );
   }
@@ -5240,6 +5357,7 @@ function App() {
 
     const sectionMap = {
       rfqs: { key: 'rfqs', label: 'RFQs' },
+      aiQuotePacks: { key: 'aiQuotePacks', label: 'AI Quote Packs' },
       bookings: { key: 'recentBookings', label: 'Bookings' },
       purchaseRequests: { key: 'purchaseRequests', label: 'Purchase Requests' },
       supportTickets: { key: 'supportTickets', label: 'Support Tickets' },
@@ -5293,6 +5411,10 @@ function App() {
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'rfqs' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('rfqs')}>
             <strong>{counts?.rfqs || 0}</strong>
             <span>RFQs</span>
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'aiQuotePacks' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('aiQuotePacks')}>
+            <strong>{counts?.aiQuotePacks || 0}</strong>
+            <span>AI Quote Packs</span>
           </button>
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'bookings' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('bookings')}>
             <strong>{counts?.bookings || 0}</strong>
@@ -5551,6 +5673,33 @@ function App() {
           </div>
         </section>
 
+        <section className="card">
+          <h2>Recent AI Quote Packs</h2>
+          <div className="admin-list">
+            {(adminOverview?.aiQuotePacks || []).map((pack) => (
+              <button
+                type="button"
+                key={pack.assistantQuoteId}
+                className="booking-summary booking-summary--interactive"
+                style={{ marginBottom: '0.75rem' }}
+                onClick={() => {
+                  setActiveAdminSection('aiQuotePacks');
+                  setSelectedAdminItem({ sectionKey: 'aiQuotePacks', item: pack });
+                  if (overviewOnly) {
+                    navigate('/admin');
+                  }
+                }}
+              >
+                <p><strong>{pack.assistantQuoteId}</strong> - {pack.customerName || pack.email || 'Unknown customer'}</p>
+                <p><strong>Route:</strong> {pack.origin} to {pack.destination}</p>
+                <p><strong>Estimate:</strong> {pack.freightEstimate?.label || 'N/A'}</p>
+                <p><strong>Follow-up:</strong> {pack.followUpStatus || 'New'}</p>
+              </button>
+            ))}
+            {!adminOverview?.aiQuotePacks?.length && <p className="section-intro">No AI quote packs yet.</p>}
+          </div>
+        </section>
+
         {!overviewOnly ? (
           <section className="card" aria-live="polite" ref={adminWorkspaceRef}>
             <h2>{sectionMap[activeAdminSection].label} Workspace</h2>
@@ -5632,6 +5781,63 @@ function App() {
                         })}
                       >
                         Needs Follow-up
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+
+                {selectedAdminItem.sectionKey === 'aiQuotePacks' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.35rem 1rem', margin: '0.75rem 0' }}>
+                      <p><strong>Reference:</strong> {selectedAdminItem.item.assistantQuoteId || 'N/A'}</p>
+                      <p><strong>Created:</strong> {selectedAdminItem.item.createdAt ? new Date(selectedAdminItem.item.createdAt).toLocaleString() : 'N/A'}</p>
+                      <p><strong>Route:</strong> {selectedAdminItem.item.origin || 'N/A'} to {selectedAdminItem.item.destination || 'N/A'}</p>
+                      <p><strong>Parish:</strong> {selectedAdminItem.item.deliveryParish || 'N/A'}</p>
+                      <p><strong>Cargo:</strong> {selectedAdminItem.item.cargoType || 'N/A'}</p>
+                      <p><strong>Service:</strong> {selectedAdminItem.item.serviceLevel || 'N/A'}</p>
+                      <p><strong>Estimate:</strong> {selectedAdminItem.item.freightEstimate?.label || 'N/A'}</p>
+                      <p><strong>Confidence:</strong> {selectedAdminItem.item.freightEstimate?.confidence || 'N/A'}%</p>
+                      <p><strong>Follow-up:</strong> {selectedAdminItem.item.followUpStatus || 'New'}</p>
+                      <p><strong>Pickup Requirements:</strong> {selectedAdminItem.item.pickupRequirements || 'N/A'}</p>
+                      <p><strong>Delivery Requirements:</strong> {selectedAdminItem.item.deliveryRequirements || 'N/A'}</p>
+                    </div>
+
+                    <div className="admin-action-row">
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/ai-quote-packs/${selectedAdminItem.item.assistantQuoteId}/follow-up`,
+                          body: { followUpStatus: 'Contacted' },
+                          successMessage: `AI quote ${selectedAdminItem.item.assistantQuoteId} marked contacted.`
+                        })}
+                      >
+                        Mark Contacted
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/ai-quote-packs/${selectedAdminItem.item.assistantQuoteId}/follow-up`,
+                          body: { followUpStatus: 'Converted' },
+                          successMessage: `AI quote ${selectedAdminItem.item.assistantQuoteId} marked converted.`
+                        })}
+                      >
+                        Mark Converted
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/ai-quote-packs/${selectedAdminItem.item.assistantQuoteId}/follow-up`,
+                          body: { followUpStatus: 'Closed' },
+                          successMessage: `AI quote ${selectedAdminItem.item.assistantQuoteId} marked closed.`
+                        })}
+                      >
+                        Close
                       </button>
                     </div>
                   </>
