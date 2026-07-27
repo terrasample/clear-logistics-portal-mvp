@@ -3563,6 +3563,17 @@ function App() {
       reason: quoteDeliveryStatus?.reason,
       code: quoteDeliveryStatus?.code,
     });
+    const assistantConfidence = Number(aiAssistantResult?.freightEstimate?.confidence || 0);
+    const assistantConfidenceTone = assistantConfidence >= 85 ? 'high' : assistantConfidence >= 70 ? 'mid' : 'low';
+    const assistantEmailPresentation = aiAssistantResult?.emailStatus?.customer
+      ? getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer)
+      : null;
+    const assistantIntakeReady = Boolean(
+      String(quoteForm.origin || '').trim()
+      && String(quoteForm.destination || '').trim()
+      && String(quoteForm.cargoType || '').trim()
+      && (Number(quoteForm.weight || 0) > 0 || quoteForm.dontKnowWeight)
+    );
 
     return (
       <section className="card card--split">
@@ -3825,14 +3836,36 @@ function App() {
             </ul>
           </div>
 
-          <section className="booking-summary" style={{ marginTop: '1rem', border: '1px solid #cfe7dd', background: 'linear-gradient(145deg, #f3faf7 0%, #ffffff 100%)' }}>
-            <h3 style={{ marginTop: 0 }}>AI Freight Quote Assistant</h3>
-            <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
-              Generate a freight estimate, paperwork list, customs checklist, customer email draft, and quote PDF in one step.
-            </p>
+          <section className="booking-summary ai-assistant-panel" aria-live="polite">
+            <div className="ai-assistant-panel__header">
+              <div>
+                <p className="ai-assistant-panel__eyebrow">Premium Automation</p>
+                <h3 style={{ marginTop: 0 }}>AI Freight Quote Assistant</h3>
+                <p className="section-intro" style={{ marginBottom: 0 }}>
+                  Generate a freight estimate, paperwork list, customs checklist, customer-ready email draft, and quote PDF in one guided flow.
+                </p>
+              </div>
+              <div className="ai-assistant-status-pills" role="status" aria-label="AI assistant status">
+                <span className={`ai-status-pill ${assistantIntakeReady ? 'is-on' : ''}`}>
+                  Intake {assistantIntakeReady ? 'Ready' : 'Needs quote data'}
+                </span>
+                <span className={`ai-status-pill ${aiAssistantLoading ? 'is-on' : ''}`}>
+                  {aiAssistantLoading ? 'Generating pack...' : 'Awaiting generation'}
+                </span>
+                <span className={`ai-status-pill ${aiAssistantResult ? 'is-on' : ''}`}>
+                  {aiAssistantResult ? 'Pack ready' : 'No pack yet'}
+                </span>
+              </div>
+            </div>
 
-            <form className="form" onSubmit={handleGenerateAiQuotePack}>
-              <label htmlFor="assistant-pickup-requirements">
+            <div className="ai-assistant-steps" aria-label="Assistant workflow steps">
+              <span className={`ai-assistant-step ${assistantIntakeReady ? 'is-complete' : 'is-active'}`}>1. Intake</span>
+              <span className={`ai-assistant-step ${aiAssistantLoading ? 'is-active' : aiAssistantResult ? 'is-complete' : ''}`}>2. AI Build</span>
+              <span className={`ai-assistant-step ${aiAssistantResult ? 'is-complete' : ''}`}>3. Deliver & Book</span>
+            </div>
+
+            <form className="form ai-assistant-form" onSubmit={handleGenerateAiQuotePack}>
+              <label htmlFor="assistant-pickup-requirements" className="ai-assistant-form__field">
                 Pickup Requirements
                 <textarea
                   id="assistant-pickup-requirements"
@@ -3843,7 +3876,7 @@ function App() {
                   onChange={handleAssistantRequirementsChange}
                 />
               </label>
-              <label htmlFor="assistant-delivery-requirements">
+              <label htmlFor="assistant-delivery-requirements" className="ai-assistant-form__field">
                 Delivery Requirements
                 <textarea
                   id="assistant-delivery-requirements"
@@ -3854,71 +3887,83 @@ function App() {
                   onChange={handleAssistantRequirementsChange}
                 />
               </label>
-              <button type="submit" className="btn btn--solid" disabled={aiAssistantLoading}>
-                {aiAssistantLoading ? 'Generating...' : 'Generate AI Quote Pack'}
+              <button type="submit" className="btn btn--solid ai-assistant-submit" disabled={aiAssistantLoading || !assistantIntakeReady}>
+                {aiAssistantLoading ? 'Generating premium pack...' : 'Generate AI Quote Pack'}
               </button>
             </form>
 
             {aiAssistantResult && (
-              <div style={{ marginTop: '0.85rem' }}>
-                <p style={{ marginBottom: '0.35rem' }}>
-                  <strong>Reference:</strong> {aiAssistantResult.assistantQuoteId}
-                </p>
-                <p style={{ marginBottom: '0.35rem' }}>
-                  <strong>Estimate:</strong> {aiAssistantResult.freightEstimate?.label || 'N/A'}
-                </p>
-                <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
-                  Confidence: {aiAssistantResult.freightEstimate?.confidence || 'N/A'}%
-                </p>
-                {aiAssistantResult.emailStatus?.customer ? (
-                  <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
-                    Email status: {getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer).label}
-                  </p>
-                ) : null}
+              <div className="ai-assistant-results">
+                <div className="ai-assistant-kpis">
+                  <article className="ai-assistant-kpi-card">
+                    <p className="ai-kpi-label">Reference</p>
+                    <p className="ai-kpi-value">{aiAssistantResult.assistantQuoteId}</p>
+                  </article>
+                  <article className="ai-assistant-kpi-card">
+                    <p className="ai-kpi-label">Estimate</p>
+                    <p className="ai-kpi-value">{aiAssistantResult.freightEstimate?.label || 'N/A'}</p>
+                  </article>
+                  <article className={`ai-assistant-kpi-card ai-assistant-kpi-card--${assistantConfidenceTone}`}>
+                    <p className="ai-kpi-label">Confidence</p>
+                    <p className="ai-kpi-value">{aiAssistantResult.freightEstimate?.confidence || 'N/A'}%</p>
+                  </article>
+                  <article className="ai-assistant-kpi-card">
+                    <p className="ai-kpi-label">Email Delivery</p>
+                    <p className="ai-kpi-value">{assistantEmailPresentation?.label || 'Not sent yet'}</p>
+                  </article>
+                </div>
 
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700 }}>Required Paperwork</p>
-                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                <div className="ai-assistant-grid">
+                  <details className="ai-assistant-card" open>
+                    <summary>Required Paperwork</summary>
+                    <ul>
                       {(aiAssistantResult.requiredPaperwork || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </div>
+                  </details>
 
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700 }}>Customs Checklist</p>
-                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                  <details className="ai-assistant-card" open>
+                    <summary>Customs Checklist</summary>
+                    <ul>
                       {(aiAssistantResult.customsChecklist || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </div>
+                  </details>
 
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700 }}>Assumptions</p>
-                    <ul style={{ marginTop: '0.35rem', paddingLeft: '1.1rem' }}>
+                  <details className="ai-assistant-card" open>
+                    <summary>Assumptions</summary>
+                    <ul>
                       {(aiAssistantResult.assumptions || []).map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </div>
+                  </details>
 
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700 }}>Customer Email Draft</p>
-                    <p style={{ margin: '0.35rem 0', fontSize: '0.86rem' }}>
+                  <div className="ai-assistant-card ai-assistant-card--email">
+                    <p className="ai-assistant-card__title">Customer Email Draft</p>
+                    <p className="ai-assistant-card__subtitle">
                       <strong>Subject:</strong> {aiAssistantResult.customerEmail?.subject || 'N/A'}
                     </p>
                     <textarea
                       readOnly
                       rows="9"
                       value={aiAssistantResult.customerEmail?.body || ''}
-                      style={{ width: '100%' }}
                     />
+                    <div className="ai-assistant-actions ai-assistant-actions--inline">
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => copyTextToClipboard(aiAssistantResult.customerEmail?.body || '', 'AI email draft')}
+                      >
+                        Copy Draft
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ marginTop: '0.7rem', display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+                <div className="ai-assistant-actions">
                   <button
                     type="button"
                     className="btn btn--solid"
