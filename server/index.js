@@ -97,7 +97,15 @@ const passwordResetTokenTtlMinutes = Math.max(5, Number(process.env.PASSWORD_RES
 const emailVerificationTokenTtlMinutes = Math.max(10, Number(process.env.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES || 1440));
 const emailDkimSelector = String(process.env.EMAIL_DKIM_SELECTOR || 'default').trim().toLowerCase();
 const emailAuthCacheMs = Math.max(60 * 1000, Number(process.env.EMAIL_AUTH_CACHE_MS || 5 * 60 * 1000));
+const whatsappAutoReplyEnabled = String(process.env.WHATSAPP_AUTO_REPLY_ENABLED || 'true').toLowerCase() === 'true';
+const whatsappAutoReplyCooldownMs = Math.max(60 * 1000, Number(process.env.WHATSAPP_AUTO_REPLY_COOLDOWN_SECONDS || 900) * 1000);
+const whatsappInboundToken = String(process.env.WHATSAPP_INBOUND_TOKEN || '').trim();
+const whatsappAutoReplyMessage = String(
+  process.env.WHATSAPP_AUTO_REPLY_MESSAGE
+  || 'Hi! Thanks for contacting Clear Logistics & Freight Services. We received your message and a support specialist will reply shortly. For faster help, please share your full name and shipment ID (if available).'
+).trim();
 let cachedEmailHealth = { expiresAt: 0, value: null };
+const whatsappAutoReplyLastSentAt = new Map();
 
 const FREE_MAILBOX_DOMAINS = new Set([
   'gmail.com',
@@ -2083,6 +2091,64 @@ async function notifyCustomer({ channel, to, message, metadata = {} }) {
   }
 }
 
+function normalizePhoneForWhatsApp(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits;
+}
+
+function extractInboundWhatsAppMessage(payload) {
+  const body = payload || {};
+
+  // Generic webhook payload shape: { from, message, profileName }
+  const directFrom = String(body.from || '').trim();
+  const directMessage = String(body.message || '').trim();
+  if (directFrom) {
+    return {
+      from: directFrom,
+      message: directMessage,
+      profileName: String(body.profileName || body.name || '').trim(),
+      provider: String(body.provider || 'generic').trim() || 'generic',
+    };
+  }
+
+  // Twilio WhatsApp webhook payload shape.
+  const twilioFrom = String(body.From || '').trim();
+  const twilioMessage = String(body.Body || '').trim();
+  if (twilioFrom) {
+    return {
+      from: twilioFrom,
+      message: twilioMessage,
+      profileName: String(body.ProfileName || '').trim(),
+      provider: 'twilio',
+    };
+  }
+
+  // Meta WhatsApp Cloud API webhook payload shape.
+  const changes = body?.entry?.[0]?.changes?.[0]?.value;
+  const metaMessage = changes?.messages?.[0] || null;
+  const metaContact = changes?.contacts?.[0] || null;
+  if (metaMessage?.from) {
+    return {
+      from: String(metaMessage.from || '').trim(),
+      message: String(metaMessage?.text?.body || '').trim(),
+      profileName: String(metaContact?.profile?.name || '').trim(),
+      provider: 'meta',
+    };
+  }
+
+  return null;
+}
+
+function shouldThrottleWhatsAppAutoReply(destination) {
+  const now = Date.now();
+  const lastSentAt = Number(whatsappAutoReplyLastSentAt.get(destination) || 0);
+  if (lastSentAt && now - lastSentAt < whatsappAutoReplyCooldownMs) {
+    return true;
+  }
+  whatsappAutoReplyLastSentAt.set(destination, now);
+  return false;
+}
+
 function buildDemoPickup(index) {
   const padded = String(index + 1).padStart(3, '0');
   const shipmentId = `CLF-DRV-${padded}`;
@@ -2317,6 +2383,53 @@ app.get('/api/health', async (_req, res) => {
     },
     email,
     timestamp: new Date().toISOString(),
+  });
+});
+
+app.post('/api/whatsapp/inbound', async (req, res) => {
+  if (!whatsappAutoReplyEnabled) {
+    return res.status(200).json({ ok: true, autoReplyEnabled: false, replied: false });
+  }
+
+  if (whatsappInboundToken) {
+    const provided = String(req.headers['x-whatsapp-inbound-token'] || '').trim();
+    if (!provided || provided !== whatsappInboundToken) {
+      return res.status(401).json({ error: 'Unauthorized webhook token.' });
+    }
+  }
+
+  const inbound = extractInboundWhatsAppMessage(req.body || {});
+  if (!inbound?.from) {
+    return res.status(200).json({ ok: true, replied: false, reason: 'missing-sender' });
+  }
+
+  const destination = normalizePhoneForWhatsApp(inbound.from);
+  if (!destination) {
+    return res.status(200).json({ ok: true, replied: false, reason: 'invalid-sender' });
+  }
+
+  if (shouldThrottleWhatsAppAutoReply(destination)) {
+    return res.status(200).json({ ok: true, replied: false, reason: 'cooldown-active' });
+  }
+
+  const firstName = String(inbound.profileName || '').trim().split(/\s+/).filter(Boolean)[0] || 'there';
+  const replyMessage = whatsappAutoReplyMessage.replace(/\{\{\s*name\s*\}\}/gi, firstName);
+  const result = await notifyCustomer({
+    channel: 'whatsapp',
+    to: destination,
+    message: replyMessage,
+    metadata: {
+      source: 'whatsapp-auto-reply',
+      provider: inbound.provider || 'unknown',
+      inboundPreview: String(inbound.message || '').slice(0, 180),
+    },
+  });
+
+  return res.status(200).json({
+    ok: true,
+    replied: Boolean(result?.delivered),
+    mode: result?.mode || 'unknown',
+    reason: result?.reason || '',
   });
 });
 

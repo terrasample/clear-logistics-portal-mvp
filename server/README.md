@@ -18,10 +18,19 @@ Endpoints:
 - POST /api/accounts
 - POST /api/login
 - POST /api/quotes
+- POST /api/whatsapp/inbound
 - POST /api/bookings
 - GET /api/shipments/:shipmentId
 - POST /api/support
 - POST /api/payments/checkout
+
+WhatsApp auto-reply setup:
+1) Set NOTIFY_WHATSAPP_WEBHOOK_URL to your outbound WhatsApp delivery webhook (provider or automation flow).
+2) Keep WHATSAPP_AUTO_REPLY_ENABLED=true.
+3) Set WHATSAPP_AUTO_REPLY_MESSAGE to the exact message you want customers to receive. You can use {{name}}.
+4) Optional security: set WHATSAPP_INBOUND_TOKEN and send the same token in x-whatsapp-inbound-token header from your webhook source.
+5) Point your inbound provider webhook to POST /api/whatsapp/inbound.
+6) Tune WHATSAPP_AUTO_REPLY_COOLDOWN_SECONDS to avoid repeated replies to the same sender.
 
 Production payments checklist:
 1) Set STRIPE_SECRET_KEY.
