@@ -344,7 +344,9 @@ const SITE_MAP = [
   'Contact Support',
 ];
 
-const WHATSAPP_PHONE = '13055550100';
+const RAW_WHATSAPP_PHONE = String(import.meta.env.VITE_WHATSAPP_PHONE || '').trim();
+const WHATSAPP_PHONE = RAW_WHATSAPP_PHONE.replace(/\D/g, '');
+const WHATSAPP_PLACEHOLDER_NUMBERS = new Set(['13055550100', '15550100', '5550100']);
 const BOOKING_TAB_LABEL = 'Services';
 const BOOKING_PAGE_LABEL = 'Book Pickup';
 const SHOP_AND_SHIP_HELP_EMAIL = 'support@clearlogistics.com';
@@ -1854,6 +1856,12 @@ function App() {
   }
 
   function openWhatsApp() {
+    if (!WHATSAPP_PHONE || WHATSAPP_PLACEHOLDER_NUMBERS.has(WHATSAPP_PHONE)) {
+      setStatusMessage('WhatsApp support number is not configured yet. Please use Contact Support while this is updated.');
+      navigate('/support');
+      return;
+    }
+
     const message = encodeURIComponent('Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.');
     window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank', 'noopener,noreferrer');
   }
