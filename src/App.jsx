@@ -109,10 +109,10 @@ const NAV_ITEMS = [
     activePaths: ['cart-estimator'],
   },
   {
-    key: 'support',
-    label: 'Support',
-    targetPath: '/support',
-    activePaths: ['support'],
+    key: 'driver-login',
+    label: 'Driver Login',
+    targetPath: '/driver/login',
+    activePaths: ['driver', 'driver/login', 'driver/register', 'driver/dashboard'],
   },
 ];
 
@@ -7400,9 +7400,6 @@ function App() {
               </button>
               <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
                 Create Account
-              </button>
-              <button type="button" className={currentPath.startsWith('driver') ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
-                🚗 Driver Login
               </button>
             </>
           )}
