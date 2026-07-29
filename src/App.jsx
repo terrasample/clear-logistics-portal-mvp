@@ -5069,24 +5069,29 @@ function App() {
         </div>
 
         <div>
-          <h2>Service Pricing</h2>
-          <p className="section-intro">Estimated costs based on weight and service level.</p>
+          <h2>Pricing Notice</h2>
+          <p className="section-intro">Rates depend on shipment details and are confirmed during checkout.</p>
           <div className="pricing">
             <ul>
-              {SERVICE_TIERS.map((tier) => (
-                <li key={tier.name}>
-                  <span>{tier.name}</span>
-                  <span>{tier.days} days</span>
-                  <strong>${Math.round(50 * tier.multiplier)}</strong>
-                </li>
-              ))}
+              <li>
+                <span>Service levels</span>
+                <span>Economy, Standard, Premium</span>
+              </li>
+              <li>
+                <span>Rate inputs</span>
+                <span>Weight, dimensions, lane, and cargo type</span>
+              </li>
+              <li>
+                <span>Final amount</span>
+                <strong>Shown before payment</strong>
+              </li>
             </ul>
           </div>
           <p className="section-intro" style={{ marginTop: '0.75rem' }}>
             Supply add-ons available per booking: barrels, boxes, utility containers, and packing kits.
           </p>
           <p className="section-intro" style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
-            Final price calculated at checkout based on actual weight and contents.
+            Need exact pricing first? Save a quote from this booking flow before creating shipment.
           </p>
         </div>
       </section>
