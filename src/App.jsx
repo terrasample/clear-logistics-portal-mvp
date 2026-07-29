@@ -4761,6 +4761,69 @@ function App() {
     const bookingTotalWeightLbs = useMemo(() => getBookingTotalWeight(bookingForm, bookingBoxItems), [bookingForm, bookingBoxItems]);
 
     const stepLabels = ['Pickup Info', 'Shipment Details', 'Jamaica Delivery', 'Choose Service', 'Confirm & Pay'];
+    const bookingStepGuides = {
+      1: {
+        title: 'Pickup Info Guide',
+        summary: 'Share accurate pickup contact and address details so dispatch can confirm and assign your driver quickly.',
+        points: [
+          ['Contact', 'Use a reachable phone and email for driver updates.'],
+          ['Address', 'Include complete street address, city, and ZIP for routing.'],
+          ['Pickup date', 'Select your preferred date to reserve your window.'],
+        ],
+        note: 'Tip: double-check phone and email now to avoid pickup delays.',
+      },
+      2: {
+        title: 'Shipment Details Guide',
+        summary: 'Add clear cargo details so your quote and service planning reflect actual shipment size and handling needs.',
+        points: [
+          ['Cargo profile', 'Select cargo type and quantity as close to real volume as possible.'],
+          ['Weight and dimensions', 'Better measurements improve quote accuracy and intake planning.'],
+          ['Supply add-ons', 'Add barrels, boxes, or kits now if you want a one-stop request.'],
+        ],
+        note: 'Tip: if boxes are mixed, enter per-box weights to improve estimate quality.',
+      },
+      3: {
+        title: 'Jamaica Delivery Guide',
+        summary: 'Provide the exact Jamaica recipient and destination details so delivery zoning and final routing are correct.',
+        points: [
+          ['Recipient', 'Enter the person receiving cargo in Jamaica.'],
+          ['Delivery address', 'Use full street details for successful final-mile delivery.'],
+          ['Parish selection', 'Choose the correct parish for accurate delivery zone handling.'],
+        ],
+        note: 'Tip: include landmarks or clear location context when possible for smoother drop-off.',
+      },
+      4: {
+        title: 'Service Selection Guide',
+        summary: 'Pick the service level that best matches your timeline and handling preference.',
+        points: [
+          ['Economy', 'Best for cost-focused shipments with flexible timing.'],
+          ['Standard', 'Balanced option for most household and routine shipments.'],
+          ['Premium', 'Priority handling for faster turnarounds when needed.'],
+        ],
+        note: 'Tip: service level impacts expected timeline and handling priority.',
+      },
+      5: {
+        title: 'Confirm And Pay Guide',
+        summary: 'Review your shipment summary before finalizing to ensure all details are correct.',
+        points: [
+          ['Review details', 'Confirm pickup, shipment, and Jamaica delivery information.'],
+          ['Cost check', 'Review service and add-on totals shown before creation.'],
+          ['Declarations', 'Accept required declarations to proceed securely.'],
+        ],
+        note: 'Tip: if anything looks off, go back and adjust before creating shipment.',
+      },
+      6: {
+        title: 'Shipment Created',
+        summary: 'Your shipment is now created and ready for payment and pickup confirmation.',
+        points: [
+          ['Shipment ID', 'Save this ID for tracking and support requests.'],
+          ['QR scan', 'Keep QR code available for driver pickup verification.'],
+          ['Payment', 'Complete payment to finalize processing workflow.'],
+        ],
+        note: 'Tip: once paid, you can track milestones from your dashboard and tracking page.',
+      },
+    };
+    const activeBookingGuide = bookingStepGuides[bookingStep] || bookingStepGuides[1];
 
     return (
       <section className="card card--split">
@@ -5069,29 +5132,20 @@ function App() {
         </div>
 
         <div>
-          <h2>Pricing Notice</h2>
-          <p className="section-intro">Rates depend on shipment details and are confirmed during checkout.</p>
+          <h2>{activeBookingGuide.title}</h2>
+          <p className="section-intro">{activeBookingGuide.summary}</p>
           <div className="pricing">
             <ul>
-              <li>
-                <span>Service levels</span>
-                <span>Economy, Standard, Premium</span>
-              </li>
-              <li>
-                <span>Rate inputs</span>
-                <span>Weight, dimensions, lane, and cargo type</span>
-              </li>
-              <li>
-                <span>Final amount</span>
-                <strong>Shown before payment</strong>
-              </li>
+              {activeBookingGuide.points.map(([label, detail]) => (
+                <li key={label}>
+                  <span>{label}</span>
+                  <span>{detail}</span>
+                </li>
+              ))}
             </ul>
           </div>
           <p className="section-intro" style={{ marginTop: '0.75rem' }}>
-            Supply add-ons available per booking: barrels, boxes, utility containers, and packing kits.
-          </p>
-          <p className="section-intro" style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
-            Need exact pricing first? Save a quote from this booking flow before creating shipment.
+            {activeBookingGuide.note}
           </p>
         </div>
       </section>
