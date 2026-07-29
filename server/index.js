@@ -23,6 +23,15 @@ const DEFAULT_MILESTONES = [
   { label: 'Out for Delivery', done: false },
   { label: 'Delivered', done: false }
 ];
+const SHIPMENT_STATUS_MILESTONE_SEQUENCE = DEFAULT_MILESTONES.map((step) => String(step.label || '').trim());
+const MANUAL_SHIPMENT_STATUS_OPTIONS = [
+  'At Miami Warehouse',
+  'Loaded on Vessel',
+  'Arrived in Kingston',
+  'Customs Clearance',
+  'Out for Delivery',
+  'Delivered',
+];
 
 const DRIVER_DEMO_EMAIL = String(process.env.DRIVER_DEMO_EMAIL || 'driver.demo@clearlogistics.test').trim().toLowerCase();
 const DRIVER_DEMO_PASSWORD = String(process.env.DRIVER_DEMO_PASSWORD || 'Driver123!');
@@ -2185,6 +2194,49 @@ function normalizeAlertChannel(value) {
 }
 
 function resolveShipmentContact(booking, shipment) {
+  function statusToMilestoneLabel(status) {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (!normalized) return '';
+    if (normalized === 'pickup scheduled') return 'Pickup Scheduled';
+    if (normalized === 'picked up') return 'Picked Up';
+    if (normalized === 'at miami warehouse') return 'At Miami Warehouse';
+    if (normalized === 'loaded on vessel') return 'Loaded on Vessel';
+    if (normalized === 'arrived in kingston') return 'Arrived in Kingston';
+    if (normalized === 'customs clearance') return 'Customs Clearance';
+    if (normalized === 'out for delivery') return 'Out for Delivery';
+    if (normalized === 'delivered') return 'Delivered';
+    return '';
+  }
+
+  function applyShipmentStatusProgress(shipment, nextStatus) {
+    if (!shipment) return { milestoneLabel: '' };
+
+    shipment.status = String(nextStatus || '').trim() || shipment.status;
+    const milestoneLabel = statusToMilestoneLabel(shipment.status);
+    if (!milestoneLabel || !Array.isArray(shipment.milestones)) {
+      return { milestoneLabel };
+    }
+
+    const targetIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(milestoneLabel);
+    if (targetIndex < 0) {
+      return { milestoneLabel };
+    }
+
+    shipment.milestones = shipment.milestones.map((step) => {
+      const currentLabel = String(step?.label || '').trim();
+      const currentIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(currentLabel);
+      if (currentIndex < 0) {
+        return step;
+      }
+
+      return {
+        ...step,
+        done: currentIndex <= targetIndex,
+      };
+    });
+
+    return { milestoneLabel };
+  }
   const fullName = String(booking?.fullName || shipment?.fullName || '').trim();
   const email = String(booking?.email || shipment?.email || '').trim();
   const phone = String(booking?.phone || shipment?.phone || '').trim();
@@ -4174,6 +4226,66 @@ app.post('/api/customer/quotes/:quoteId/retry-email', requireAuth, async (req, r
     ok: true,
     quoteId,
     emailStatus: quote.emailStatus,
+  });
+});
+app.post('/api/admin/shipments/:shipmentId/status', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  const nextStatus = String(req.body?.status || '').trim();
+  const note = String(req.body?.note || '').trim().slice(0, 500);
+
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  if (!MANUAL_SHIPMENT_STATUS_OPTIONS.includes(nextStatus)) {
+    return res.status(400).json({ error: `status must be one of: ${MANUAL_SHIPMENT_STATUS_OPTIONS.join(', ')}` });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  const booking = data.bookings.find((b) => String(b?.shipmentId || '').trim() === shipmentId) || null;
+  const previousStatus = String(shipment.status || '').trim();
+  const { milestoneLabel } = applyShipmentStatusProgress(shipment, nextStatus);
+  shipment.lastStatusUpdatedAt = new Date().toISOString();
+  shipment.lastStatusUpdatedBy = req.user.fullName || req.user.email || 'admin';
+  if (note) {
+    shipment.lastStatusUpdateNote = note;
+  }
+
+  await writeData(data);
+  await sendNotification(
+    'Shipment Status Updated',
+    `Shipment ${shipmentId} moved from ${previousStatus || 'Unknown'} to ${nextStatus}${note ? ` (${note})` : ''}.`
+  );
+
+  const trackingUpdateNotification = await sendShipmentTrackingPhoneUpdate({
+    shipmentId,
+    shipment,
+    booking,
+    event: 'shipment_status_updated',
+    status: nextStatus,
+    milestoneLabel,
+  });
+
+  return res.json({
+    ok: true,
+    shipmentId,
+    previousStatus,
+    status: nextStatus,
+    milestoneLabel,
+    trackingUpdateNotification,
+    shipment,
   });
 });
 
