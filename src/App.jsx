@@ -3448,6 +3448,55 @@ function App() {
           </div>
         </section>
 
+        <section className="card pickup-offer-card" aria-label="Clear Doorstep Pickup offer">
+          <div className="pickup-offer-card__header">
+            <div>
+              <p className="pickup-offer-card__eyebrow">New Pickup Option</p>
+              <h2 style={{ marginBottom: '0.4rem' }}>Clear Doorstep Pickup™</h2>
+              <p className="section-intro" style={{ marginBottom: 0 }}>
+                We come to you, collect your barrels, prepare them for export, and move them into our Jamaica shipping network.
+              </p>
+            </div>
+            <div className="pickup-offer-card__price-chip">From $100</div>
+          </div>
+
+          <div className="pickup-offer-card__actions">
+            <button
+              type="button"
+              className="btn btn--solid"
+              onClick={() => navigate('/book-pickup')}
+            >
+              Reserve My Pickup Window
+            </button>
+          </div>
+
+          <details className="pickup-offer-card__details">
+            <summary>View full pickup pricing</summary>
+            <div className="pickup-offer-card__details-body">
+              <p style={{ marginBottom: '0.45rem' }}><strong>Pricing (per pickup):</strong></p>
+              <ul className="type-list" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+                <li>1-2 barrels: $100</li>
+                <li>3-5 barrels: $150</li>
+                <li>6+ barrels: Custom quote</li>
+              </ul>
+
+              <p style={{ marginBottom: '0.45rem' }}><strong>Includes:</strong></p>
+              <ul className="type-list" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+                <li>Scheduled home pickup</li>
+                <li>Driver dispatch and coordination</li>
+                <li>Safe barrel handling</li>
+                <li>Pickup confirmation</li>
+                <li>Shipment preparation</li>
+                <li>Transfer to consolidation facility</li>
+              </ul>
+
+              <p className="section-intro" style={{ marginBottom: 0 }}>
+                Service note: Export and customs charges are separate unless included in your shipment quote.
+              </p>
+            </div>
+          </details>
+        </section>
+
         {/* Trust Badges */}
         <section className="card trust-badges-section">
           <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Why Choose Clear Logistics?</h3>
