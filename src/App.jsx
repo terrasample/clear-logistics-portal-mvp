@@ -3677,7 +3677,11 @@ function App() {
       <section className="card card--split">
         <div>
           <h2>Request a Shipping Quote</h2>
-          <form className="form" onSubmit={handleQuoteSubmit}>
+          <details open={!quoteSubmitted} style={{ marginBottom: '0.85rem' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, marginBottom: '0.65rem' }}>
+              {quoteSubmitted ? 'Quote form (collapsed after submit)' : 'Quote form'}
+            </summary>
+            <form className="form" onSubmit={handleQuoteSubmit}>
             <label htmlFor="quote-fullName">
               Full Name
               <input id="quote-fullName" name="fullName" value={quoteForm.fullName} onChange={handleQuoteChange} required />
@@ -3844,10 +3848,11 @@ function App() {
               </p>
             </div>
 
-            <button type="submit" className="btn btn--solid" disabled={isLoading || quoteSubmitted}>
-              {isLoading ? 'Submitting...' : quoteSubmitted ? 'Quote Submitted' : 'Submit Quote Request'}
-            </button>
-          </form>
+              <button type="submit" className="btn btn--solid" disabled={isLoading || quoteSubmitted}>
+                {isLoading ? 'Submitting...' : quoteSubmitted ? 'Quote Submitted' : 'Submit Quote Request'}
+              </button>
+            </form>
+          </details>
 
           {latestQuoteResult?.quote && (
             <section className="booking-summary" aria-live="polite" style={{ marginTop: '1rem', border: '1px solid #cfe7dd', background: 'linear-gradient(145deg, #f3faf7 0%, #ffffff 100%)' }}>
@@ -5556,6 +5561,101 @@ function App() {
           </section>
         ) : null}
 
+        {/* Recent account shipments */}
+        {recentShipments.length > 0 && (
+          <section className="card">
+            <h2 style={{ marginBottom: '1.5rem' }}>Recent Shipments</h2>
+            <div className="sample-shipments-grid">
+              {recentShipments.map((shipment) => (
+                <div key={shipment.shipmentId} className="sample-shipment-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                    <div>
+                      <p style={{ margin: '0', fontWeight: 'bold', fontSize: '1.05rem' }}>{shipment.shipmentId}</p>
+                      <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>{shipment.lane}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: '0', fontSize: '0.85rem', fontWeight: '600', color: '#0b6b61' }}>
+                        {shipment.paymentStatus === 'Paid' ? '✔ Paid' : 'Pending'}
+                      </p>
+                    </div>
+                  </div>
+                  <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Status: {shipment.status}</p>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    style={{ marginTop: '1rem', width: '100%' }}
+                    onClick={() => {
+                      setTrackingId(shipment.shipmentId);
+                      navigate('/tracking');
+                    }}
+                  >
+                    Track {shipment.shipmentId}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="card">
+          <h2 style={{ marginBottom: '1rem' }}>My Quotes</h2>
+          {recentQuotes.length === 0 ? (
+            <p className="section-intro">No quotes submitted yet. Use Get a Quote to request pricing and follow-up.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.85rem' }}>
+              {recentQuotes.map((quote) => {
+                const delivery = quote.emailStatus || {};
+                const deliveryMeta = getQuoteDeliveryPresentation(delivery);
+                const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
+                  ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
+                  : quote.pricingMode === 'hybrid-space-weight' && Number.isFinite(Number(quote.quotedPriceUsd))
+                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (hybrid${quote.spaceTierLabel ? ` • ${quote.spaceTierLabel}` : ''})`
+                    : Number.isFinite(Number(quote.quotedPriceUsd))
+                      ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (weight-based)`
+                      : 'Pricing pending';
+
+                return (
+                  <article key={quote.quoteId} className="sample-shipment-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: '0', fontWeight: 700 }}>{quote.quoteId}</p>
+                        <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.92rem' }}>
+                          {quote.origin} to {quote.destination}
+                        </p>
+                      </div>
+                      <p style={{ margin: '0', color: deliveryMeta.color, fontSize: '0.85rem', fontWeight: 600 }}>
+                        {deliveryMeta.label}
+                      </p>
+                    </div>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
+                      {quote.cargoType} • {pricingLabel}
+                    </p>
+                    {quote.deliveryZone?.label ? (
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                        Delivery zone: {quote.deliveryZone.label}
+                      </p>
+                    ) : null}
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+                      Submitted {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}
+                    </p>
+                    {deliveryMeta.canRetry ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        style={{ marginTop: '0.75rem' }}
+                        onClick={() => handleRetryQuoteEmail(quote.quoteId)}
+                        disabled={retryingQuoteId === quote.quoteId || isLoading}
+                      >
+                        {retryingQuoteId === quote.quoteId ? 'Retrying...' : 'Retry Email'}
+                      </button>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         {/* AI Estimator Feature Card */}
         <section className="card dashboard-ai-feature">
           <div className="ai-feature-header">
@@ -5635,101 +5735,6 @@ function App() {
               <p>Get help anytime</p>
             </button>
           </div>
-        </section>
-
-        {/* Recent account shipments */}
-        {recentShipments.length > 0 && (
-          <section className="card">
-            <h2 style={{ marginBottom: '1.5rem' }}>Recent Shipments</h2>
-            <div className="sample-shipments-grid">
-              {recentShipments.map((shipment) => (
-                <div key={shipment.shipmentId} className="sample-shipment-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                    <div>
-                      <p style={{ margin: '0', fontWeight: 'bold', fontSize: '1.05rem' }}>{shipment.shipmentId}</p>
-                      <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>{shipment.lane}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: '0', fontSize: '0.85rem', fontWeight: '600', color: '#0b6b61' }}>
-                        {shipment.paymentStatus === 'Paid' ? '✔ Paid' : 'Pending'}
-                      </p>
-                    </div>
-                  </div>
-                  <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>Status: {shipment.status}</p>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    style={{ marginTop: '1rem', width: '100%' }}
-                    onClick={() => {
-                      setTrackingId(shipment.shipmentId);
-                      navigate('/tracking');
-                    }}
-                  >
-                    Track {shipment.shipmentId}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="card">
-          <h2 style={{ marginBottom: '1rem' }}>My Quotes</h2>
-          {recentQuotes.length === 0 ? (
-            <p className="section-intro">No quotes submitted yet. Use Get a Quote to request pricing and follow-up.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: '0.85rem' }}>
-              {recentQuotes.map((quote) => {
-                const delivery = quote.emailStatus || {};
-                const deliveryMeta = getQuoteDeliveryPresentation(delivery);
-                const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
-                  ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
-                  : quote.pricingMode === 'hybrid-space-weight' && Number.isFinite(Number(quote.quotedPriceUsd))
-                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (hybrid${quote.spaceTierLabel ? ` • ${quote.spaceTierLabel}` : ''})`
-                  : Number.isFinite(Number(quote.quotedPriceUsd))
-                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (weight-based)`
-                    : 'Pricing pending';
-
-                return (
-                  <article key={quote.quoteId} className="sample-shipment-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <div>
-                        <p style={{ margin: '0', fontWeight: 700 }}>{quote.quoteId}</p>
-                        <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.92rem' }}>
-                          {quote.origin} to {quote.destination}
-                        </p>
-                      </div>
-                      <p style={{ margin: '0', color: deliveryMeta.color, fontSize: '0.85rem', fontWeight: 600 }}>
-                        {deliveryMeta.label}
-                      </p>
-                    </div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#2a2a2a' }}>
-                      {quote.cargoType} • {pricingLabel}
-                    </p>
-                    {quote.deliveryZone?.label ? (
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
-                        Delivery zone: {quote.deliveryZone.label}
-                      </p>
-                    ) : null}
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
-                      Submitted {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}
-                    </p>
-                    {deliveryMeta.canRetry ? (
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        style={{ marginTop: '0.75rem' }}
-                        onClick={() => handleRetryQuoteEmail(quote.quoteId)}
-                        disabled={retryingQuoteId === quote.quoteId || isLoading}
-                      >
-                        {retryingQuoteId === quote.quoteId ? 'Retrying...' : 'Retry Email'}
-                      </button>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-          )}
         </section>
 
         <section className="card">
