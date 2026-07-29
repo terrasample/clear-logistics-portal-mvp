@@ -519,6 +519,93 @@ function extractProductNameFromUrl(url) {
   }
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function addDays(baseDate, days) {
+  const date = new Date(baseDate.getTime());
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function formatShortDate(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatCountdown(ms) {
+  const safeMs = Math.max(0, Number(ms) || 0);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function buildTrackingInsights(shipment) {
+  if (!shipment) {
+    return null;
+  }
+
+  const milestones = Array.isArray(shipment.milestones) ? shipment.milestones : [];
+  const doneCount = milestones.filter((step) => Boolean(step?.done)).length;
+  const totalCount = milestones.length;
+  const nextMilestone = milestones.find((step) => !step?.done)?.label || 'Final Delivery';
+  const remainingSteps = Math.max(0, totalCount - doneCount);
+
+  const statusText = String(shipment.status || '').toLowerCase();
+  let risk = 'low';
+  let headline = 'On schedule';
+  let actionLabel = 'No action needed right now.';
+  let actionDetail = 'You will receive your next milestone update automatically.';
+
+  if (statusText.includes('customs') || statusText.includes('clearance')) {
+    risk = 'medium';
+    headline = 'Customs stage in progress';
+    actionLabel = 'Keep documents ready for faster release.';
+    actionDetail = 'If requested, submit invoice/ID quickly to avoid clearance delays.';
+  }
+
+  if (statusText.includes('hold') || statusText.includes('exception') || statusText.includes('delayed')) {
+    risk = 'high';
+    headline = 'Attention needed';
+    actionLabel = 'Contact support for a live update now.';
+    actionDetail = 'A shipment exception is likely active. Request a live agent update.';
+  }
+
+  if (statusText.includes('delivered')) {
+    risk = 'low';
+    headline = 'Delivered';
+    actionLabel = 'Shipment delivered successfully.';
+    actionDetail = 'If anything is wrong, open support with your shipment ID.';
+  }
+
+  const today = new Date();
+  const fallbackEtaStart = addDays(today, Math.max(1, remainingSteps));
+  const fallbackEtaEnd = addDays(fallbackEtaStart, risk === 'high' ? 4 : 2);
+  const providedEta = String(shipment.eta || '').trim();
+  const etaWindow = providedEta
+    ? providedEta
+    : `${formatShortDate(fallbackEtaStart)} - ${formatShortDate(fallbackEtaEnd)}`;
+
+  const completionRatio = totalCount > 0 ? doneCount / totalCount : 0;
+  const riskPenalty = risk === 'high' ? 22 : risk === 'medium' ? 10 : 0;
+  const confidence = clamp(Math.round((completionRatio * 45) + 55 - riskPenalty), 30, 98);
+
+  return {
+    risk,
+    headline,
+    nextMilestone,
+    actionLabel,
+    actionDetail,
+    etaWindow,
+    confidence,
+    doneCount,
+    totalCount,
+  };
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -2285,7 +2372,7 @@ function App() {
     setIsLoading(true);
     setStatusMessage('');
     try {
-      const response = await fetch(`${API_BASE}/shipments/${trackingId.trim()}`);
+      const response = await fetchWithApiFallback(`/shipments/${trackingId.trim()}`);
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Shipment not found.');
       setTrackingResult(result.shipment);
@@ -3779,6 +3866,10 @@ function App() {
               <p style={{ marginBottom: '0.6rem', color: '#2f5a4c', fontSize: '0.84rem', fontWeight: 600 }}>
                 Price locked for 48 hours.
               </p>
+              <div className="booking-summary" style={{ marginBottom: '0.7rem' }}>
+                <p><strong>Included now:</strong> base transport, delivery zone, and known handling surcharges.</p>
+                <p><strong>Could change:</strong> final declared value, restricted items, or warehouse re-weigh variance.</p>
+              </div>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn--solid" onClick={handleBookThisQuote}>
                   Book this shipment
@@ -3976,6 +4067,18 @@ function App() {
         <div>
           <h2>Shop & Ship</h2>
           <p className="section-intro">Shop from popular US stores and ship to Jamaica with Clear Logistics & Freight Services.</p>
+
+          <div className="experience-promise" aria-label="Shop and Ship experience promise">
+            <h3 style={{ margin: '0 0 0.45rem' }}>Experience Promise</h3>
+            <ul className="type-list" style={{ marginBottom: '0.55rem' }}>
+              <li>Transparent landed-cost breakdown before checkout confirmation.</li>
+              <li>Automatic milestone alerts through WhatsApp or SMS preferences.</li>
+              <li>Fast exception handling with live support escalation when needed.</li>
+            </ul>
+            <p className="section-intro" style={{ marginBottom: 0 }}>
+              Goal: remove shipping guesswork so customers know total cost, expected timing, and next action.
+            </p>
+          </div>
 
           {isAuthenticated ? (
             <div
@@ -4934,6 +5037,242 @@ function App() {
       const done = trackingResult.milestones.filter((s) => s.done).length;
       return Math.round((done / trackingResult.milestones.length) * 100);
     }, [trackingResult]);
+    const trackingInsights = useMemo(() => buildTrackingInsights(trackingResult), [trackingResult]);
+    const [deliveryInstructions, setDeliveryInstructions] = useState('');
+    const [preferredContactWindow, setPreferredContactWindow] = useState('Anytime');
+    const [alertChannel, setAlertChannel] = useState('WhatsApp');
+    const [preferencesSavedAt, setPreferencesSavedAt] = useState('');
+    const [slaDeadlineAt, setSlaDeadlineAt] = useState('');
+    const [countdownNowMs, setCountdownNowMs] = useState(Date.now());
+    const [escalationBusy, setEscalationBusy] = useState(false);
+
+    useEffect(() => {
+      const shipmentKey = String(trackingResult?.shipmentId || '').trim();
+      if (!shipmentKey) {
+        setDeliveryInstructions('');
+        setPreferredContactWindow('Anytime');
+        setAlertChannel('WhatsApp');
+        setPreferencesSavedAt('');
+        return;
+      }
+
+      const stored = window.localStorage.getItem(`clf_tracking_prefs_${shipmentKey}`);
+      if (!stored) {
+        setDeliveryInstructions('');
+        setPreferredContactWindow('Anytime');
+        setAlertChannel('WhatsApp');
+        setPreferencesSavedAt('');
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        setDeliveryInstructions(String(parsed.deliveryInstructions || ''));
+        setPreferredContactWindow(String(parsed.preferredContactWindow || 'Anytime'));
+        setAlertChannel(String(parsed.alertChannel || 'WhatsApp'));
+        setPreferencesSavedAt(String(parsed.savedAt || ''));
+      } catch {
+        setDeliveryInstructions('');
+        setPreferredContactWindow('Anytime');
+        setAlertChannel('WhatsApp');
+        setPreferencesSavedAt('');
+      }
+    }, [trackingResult?.shipmentId]);
+
+    useEffect(() => {
+      if (trackingInsights?.risk !== 'high') {
+        setSlaDeadlineAt('');
+        return;
+      }
+
+      const shipmentKey = String(trackingResult?.shipmentId || '').trim();
+      if (!shipmentKey) {
+        return;
+      }
+
+      const storageKey = `clf_tracking_sla_${shipmentKey}`;
+      const existing = String(window.localStorage.getItem(storageKey) || '').trim();
+      if (existing) {
+        const existingMs = Date.parse(existing);
+        if (Number.isFinite(existingMs) && existingMs > Date.now()) {
+          setSlaDeadlineAt(existing);
+          return;
+        }
+      }
+
+      const deadlineIso = new Date(Date.now() + (15 * 60 * 1000)).toISOString();
+      window.localStorage.setItem(storageKey, deadlineIso);
+      setSlaDeadlineAt(deadlineIso);
+    }, [trackingInsights?.risk, trackingResult?.shipmentId]);
+
+    useEffect(() => {
+      if (trackingInsights?.risk !== 'high') {
+        return undefined;
+      }
+      const timer = window.setInterval(() => {
+        setCountdownNowMs(Date.now());
+      }, 1000);
+      return () => window.clearInterval(timer);
+    }, [trackingInsights?.risk]);
+
+    useEffect(() => {
+      const shipmentKey = String(trackingResult?.shipmentId || '').trim();
+      const risk = String(trackingInsights?.risk || '').trim();
+      if (!shipmentKey || !risk || risk === 'low' || !authToken) {
+        return;
+      }
+
+      const run = async () => {
+        try {
+          const response = await fetchWithApiFallback(`/shipments/${shipmentKey}/proactive-alert`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              risk,
+              headline: trackingInsights?.headline,
+              actionLabel: trackingInsights?.actionLabel,
+              etaWindow: trackingInsights?.etaWindow,
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (response.ok && String(result?.slaDeadlineAt || '').trim()) {
+            setSlaDeadlineAt(String(result.slaDeadlineAt));
+            const storageKey = `clf_tracking_sla_${shipmentKey}`;
+            window.localStorage.setItem(storageKey, String(result.slaDeadlineAt));
+          }
+        } catch {
+          // Silent failure keeps tracking usable even if proactive notifications are unavailable.
+        }
+      };
+
+      run();
+    }, [trackingResult?.shipmentId, trackingInsights?.risk, trackingInsights?.headline, trackingInsights?.actionLabel, trackingInsights?.etaWindow, authToken]);
+
+    async function handleEscalateTrackingIssue() {
+      const shipmentKey = String(trackingResult?.shipmentId || '').trim();
+      if (!shipmentKey) {
+        setStatusMessage('Track a shipment first before escalating.');
+        return;
+      }
+      if (!authToken) {
+        setStatusMessage('Please log in to escalate a shipment issue.');
+        navigate('/login', { state: { from: '/tracking', authStep: 'login' } });
+        return;
+      }
+
+      setEscalationBusy(true);
+      try {
+        const response = await fetchWithApiFallback(`/shipments/${shipmentKey}/escalate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            risk: trackingInsights?.risk || 'medium',
+            source: 'tracking_portal',
+            message: `Customer escalation from tracking page. Current status: ${trackingResult?.status || 'Unknown'}. ${String(deliveryInstructions || '').trim()}`,
+            fullName: String(currentUser?.fullName || supportForm.fullName || '').trim(),
+            email: String(currentUser?.email || supportForm.email || '').trim(),
+          }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || 'Unable to escalate shipment issue.');
+        }
+
+        const ticket = result.ticket;
+        const ticketId = String(ticket?.ticketId || '').trim();
+        setStatusMessage(ticketId ? `Escalation submitted. Ticket ${ticketId} is now in queue.` : 'Escalation submitted successfully.');
+        if (ticketId) {
+          setSupportForm((prev) => ({
+            ...prev,
+            shipmentId: shipmentKey,
+            fullName: String(currentUser?.fullName || prev.fullName || ''),
+            email: String(currentUser?.email || prev.email || ''),
+          }));
+        }
+      } catch (error) {
+        setStatusMessage(error.message);
+      } finally {
+        setEscalationBusy(false);
+      }
+    }
+
+    function handleSaveTrackingPreferences() {
+      const shipmentKey = String(trackingResult?.shipmentId || '').trim();
+      if (!shipmentKey) {
+        setStatusMessage('Track a shipment first to save delivery preferences.');
+        return;
+      }
+
+      const payload = {
+        shipmentId: shipmentKey,
+        deliveryInstructions: String(deliveryInstructions || '').trim(),
+        preferredContactWindow,
+        alertChannel,
+        savedAt: new Date().toISOString(),
+      };
+
+      window.localStorage.setItem(`clf_tracking_prefs_${shipmentKey}`, JSON.stringify(payload));
+
+      if (!authToken) {
+        const timestamp = formatShortDate(payload.savedAt);
+        setPreferencesSavedAt(payload.savedAt);
+        setStatusMessage(`Delivery preferences saved locally for ${shipmentKey}${timestamp ? ` (${timestamp})` : ''}. Log in to sync with support and dispatch.`);
+        return;
+      }
+
+      const persist = async () => {
+        try {
+          const response = await fetchWithApiFallback(`/shipments/${shipmentKey}/preferences`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.error || 'Unable to save delivery preferences.');
+          }
+
+          const confirmedSavedAt = String(result?.preferences?.savedAt || payload.savedAt);
+          setPreferencesSavedAt(confirmedSavedAt);
+          if (trackingResult) {
+            setTrackingResult({
+              ...trackingResult,
+              trackingPreferences: {
+                deliveryInstructions: payload.deliveryInstructions,
+                preferredContactWindow: payload.preferredContactWindow,
+                alertChannel: payload.alertChannel,
+                savedAt: confirmedSavedAt,
+              },
+            });
+          }
+          const timestamp = formatShortDate(confirmedSavedAt);
+          setStatusMessage(`Delivery preferences synced for ${shipmentKey}${timestamp ? ` (${timestamp})` : ''}.`);
+        } catch (error) {
+          setPreferencesSavedAt(payload.savedAt);
+          const timestamp = formatShortDate(payload.savedAt);
+          setStatusMessage(`Delivery preferences saved locally for ${shipmentKey}${timestamp ? ` (${timestamp})` : ''}. ${error.message}`);
+        }
+      };
+
+      persist();
+    }
+
+    const slaRemainingMs = useMemo(() => {
+      if (!slaDeadlineAt) return null;
+      const deadlineMs = Date.parse(slaDeadlineAt);
+      if (!Number.isFinite(deadlineMs)) return null;
+      return Math.max(0, deadlineMs - countdownNowMs);
+    }, [slaDeadlineAt, countdownNowMs]);
 
     return (
       <>
@@ -4974,6 +5313,91 @@ function App() {
               <strong>{trackingResult.shipmentId}</strong>
               <p>{trackingResult.status}</p>
             </div>
+          )}
+
+          {trackingInsights && (
+            <section className={`tracking-intel tracking-intel--${trackingInsights.risk}`} aria-live="polite">
+              <div className="tracking-intel__head">
+                <p className="tracking-intel__eyebrow">Proactive Update Center</p>
+                <span className={`tracking-risk-badge tracking-risk-badge--${trackingInsights.risk}`}>
+                  {trackingInsights.risk === 'high' ? 'High Attention' : trackingInsights.risk === 'medium' ? 'Watch Closely' : 'Stable'}
+                </span>
+              </div>
+              <h3>{trackingInsights.headline}</h3>
+              <p className="section-intro" style={{ marginBottom: '0.55rem' }}>
+                Next milestone: <strong>{trackingInsights.nextMilestone}</strong>
+              </p>
+              <div className="tracking-intel__grid">
+                <article>
+                  <p>ETA Window</p>
+                  <strong>{trackingInsights.etaWindow || 'Calculating...'}</strong>
+                </article>
+                <article>
+                  <p>Delivery Confidence</p>
+                  <strong>{trackingInsights.confidence}%</strong>
+                </article>
+              </div>
+              <p style={{ marginBottom: '0.25rem' }}><strong>Recommended Action:</strong> {trackingInsights.actionLabel}</p>
+              <p className="section-intro" style={{ marginBottom: '0.65rem' }}>{trackingInsights.actionDetail}</p>
+              {trackingInsights.risk === 'high' && slaRemainingMs !== null ? (
+                <div className="tracking-sla">
+                  <p><strong>Escalation SLA:</strong> Live agent response target in</p>
+                  <strong>{formatCountdown(slaRemainingMs)}</strong>
+                </div>
+              ) : null}
+              <div className="tracking-intel__actions">
+                <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Escalate via WhatsApp</button>
+                <button type="button" className="btn btn--ghost" onClick={handleEscalateTrackingIssue} disabled={escalationBusy}>
+                  {escalationBusy ? 'Submitting Escalation...' : 'Open Support Ticket'}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {trackingResult && (
+            <section className="tracking-self-service" aria-label="Delivery preferences">
+              <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Delivery Preferences</h3>
+              <p className="section-intro" style={{ marginBottom: '0.55rem' }}>
+                Update these preferences so dispatch and support can respond faster if your shipment needs coordination.
+              </p>
+              <label>
+                Delivery Instructions
+                <textarea
+                  rows="3"
+                  value={deliveryInstructions}
+                  onChange={(event) => setDeliveryInstructions(event.target.value)}
+                  placeholder="Gate code, preferred drop-off point, landmark, or delivery notes"
+                />
+              </label>
+              <div className="input-row">
+                <label>
+                  Preferred Contact Window
+                  <select value={preferredContactWindow} onChange={(event) => setPreferredContactWindow(event.target.value)}>
+                    <option>Anytime</option>
+                    <option>Morning (8am - 12pm)</option>
+                    <option>Afternoon (12pm - 5pm)</option>
+                    <option>Evening (5pm - 9pm)</option>
+                  </select>
+                </label>
+                <label>
+                  Alert Channel
+                  <select value={alertChannel} onChange={(event) => setAlertChannel(event.target.value)}>
+                    <option>WhatsApp</option>
+                    <option>SMS</option>
+                    <option>Email</option>
+                  </select>
+                </label>
+              </div>
+              <div className="tracking-self-service__actions">
+                <button type="button" className="btn btn--solid" onClick={handleSaveTrackingPreferences}>Save Preferences</button>
+                <button type="button" className="btn btn--ghost" onClick={() => setDeliveryInstructions('')}>Clear Notes</button>
+              </div>
+              {preferencesSavedAt ? (
+                <p className="section-intro" style={{ marginBottom: 0 }}>
+                  Last saved: {new Date(preferencesSavedAt).toLocaleString()}
+                </p>
+              ) : null}
+            </section>
           )}
         </div>
 
@@ -6977,7 +7401,7 @@ function App() {
               <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
                 Create Account
               </button>
-              <button type="button" className={currentPath === 'driver' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
+              <button type="button" className={currentPath.startsWith('driver') ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/driver/login')}>
                 🚗 Driver Login
               </button>
             </>

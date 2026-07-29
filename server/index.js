@@ -68,7 +68,30 @@ const adminEmails = new Set(
 
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: false }));
 app.use('/uploads', express.static(uploadDir));
+
+app.post('/api/notifications/whatsapp-dev-relay', async (req, res) => {
+  const destination = String(req.body?.to || '').trim();
+  const message = String(req.body?.message || '').trim();
+  const channel = String(req.body?.channel || '').trim().toLowerCase();
+
+  if (channel !== 'whatsapp') {
+    return res.status(400).json({ ok: false, error: 'Only whatsapp channel is supported by this relay.' });
+  }
+
+  if (!destination || !message) {
+    return res.status(400).json({ ok: false, error: 'to and message are required.' });
+  }
+
+  console.log('[whatsapp-dev-relay:delivered]', {
+    to: destination,
+    message,
+    metadata: req.body?.metadata || {},
+  });
+
+  return res.status(200).json({ ok: true, delivered: true, provider: 'dev-relay' });
+});
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const stripePaymentMethodTypes = String(process.env.STRIPE_PAYMENT_METHOD_TYPES || 'card,link,cashapp')
@@ -102,8 +125,10 @@ const whatsappAutoReplyCooldownMs = Math.max(60 * 1000, Number(process.env.WHATS
 const whatsappInboundToken = String(process.env.WHATSAPP_INBOUND_TOKEN || '').trim();
 const whatsappAutoReplyMessage = String(
   process.env.WHATSAPP_AUTO_REPLY_MESSAGE
-  || 'Hi! Thanks for contacting Clear Logistics & Freight Services. We received your message and a support specialist will reply shortly. For faster help, please share your full name and shipment ID (if available).'
+  || 'Hi {{name}}, thanks for contacting Clear Logistics & Freight Services. We\'ve received your request and our team will get back to you shortly. For faster support, please share your shipment ID and a brief description of your issue.'
 ).trim();
+const proactiveAlertCooldownMs = Math.max(5 * 60 * 1000, Number(process.env.PROACTIVE_ALERT_COOLDOWN_MINUTES || 60) * 60 * 1000);
+const proactiveSlaMinutes = Math.max(5, Number(process.env.PROACTIVE_SLA_MINUTES || 15));
 let cachedEmailHealth = { expiresAt: 0, value: null };
 const whatsappAutoReplyLastSentAt = new Map();
 
@@ -2062,6 +2087,60 @@ async function notifyCustomer({ channel, to, message, metadata = {} }) {
     return { delivered: false, reason: 'missing-destination-or-message' };
   }
 
+  if (normalizedChannel === 'whatsapp') {
+    const twilioAccountSid = String(process.env.TWILIO_ACCOUNT_SID || '').trim();
+    const twilioAuthToken = String(process.env.TWILIO_AUTH_TOKEN || '').trim();
+    const twilioFromRaw = String(process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || '').trim();
+    if (twilioAccountSid && twilioAuthToken && twilioFromRaw) {
+      const normalizeWhatsAppAddress = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+        if (/^whatsapp:/i.test(raw)) return raw;
+        const digits = raw.replace(/[^\d+]/g, '');
+        return digits ? `whatsapp:${digits}` : '';
+      };
+
+      const twilioTo = normalizeWhatsAppAddress(destination);
+      const twilioFrom = normalizeWhatsAppAddress(twilioFromRaw);
+      if (!twilioTo || !twilioFrom) {
+        return { delivered: false, mode: 'twilio', reason: 'invalid-whatsapp-address' };
+      }
+
+      try {
+        const auth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64');
+        const form = new URLSearchParams();
+        form.set('To', twilioTo);
+        form.set('From', twilioFrom);
+        form.set('Body', String(message));
+
+        const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: form,
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const details = payload?.message || `Twilio status ${response.status}`;
+          throw new Error(details);
+        }
+
+        return {
+          delivered: true,
+          mode: 'twilio',
+          messageSid: String(payload?.sid || ''),
+          providerStatus: String(payload?.status || ''),
+        };
+      } catch (error) {
+        console.log('[customer-notification:whatsapp:twilio:error]', error.message);
+        return { delivered: false, mode: 'twilio', error: error.message };
+      }
+    }
+  }
+
   const webhookUrl = normalizedChannel === 'whatsapp'
     ? process.env.NOTIFY_WHATSAPP_WEBHOOK_URL
     : normalizedChannel === 'sms'
@@ -2089,6 +2168,53 @@ async function notifyCustomer({ channel, to, message, metadata = {} }) {
     console.log(`[customer-notification:${normalizedChannel}:error]`, error.message);
     return { delivered: false, mode: 'webhook', error: error.message };
   }
+}
+
+function normalizeRiskLevel(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'high') return 'high';
+  if (normalized === 'medium') return 'medium';
+  return 'low';
+}
+
+function normalizeAlertChannel(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'sms') return 'sms';
+  if (normalized === 'email') return 'email';
+  return 'whatsapp';
+}
+
+function resolveShipmentContact(booking, shipment) {
+  const fullName = String(booking?.fullName || shipment?.fullName || '').trim();
+  const email = String(booking?.email || shipment?.email || '').trim();
+  const phone = String(booking?.phone || shipment?.phone || '').trim();
+  return { fullName, email, phone };
+}
+
+function canManageShipmentFromUser(user, booking, shipment) {
+  if (!user) {
+    return false;
+  }
+
+  const role = String(user?.role || '').trim().toLowerCase();
+  if (role === 'admin') {
+    return true;
+  }
+
+  const userSub = String(user?.sub || '').trim();
+  const bookingUserId = String(booking?.userId || '').trim();
+  if (userSub && bookingUserId && userSub === bookingUserId) {
+    return true;
+  }
+
+  const userEmail = normalizeEmail(user?.email || '');
+  const bookingEmail = normalizeEmail(booking?.email || '');
+  const shipmentEmail = normalizeEmail(shipment?.email || '');
+  if (userEmail && (userEmail === bookingEmail || userEmail === shipmentEmail)) {
+    return true;
+  }
+
+  return false;
 }
 
 function normalizePhoneForWhatsApp(value) {
@@ -2408,6 +2534,11 @@ app.post('/api/whatsapp/inbound', async (req, res) => {
     return res.status(200).json({ ok: true, replied: false, reason: 'invalid-sender' });
   }
 
+  const ownSender = normalizePhoneForWhatsApp(process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || '');
+  if (ownSender && destination === ownSender) {
+    return res.status(200).json({ ok: true, replied: false, reason: 'self-message-ignored' });
+  }
+
   if (shouldThrottleWhatsAppAutoReply(destination)) {
     return res.status(200).json({ ok: true, replied: false, reason: 'cooldown-active' });
   }
@@ -2429,7 +2560,9 @@ app.post('/api/whatsapp/inbound', async (req, res) => {
     ok: true,
     replied: Boolean(result?.delivered),
     mode: result?.mode || 'unknown',
-    reason: result?.reason || '',
+    reason: result?.reason || result?.error || '',
+    providerStatus: result?.providerStatus || '',
+    messageSid: result?.messageSid || '',
   });
 });
 
@@ -3577,7 +3710,213 @@ app.get('/api/shipments/:shipmentId', async (req, res) => {
   if (!shipment) {
     return res.status(404).json({ error: 'Shipment not found.' });
   }
-  res.json({ shipment });
+  const booking = (data.bookings || []).find((b) => b.shipmentId === shipment.shipmentId);
+  const trackingPreferences = shipment.trackingPreferences || booking?.trackingPreferences || null;
+  res.json({
+    shipment: {
+      ...shipment,
+      trackingPreferences,
+      escalationSlaMinutes: proactiveSlaMinutes,
+    },
+  });
+});
+
+app.post('/api/shipments/:shipmentId/preferences', requireAuth, async (req, res) => {
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const deliveryInstructions = String(req.body?.deliveryInstructions || '').trim().slice(0, 1000);
+  const preferredContactWindow = String(req.body?.preferredContactWindow || 'Anytime').trim().slice(0, 120) || 'Anytime';
+  const alertChannel = normalizeAlertChannel(req.body?.alertChannel);
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  const booking = data.bookings.find((b) => String(b?.shipmentId || '').trim() === shipmentId) || null;
+  if (!canManageShipmentFromUser(req.user, booking, shipment)) {
+    return res.status(403).json({ error: 'You do not have access to update this shipment.' });
+  }
+  const preferences = {
+    deliveryInstructions,
+    preferredContactWindow,
+    alertChannel,
+    savedAt: new Date().toISOString(),
+  };
+
+  shipment.trackingPreferences = preferences;
+  if (booking) {
+    booking.trackingPreferences = preferences;
+  }
+
+  await writeData(data);
+  await sendNotification('Tracking Preferences Updated', `Shipment ${shipmentId} preferences updated (${alertChannel}).`);
+
+  return res.json({ ok: true, shipmentId, preferences });
+});
+
+app.post('/api/shipments/:shipmentId/proactive-alert', requireAuth, async (req, res) => {
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  const requestedRisk = normalizeRiskLevel(req.body?.risk);
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+  if (requestedRisk === 'low') {
+    return res.json({ ok: true, shipmentId, transitioned: false, notified: false });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  const booking = data.bookings.find((b) => String(b?.shipmentId || '').trim() === shipmentId) || null;
+  if (!canManageShipmentFromUser(req.user, booking, shipment)) {
+    return res.status(403).json({ error: 'You do not have access to update this shipment.' });
+  }
+  const priorRisk = normalizeRiskLevel(shipment.proactiveRisk || 'low');
+  const riskChanged = priorRisk !== requestedRisk;
+  const qualifiesTransition = riskChanged && (requestedRisk === 'medium' || requestedRisk === 'high');
+
+  const nowMs = Date.now();
+  const lastAlertMs = Date.parse(String(shipment.lastProactiveAlertAt || ''));
+  const inCooldown = Number.isFinite(lastAlertMs) && (nowMs - lastAlertMs) < proactiveAlertCooldownMs;
+  const shouldNotify = qualifiesTransition && !inCooldown;
+
+  const preferences = shipment.trackingPreferences || booking?.trackingPreferences || null;
+  const alertChannel = normalizeAlertChannel(preferences?.alertChannel);
+  const contact = resolveShipmentContact(booking, shipment);
+
+  let notifyResult = { delivered: false, reason: 'notification-not-required' };
+  if (shouldNotify) {
+    const headline = String(req.body?.headline || '').trim() || `Shipment ${shipmentId} now requires attention.`;
+    const actionLabel = String(req.body?.actionLabel || '').trim() || 'Open tracking and escalate if needed.';
+    const etaWindow = String(req.body?.etaWindow || '').trim();
+    const etaText = etaWindow ? ` ETA: ${etaWindow}.` : '';
+    const outboundMessage = `Clear Logistics update for ${shipmentId}: ${headline}. ${actionLabel}.${etaText}`;
+
+    if ((alertChannel === 'whatsapp' || alertChannel === 'sms') && contact.phone) {
+      notifyResult = await notifyCustomer({
+        channel: alertChannel,
+        to: contact.phone,
+        message: outboundMessage,
+        metadata: {
+          event: 'proactive_risk_alert',
+          shipmentId,
+          risk: requestedRisk,
+        },
+      });
+    } else {
+      notifyResult = { delivered: false, reason: 'missing-customer-phone-or-unsupported-channel' };
+    }
+  }
+
+  shipment.proactiveRisk = requestedRisk;
+  shipment.proactiveRiskUpdatedAt = new Date().toISOString();
+  if (shouldNotify) {
+    shipment.lastProactiveAlertAt = new Date().toISOString();
+    shipment.lastProactiveAlertChannel = alertChannel;
+    shipment.lastProactiveAlertResult = notifyResult;
+  }
+
+  const slaDeadlineAt = requestedRisk === 'high'
+    ? new Date(Date.now() + proactiveSlaMinutes * 60 * 1000).toISOString()
+    : null;
+  if (slaDeadlineAt) {
+    shipment.lastHighRiskSlaDeadlineAt = slaDeadlineAt;
+  }
+
+  await writeData(data);
+
+  return res.json({
+    ok: true,
+    shipmentId,
+    priorRisk,
+    risk: requestedRisk,
+    transitioned: qualifiesTransition,
+    notified: Boolean(shouldNotify),
+    notification: notifyResult,
+    slaDeadlineAt,
+  });
+});
+
+app.post('/api/shipments/:shipmentId/escalate', requireAuth, async (req, res) => {
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.supportTickets)) data.supportTickets = [];
+
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  const booking = data.bookings.find((b) => String(b?.shipmentId || '').trim() === shipmentId) || null;
+  if (!canManageShipmentFromUser(req.user, booking, shipment)) {
+    return res.status(403).json({ error: 'You do not have access to escalate this shipment.' });
+  }
+  const contact = resolveShipmentContact(booking, shipment);
+  const fullName = String(req.body?.fullName || contact.fullName || 'Customer').trim();
+  const email = String(req.body?.email || contact.email || 'tracking-escalation@clearlogistics.local').trim();
+  const risk = normalizeRiskLevel(req.body?.risk);
+  const source = String(req.body?.source || 'tracking').trim().slice(0, 120);
+  const message = String(req.body?.message || `Tracking escalation requested for shipment ${shipmentId}.`).trim().slice(0, 1500);
+
+  const recentDuplicate = data.supportTickets
+    .filter((ticket) => String(ticket?.shipmentId || '').trim() === shipmentId && ticket?.source === 'tracking-escalation')
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))[0];
+
+  if (recentDuplicate) {
+    const recentMs = Date.parse(String(recentDuplicate.createdAt || ''));
+    if (Number.isFinite(recentMs) && (Date.now() - recentMs) < 15 * 60 * 1000) {
+      return res.json({
+        ok: true,
+        shipmentId,
+        duplicate: true,
+        ticket: recentDuplicate,
+        message: 'An escalation is already open for this shipment.',
+      });
+    }
+  }
+
+  const ticket = {
+    ticketId: `T-${Date.now()}`,
+    fullName,
+    email,
+    shipmentId,
+    message,
+    priority: risk === 'high' ? 'high' : 'normal',
+    source: 'tracking-escalation',
+    createdAt: new Date().toISOString(),
+  };
+
+  data.supportTickets.push(ticket);
+  shipment.lastEscalatedAt = ticket.createdAt;
+  shipment.lastEscalationTicketId = ticket.ticketId;
+
+  await writeData(data);
+  await sendNotification(
+    'Shipment Escalated From Tracking',
+    `Shipment ${shipmentId} escalated (${risk}) by ${fullName}. Ticket ${ticket.ticketId}.`
+  );
+
+  return res.status(201).json({ ok: true, shipmentId, ticket });
 });
 
 app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
