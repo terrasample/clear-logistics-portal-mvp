@@ -3271,7 +3271,7 @@ app.post('/api/quotes', async (req, res) => {
 
   const adminEmail = buildPremiumQuoteAdminEmail(quote);
   const customerEmail = buildPremiumQuoteCustomerEmail(quote);
-  const [adminResult, customerResult] = await Promise.all([
+  const [adminResult, initialCustomerResult] = await Promise.all([
     sendEmail({
       to: process.env.NOTIFY_EMAIL,
       subject: adminEmail.subject,
@@ -3288,9 +3288,64 @@ app.post('/api/quotes', async (req, res) => {
     })
   ]);
 
+  let customerRetryResult = null;
+  let customerResult = initialCustomerResult;
+  if (!customerResult?.delivered) {
+    customerRetryResult = await sendEmail({
+      to: quote.email,
+      subject: customerEmail.subject,
+      text: customerEmail.text,
+      html: customerEmail.html,
+      mockTag: 'quote-customer-retry',
+    });
+    if (customerRetryResult?.delivered) {
+      customerResult = customerRetryResult;
+    }
+  }
+
+  let customerPhoneFallback = null;
+  if (!customerResult?.delivered) {
+    const fallbackText = `Clear Logistics quote ${quote.quoteId} is ready. We could not deliver your email confirmation. Please contact support to confirm your best email address.`;
+    customerPhoneFallback = await notifyCustomer({
+      channel: 'whatsapp',
+      to: quote.phone,
+      message: fallbackText,
+      metadata: {
+        event: 'quote_email_delivery_failed',
+        quoteId: quote.quoteId,
+      },
+    });
+
+    if (!customerPhoneFallback?.delivered) {
+      customerPhoneFallback = await notifyCustomer({
+        channel: 'sms',
+        to: quote.phone,
+        message: fallbackText,
+        metadata: {
+          event: 'quote_email_delivery_failed',
+          quoteId: quote.quoteId,
+        },
+      });
+    }
+
+    await sendNotification(
+      'Quote Email Delivery Failed',
+      `Quote ${quote.quoteId} for ${quote.fullName} (${quote.email}) could not be emailed. Last reason: ${customerResult?.reason || 'unknown'}.`
+    );
+  }
+
   quote.emailStatus = {
     admin: normalizeDeliveryStatus(adminResult),
     customer: normalizeDeliveryStatus(customerResult),
+    customerRetry: customerRetryResult ? normalizeDeliveryStatus(customerRetryResult) : null,
+    customerPhoneFallback: customerPhoneFallback ? {
+      delivered: Boolean(customerPhoneFallback?.delivered),
+      mode: String(customerPhoneFallback?.mode || 'unknown'),
+      reason: String(customerPhoneFallback?.reason || ''),
+      providerStatus: String(customerPhoneFallback?.providerStatus || ''),
+      messageSid: String(customerPhoneFallback?.messageSid || ''),
+      error: String(customerPhoneFallback?.error || ''),
+    } : null,
     updatedAt: new Date().toISOString(),
   };
   await writeData(data);
