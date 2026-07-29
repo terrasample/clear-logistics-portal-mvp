@@ -2191,6 +2191,64 @@ function resolveShipmentContact(booking, shipment) {
   return { fullName, email, phone };
 }
 
+function resolveTrackingPhoneChannel(booking, shipment) {
+  const trackingPreferences = shipment?.trackingPreferences || booking?.trackingPreferences || null;
+  if (!trackingPreferences) {
+    return { channel: '', reason: 'tracking-preferences-not-set' };
+  }
+
+  const channel = normalizeAlertChannel(trackingPreferences.alertChannel);
+  if (channel !== 'whatsapp' && channel !== 'sms') {
+    return { channel: '', reason: 'non-phone-channel-selected' };
+  }
+
+  return { channel, reason: '' };
+}
+
+function buildTrackingPhoneUpdateMessage({ shipmentId, status, milestoneLabel, fullName }) {
+  const firstName = String(fullName || '').trim().split(/\s+/)[0] || 'there';
+  const cleanStatus = String(status || '').trim();
+  const cleanMilestone = String(milestoneLabel || '').trim();
+  const statusText = cleanStatus ? `status is now ${cleanStatus}` : 'a new tracking update is available';
+  const milestoneText = cleanMilestone ? ` (${cleanMilestone})` : '';
+  return `Hi ${firstName}, Clear Logistics update for ${shipmentId}: your shipment ${statusText}${milestoneText}. Reply to this message if you need support.`;
+}
+
+async function sendShipmentTrackingPhoneUpdate({ shipmentId, shipment, booking, event, status, milestoneLabel }) {
+  if (!shipmentId || !shipment) {
+    return { delivered: false, reason: 'shipment-not-available' };
+  }
+
+  const { channel, reason } = resolveTrackingPhoneChannel(booking, shipment);
+  if (!channel) {
+    return { delivered: false, reason };
+  }
+
+  const contact = resolveShipmentContact(booking, shipment);
+  if (!contact.phone) {
+    return { delivered: false, reason: 'missing-customer-phone' };
+  }
+
+  const message = buildTrackingPhoneUpdateMessage({
+    shipmentId,
+    status,
+    milestoneLabel,
+    fullName: contact.fullName,
+  });
+
+  return notifyCustomer({
+    channel,
+    to: contact.phone,
+    message,
+    metadata: {
+      event: event || 'shipment_tracking_update',
+      shipmentId,
+      status: String(status || '').trim(),
+      milestone: String(milestoneLabel || '').trim(),
+    },
+  });
+}
+
 function canManageShipmentFromUser(user, booking, shipment) {
   if (!user) {
     return false;
@@ -4296,7 +4354,18 @@ app.post('/api/payments/confirm', async (req, res) => {
   await writeData(data);
   await sendNotification('Payment Confirmed', `Shipment ${shipmentId} marked paid (${providerStatus || 'manual-confirm'}).`);
 
-  res.json({ ok: true, shipmentId, paymentStatus: 'paid' });
+  const trackingUpdateNotification = shipment
+    ? await sendShipmentTrackingPhoneUpdate({
+      shipmentId,
+      shipment,
+      booking,
+      event: 'payment_received',
+      status: shipment.status,
+      milestoneLabel: 'Payment Received',
+    })
+    : { delivered: false, reason: 'shipment-not-available' };
+
+  res.json({ ok: true, shipmentId, paymentStatus: 'paid', trackingUpdateNotification });
 });
 
 // ============================================================================
@@ -4796,7 +4865,18 @@ app.put('/api/drivers/pickups/:shipmentId/confirm', requireAuth, async (req, res
   await writeData(data);
   await sendNotification('Pickup Confirmed', `Shipment ${shipmentId} picked up by ${req.user.fullName}`);
 
-  res.json({ booking, shipment, activeRoute: activeRoute || null, message: 'Pickup confirmed.' });
+  const trackingUpdateNotification = shipment
+    ? await sendShipmentTrackingPhoneUpdate({
+      shipmentId,
+      shipment,
+      booking,
+      event: 'pickup_confirmed',
+      status: shipment.status,
+      milestoneLabel: 'Picked Up',
+    })
+    : { delivered: false, reason: 'shipment-not-available' };
+
+  res.json({ booking, shipment, activeRoute: activeRoute || null, message: 'Pickup confirmed.', trackingUpdateNotification });
 });
 
 app.get('/api/drivers/routes/active', requireAuth, async (req, res) => {
