@@ -5448,7 +5448,6 @@ function App() {
     const activeShipment = customerShipments[0] || null;
     const recentShipments = customerShipments.slice(1, 4);
     const recentQuotes = customerQuotes.slice(0, 5);
-    const selectedDashboardQuote = recentQuotes.find((quote) => quote.quoteId === selectedDashboardQuoteId) || null;
     const activeShipmentProgress = activeShipment?.steps?.length
       ? Math.round((activeShipment.steps.filter((s) => s.done).length / activeShipment.steps.length) * 100)
       : 0;
@@ -5607,6 +5606,7 @@ function App() {
           ) : (
             <div style={{ display: 'grid', gap: '0.85rem' }}>
               {recentQuotes.map((quote) => {
+                const isSelected = selectedDashboardQuoteId === quote.quoteId;
                 const delivery = quote.emailStatus || {};
                 const deliveryMeta = getQuoteDeliveryPresentation(delivery);
                 const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
@@ -5623,15 +5623,20 @@ function App() {
                     className="sample-shipment-card"
                     role="button"
                     tabIndex={0}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setSelectedDashboardQuoteId(quote.quoteId)}
+                    style={{
+                      cursor: 'pointer',
+                      border: isSelected ? '1px solid rgba(11, 107, 97, 0.42)' : undefined,
+                      boxShadow: isSelected ? '0 10px 24px rgba(11, 107, 97, 0.12)' : undefined,
+                    }}
+                    onClick={() => setSelectedDashboardQuoteId((current) => (current === quote.quoteId ? '' : quote.quoteId))}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        setSelectedDashboardQuoteId(quote.quoteId);
+                        setSelectedDashboardQuoteId((current) => (current === quote.quoteId ? '' : quote.quoteId));
                       }
                     }}
                     aria-label={`Open quote details for ${quote.quoteId}`}
+                    aria-expanded={isSelected}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <div>
@@ -5671,50 +5676,54 @@ function App() {
                         {retryingQuoteId === quote.quoteId ? 'Retrying...' : 'Retry Email'}
                       </button>
                     ) : null}
+
+                    {isSelected ? (
+                      <section
+                        className="booking-summary"
+                        style={{ marginTop: '0.75rem' }}
+                        aria-live="polite"
+                      >
+                        <h3 style={{ marginTop: 0, marginBottom: '0.45rem' }}>Quote Details: {quote.quoteId}</h3>
+                        <p style={{ margin: '0.2rem 0' }}><strong>Route:</strong> {quote.origin} to {quote.destination}</p>
+                        <p style={{ margin: '0.2rem 0' }}><strong>Cargo:</strong> {quote.cargoType}</p>
+                        <p style={{ margin: '0.2rem 0' }}><strong>Delivery Parish:</strong> {quote.deliveryParish || 'N/A'}</p>
+                        <p style={{ margin: '0.2rem 0' }}><strong>Status:</strong> {quote.status || 'Submitted'}</p>
+                        <p style={{ margin: '0.2rem 0' }}><strong>Submitted:</strong> {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : 'N/A'}</p>
+
+                        {Number.isFinite(Number(quote.quotedPriceUsd)) ? (
+                          <p style={{ margin: '0.2rem 0' }}><strong>Quoted Price:</strong> ${Number(quote.quotedPriceUsd).toFixed(2)}</p>
+                        ) : quote.estimatedRangeUsd ? (
+                          <p style={{ margin: '0.2rem 0' }}><strong>Estimated Range:</strong> ${Number(quote.estimatedRangeUsd.low || 0).toFixed(2)} - ${Number(quote.estimatedRangeUsd.high || 0).toFixed(2)}</p>
+                        ) : (
+                          <p style={{ margin: '0.2rem 0' }}><strong>Pricing:</strong> Pending</p>
+                        )}
+
+                        {quote.deliveryZone?.label ? (
+                          <p style={{ margin: '0.2rem 0' }}><strong>Delivery Zone:</strong> {quote.deliveryZone.label}</p>
+                        ) : null}
+                        {quote.spaceTierLabel ? (
+                          <p style={{ margin: '0.2rem 0' }}><strong>Space Tier:</strong> {quote.spaceTierLabel}</p>
+                        ) : null}
+
+                        {quote.pricingBreakdown ? (
+                          <details style={{ marginTop: '0.5rem' }}>
+                            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Pricing breakdown</summary>
+                            <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
+                              <li>Strategy: {quote.pricingBreakdown.strategy || 'n/a'}</li>
+                              <li>Billable space: {Number(quote.pricingBreakdown.billableCubicFeet || 0).toFixed(2)} cu ft</li>
+                              <li>Weight: {Number(quote.pricingBreakdown.weightLbs || 0).toFixed(2)} lbs</li>
+                              <li>Selected base: ${Number(quote.pricingBreakdown?.chargesUsd?.selectedBase || 0).toFixed(2)}</li>
+                              <li>Delivery fee: ${Number(quote.pricingBreakdown?.chargesUsd?.deliveryZoneFee || 0).toFixed(2)}</li>
+                            </ul>
+                          </details>
+                        ) : null}
+                      </section>
+                    ) : null}
                   </article>
                 );
               })}
             </div>
           )}
-
-          {selectedDashboardQuote ? (
-            <section className="booking-summary" style={{ marginTop: '0.85rem' }} aria-live="polite">
-              <h3 style={{ marginTop: 0, marginBottom: '0.45rem' }}>Quote Details: {selectedDashboardQuote.quoteId}</h3>
-              <p style={{ margin: '0.2rem 0' }}><strong>Route:</strong> {selectedDashboardQuote.origin} to {selectedDashboardQuote.destination}</p>
-              <p style={{ margin: '0.2rem 0' }}><strong>Cargo:</strong> {selectedDashboardQuote.cargoType}</p>
-              <p style={{ margin: '0.2rem 0' }}><strong>Delivery Parish:</strong> {selectedDashboardQuote.deliveryParish || 'N/A'}</p>
-              <p style={{ margin: '0.2rem 0' }}><strong>Status:</strong> {selectedDashboardQuote.status || 'Submitted'}</p>
-              <p style={{ margin: '0.2rem 0' }}><strong>Submitted:</strong> {selectedDashboardQuote.createdAt ? new Date(selectedDashboardQuote.createdAt).toLocaleString() : 'N/A'}</p>
-
-              {Number.isFinite(Number(selectedDashboardQuote.quotedPriceUsd)) ? (
-                <p style={{ margin: '0.2rem 0' }}><strong>Quoted Price:</strong> ${Number(selectedDashboardQuote.quotedPriceUsd).toFixed(2)}</p>
-              ) : selectedDashboardQuote.estimatedRangeUsd ? (
-                <p style={{ margin: '0.2rem 0' }}><strong>Estimated Range:</strong> ${Number(selectedDashboardQuote.estimatedRangeUsd.low || 0).toFixed(2)} - ${Number(selectedDashboardQuote.estimatedRangeUsd.high || 0).toFixed(2)}</p>
-              ) : (
-                <p style={{ margin: '0.2rem 0' }}><strong>Pricing:</strong> Pending</p>
-              )}
-
-              {selectedDashboardQuote.deliveryZone?.label ? (
-                <p style={{ margin: '0.2rem 0' }}><strong>Delivery Zone:</strong> {selectedDashboardQuote.deliveryZone.label}</p>
-              ) : null}
-              {selectedDashboardQuote.spaceTierLabel ? (
-                <p style={{ margin: '0.2rem 0' }}><strong>Space Tier:</strong> {selectedDashboardQuote.spaceTierLabel}</p>
-              ) : null}
-
-              {selectedDashboardQuote.pricingBreakdown ? (
-                <details style={{ marginTop: '0.5rem' }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Pricing breakdown</summary>
-                  <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
-                    <li>Strategy: {selectedDashboardQuote.pricingBreakdown.strategy || 'n/a'}</li>
-                    <li>Billable space: {Number(selectedDashboardQuote.pricingBreakdown.billableCubicFeet || 0).toFixed(2)} cu ft</li>
-                    <li>Weight: {Number(selectedDashboardQuote.pricingBreakdown.weightLbs || 0).toFixed(2)} lbs</li>
-                    <li>Selected base: ${Number(selectedDashboardQuote.pricingBreakdown?.chargesUsd?.selectedBase || 0).toFixed(2)}</li>
-                    <li>Delivery fee: ${Number(selectedDashboardQuote.pricingBreakdown?.chargesUsd?.deliveryZoneFee || 0).toFixed(2)}</li>
-                  </ul>
-                </details>
-              ) : null}
-            </section>
-          ) : null}
         </section>
 
         {/* AI Estimator Feature Card */}
