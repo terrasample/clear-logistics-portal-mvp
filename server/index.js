@@ -1648,8 +1648,59 @@ function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizePhoneForMatching(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
 function hashToken(value) {
   return createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function claimGuestRecordsForAccount(data, account) {
+  const claimed = { quotes: 0, aiQuotePacks: 0, purchaseRequests: 0 };
+  if (!data || !account || typeof account !== 'object') {
+    return { changed: false, claimed };
+  }
+
+  const accountId = String(account.id || '').trim();
+  const accountEmail = normalizeEmail(account.email);
+  const accountPhoneDigits = normalizePhoneForMatching(account.phone);
+  const hasPhoneMatch = accountPhoneDigits.length >= 7;
+  if (!accountId || (!accountEmail && !hasPhoneMatch)) {
+    return { changed: false, claimed };
+  }
+
+  const matchesIdentity = (recordEmail, recordPhone) => {
+    const emailMatch = accountEmail && normalizeEmail(recordEmail) === accountEmail;
+    const phoneMatch = hasPhoneMatch && normalizePhoneForMatching(recordPhone) === accountPhoneDigits;
+    return Boolean(emailMatch || phoneMatch);
+  };
+
+  let changed = false;
+  const claimRecords = (records, key) => {
+    if (!Array.isArray(records)) return;
+    for (const record of records) {
+      if (!record || typeof record !== 'object') continue;
+      if (String(record.userId || '').trim()) continue;
+      if (!matchesIdentity(record.email, record.phone)) continue;
+
+      record.userId = accountId;
+      record.accountEmail = accountEmail || normalizeEmail(record.email || '');
+      claimed[key] += 1;
+      changed = true;
+
+      if (!String(account.phone || '').trim() && String(record.phone || '').trim()) {
+        account.phone = String(record.phone).trim();
+        changed = true;
+      }
+    }
+  };
+
+  claimRecords(data.quotes, 'quotes');
+  claimRecords(data.aiQuotePacks, 'aiQuotePacks');
+  claimRecords(data.purchaseRequests, 'purchaseRequests');
+
+  return { changed, claimed };
 }
 
 function hashPasswordResetToken(token) {
@@ -2677,10 +2728,11 @@ app.post('/api/whatsapp/inbound', async (req, res) => {
 });
 
 app.post('/api/accounts', async (req, res) => {
-  const { fullName, email, password } = req.body || {};
+  const { fullName, email, password, phone } = req.body || {};
   const normalizedFullName = String(fullName || '').trim();
   const normalizedEmail = normalizeEmail(email);
   const normalizedPassword = String(password || '');
+  const normalizedPhone = String(phone || '').trim();
 
   if (!normalizedFullName || !normalizedEmail || !normalizedPassword) {
     return res.status(400).json({ error: 'fullName, email, and password are required.' });
@@ -2698,6 +2750,7 @@ app.post('/api/accounts', async (req, res) => {
     id: randomUUID(),
     fullName: normalizedFullName,
     email: normalizedEmail,
+    phone: normalizedPhone,
     passwordHash,
     emailVerificationRequired: true,
     emailVerifiedAt: '',
@@ -2713,6 +2766,7 @@ app.post('/api/accounts', async (req, res) => {
   ensureCustomerShippingProfile(account);
 
   data.accounts.push(account);
+  const claimResult = claimGuestRecordsForAccount(data, account);
   await writeData(data);
   await sendNotification('New Portal Account', `New account: ${normalizedFullName} <${normalizedEmail}>`);
 
@@ -2734,6 +2788,7 @@ app.post('/api/accounts', async (req, res) => {
 
   res.status(201).json({
     account: sanitizeAccount(account),
+    linkedRecords: claimResult.claimed,
     emailVerification: {
       required: true,
       delivered: Boolean(verificationEmailStatus?.delivered),
@@ -2789,13 +2844,22 @@ app.post('/api/login', async (req, res) => {
   }
 
   let accountForToken = account;
+  let accountChanged = false;
   if (ensureCustomerShippingProfile(data.accounts[accountIndex])) {
+    accountChanged = true;
+  }
+  const claimResult = claimGuestRecordsForAccount(data, data.accounts[accountIndex]);
+  if (claimResult.changed) {
+    accountChanged = true;
+  }
+
+  if (accountChanged) {
     await writeData(data);
     accountForToken = data.accounts[accountIndex];
   }
 
   const token = createAuthToken(accountForToken);
-  res.json({ user: sanitizeAccount(accountForToken), token });
+  res.json({ user: sanitizeAccount(accountForToken), token, linkedRecords: claimResult.claimed });
 });
 
 app.post('/api/email/verify', async (req, res) => {
@@ -4098,6 +4162,7 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
   const accountById = data.accounts.find((account) => account?.id && req.user.sub && account.id === req.user.sub) || null;
   const accountByEmail = data.accounts.find((account) => normalizeEmail(account?.email) === requesterEmail) || null;
   const matchedAccount = accountById || accountByEmail;
+  const requesterPhoneDigits = normalizePhoneForMatching(matchedAccount?.phone || req.user?.phone || '');
 
   if (matchedAccount && ensureCustomerShippingProfile(matchedAccount)) {
     await writeData(data);
@@ -4105,7 +4170,8 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
   const matchesUser = (booking) => {
     if (!booking) return false;
     if (booking.userId && req.user.sub && booking.userId === req.user.sub) return true;
-    return normalizeEmail(booking.email) === requesterEmail;
+    if (normalizeEmail(booking.email) === requesterEmail) return true;
+    return Boolean(requesterPhoneDigits && normalizePhoneForMatching(booking.phone) === requesterPhoneDigits);
   };
 
   const normalizeMilestones = (milestones) => {
@@ -4159,7 +4225,8 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
       if (quote.userId && req.user.sub && quote.userId === req.user.sub) {
         return true;
       }
-      return normalizeEmail(quote.email) === requesterEmail;
+      if (normalizeEmail(quote.email) === requesterEmail) return true;
+      return Boolean(requesterPhoneDigits && normalizePhoneForMatching(quote.phone) === requesterPhoneDigits);
     })
     .map((quote) => ({
       quoteId: String(quote.quoteId || 'N/A'),
@@ -4186,7 +4253,8 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
       if (pack.userId && req.user.sub && pack.userId === req.user.sub) {
         return true;
       }
-      return normalizeEmail(pack.email) === requesterEmail;
+      if (normalizeEmail(pack.email) === requesterEmail) return true;
+      return Boolean(requesterPhoneDigits && normalizePhoneForMatching(pack.phone) === requesterPhoneDigits);
     })
     .map((pack) => ({
       assistantQuoteId: String(pack.assistantQuoteId || 'N/A'),
@@ -4222,12 +4290,14 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
     ? {
         fullName: matchedAccount.fullName || req.user.fullName || 'Customer',
         email: matchedAccount.email || req.user.email || '',
+        phone: String(matchedAccount.phone || ''),
         customerReference: deriveCustomerReference(matchedAccount),
         usReceivingAddress: deriveReceivingAddress(matchedAccount),
       }
     : {
         fullName: req.user.fullName || 'Customer',
         email: req.user.email || '',
+        phone: String(req.user.phone || ''),
         customerReference: deriveCustomerReference(req.user),
         usReceivingAddress: deriveReceivingAddress(req.user),
       };

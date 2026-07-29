@@ -616,6 +616,7 @@ function App() {
     fullName: '',
     email: '',
     password: '',
+    phone: '',
   });
 
   const [quoteForm, setQuoteForm] = useState({
@@ -1147,6 +1148,7 @@ function App() {
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
     setQuoteForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setLatestQuoteResult((prev) => (prev?.quote ? null : prev));
   }
 
   function handleAssistantRequirementsChange(event) {
@@ -1962,6 +1964,7 @@ function App() {
         ...accountForm,
         fullName: String(accountForm.fullName || '').trim(),
         email: String(accountForm.email || '').trim().toLowerCase(),
+        phone: String(accountForm.phone || '').trim(),
       };
       const response = await fetchWithApiFallback('/accounts', {
         method: 'POST',
@@ -1978,7 +1981,7 @@ function App() {
       } else {
         setStatusMessage(result.message || `Account created for ${result.account.fullName}. Please verify your email before login.`);
       }
-      setAccountForm({ fullName: '', email: '', password: '' });
+      setAccountForm({ fullName: '', email: '', password: '', phone: '' });
     } catch (error) {
       setStatusMessage(error.message);
     } finally {
@@ -3662,6 +3665,7 @@ function App() {
     const assistantEmailPresentation = aiAssistantResult?.emailStatus?.customer
       ? getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer)
       : null;
+    const quoteSubmitted = Boolean(latestQuoteResult?.quote);
     const assistantIntakeReady = Boolean(
       String(quoteForm.origin || '').trim()
       && String(quoteForm.destination || '').trim()
@@ -3840,7 +3844,9 @@ function App() {
               </p>
             </div>
 
-            <button type="submit" className="btn btn--solid" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Quote Request'}</button>
+            <button type="submit" className="btn btn--solid" disabled={isLoading || quoteSubmitted}>
+              {isLoading ? 'Submitting...' : quoteSubmitted ? 'Quote Submitted' : 'Submit Quote Request'}
+            </button>
           </form>
 
           {latestQuoteResult?.quote && (
@@ -6463,6 +6469,10 @@ function App() {
           <label>
             Password
             <input type="password" name="password" value={accountForm.password} onChange={handleAccountChange} required />
+          </label>
+          <label>
+            Phone (optional, used to link previous guest quotes)
+            <input type="tel" name="phone" value={accountForm.phone} onChange={handleAccountChange} />
           </label>
           <button type="submit" className="btn btn--solid" disabled={isLoading}>Create Account</button>
         </form>
