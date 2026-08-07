@@ -589,6 +589,10 @@ const BEDROOM_NON_BED_PAGE_NUMBERS = new Set([
 ]);
 
 const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
+  '/catalog/section_pages/cat1-p048-i1.jpeg',
+  '/catalog/section_pages/cat1-p049-i1.jpeg',
+  '/catalog/section_pages/cat1-p061-i1.jpeg',
+  '/catalog/section_pages/cat1-p061-i3.jpeg',
   '/catalog/section_pages/cat1-p070-i1.jpeg',
   '/catalog/section_pages/cat1-p070-i2.jpeg',
   '/catalog/section_pages/cat1-p070-i6.jpeg',
@@ -597,6 +601,8 @@ const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
 const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['2895', '/catalog/section_pages/cat1-p073-i1.jpeg'],
   ['2899', '/catalog/section_pages/cat1-p044-i4.jpeg'],
+  ['2998', '/catalog/section_pages/cat1-p048-i3.jpeg'],
+  ['3002', '/catalog/section_pages/cat1-p049-i2.jpeg'],
   ['3052', '/catalog/section_pages/cat1-p057-i2.jpeg'],
   ['6801', '/catalog/section_pages/cat1-p055-i3.jpeg'],
   ['6991', '/catalog/section_pages/cat1-p066-i2.jpeg'],
@@ -604,6 +610,7 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['9612', '/catalog/section_pages/cat1-p070-i3.jpeg'],
   ['9801', '/catalog/section_pages/cat1-p056-i2.jpeg'],
   ['9901', '/catalog/section_pages/cat1-p058-i2.jpeg'],
+  ['3022', '/catalog/section_pages/cat1-p061-i2.jpeg'],
 ]);
 
 function getCatalogImagePageNumber(imagePath) {
