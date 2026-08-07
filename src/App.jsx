@@ -556,8 +556,6 @@ const BEDROOM_BED_PAGE_NUMBERS = new Set([
   '045',
   '046',
   '047',
-  '048',
-  '049',
   '050',
   '051',
   '052',
@@ -579,13 +577,33 @@ const BEDROOM_BED_PAGE_NUMBERS = new Set([
   '073',
 ]);
 
+const BEDROOM_NON_BED_PAGE_NUMBERS = new Set([
+  '044',
+  '048',
+  '049',
+  '054',
+  '056',
+  '059',
+  '060',
+  '061',
+]);
+
 function getCatalogImagePageNumber(imagePath) {
   const match = String(imagePath || '').match(/(?:cat1|orig)-p0*([0-9]+)-i\d+\.jpeg$/i);
   return match ? match[1].padStart(3, '0') : '';
 }
 
 function isBedroomBedImage(imagePath) {
-  return BEDROOM_BED_PAGE_NUMBERS.has(getCatalogImagePageNumber(imagePath));
+  const pageNumber = getCatalogImagePageNumber(imagePath);
+  if (!pageNumber) {
+    return false;
+  }
+
+  if (BEDROOM_NON_BED_PAGE_NUMBERS.has(pageNumber)) {
+    return false;
+  }
+
+  return BEDROOM_BED_PAGE_NUMBERS.has(pageNumber);
 }
 
 function prioritizeBedroomImages(images) {
@@ -597,6 +615,12 @@ function prioritizeBedroomImages(images) {
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.imagePath);
+}
+
+function getBedroomPreviewImages(images) {
+  const prioritizedImages = prioritizeBedroomImages(images);
+  const bedOnlyImages = prioritizedImages.filter((imagePath) => isBedroomBedImage(imagePath));
+  return bedOnlyImages.length > 0 ? bedOnlyImages : prioritizedImages;
 }
 
 function getBedroomSetScore(set) {
@@ -4326,19 +4350,16 @@ function App() {
       }
 
       if (section.key !== 'bedroom') {
-        return sets;
+        return sets.map((set) => ({ ...set, previewImages: set.images }));
       }
 
       return [...sets]
-        .map((set, index) => {
-          const images = prioritizeBedroomImages(set.images);
-          return {
-            ...set,
-            images,
-            index,
-            score: images.some(isBedroomBedImage) ? 1 : 0,
-          };
-        })
+        .map((set, index) => ({
+          ...set,
+          previewImages: getBedroomPreviewImages(set.images),
+          index,
+          score: getBedroomSetScore(set),
+        }))
         .sort((leftSet, rightSet) => rightSet.score - leftSet.score || leftSet.index - rightSet.index);
     }, [section, sets]);
 
@@ -4378,6 +4399,9 @@ function App() {
         <div className="catalog-sets-grid">
           {orderedSets.map((set, index) => {
             const setLabel = `${section.title} Set ${set.setCode || index + 1}`;
+            const previewImages = Array.isArray(set.previewImages) && set.previewImages.length > 0
+              ? set.previewImages
+              : set.images;
 
             return (
               <article
@@ -4395,7 +4419,7 @@ function App() {
                 aria-label={`Open full gallery for ${setLabel}`}
               >
                 <div className="set-card__rail" role="list" aria-label={setLabel}>
-                  {set.images.map((img, idx) => (
+                  {previewImages.map((img, idx) => (
                     <img
                       key={img}
                       src={img}
