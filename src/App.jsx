@@ -599,6 +599,7 @@ const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
   '/catalog/section_pages/cat1-p070-i1.jpeg',
   '/catalog/section_pages/cat1-p070-i2.jpeg',
   '/catalog/section_pages/cat1-p070-i6.jpeg',
+  '/catalog/section_pages/cat1-p071-i1.jpeg',
 ]);
 
 const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
@@ -617,6 +618,7 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['9801', '/catalog/section_pages/cat1-p056-i2.jpeg'],
   ['9901', '/catalog/section_pages/cat1-p058-i2.jpeg'],
   ['3022', '/catalog/section_pages/cat1-p061-i2.jpeg'],
+  ['9818', '/catalog/section_pages/cat1-p071-i2.jpeg'],
   ['ORIG-P058', '/catalog/section_pages/orig-p058-i2.jpeg'],
   ['ORIG-P059', '/catalog/section_pages/orig-p059-i2.jpeg'],
   ['ORIG-P060', '/catalog/section_pages/orig-p060-i2.jpeg'],
@@ -643,8 +645,80 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['ORIG-P081', '/catalog/section_pages/orig-p081-i2.jpeg'],
   ['ORIG-P082', '/catalog/section_pages/orig-p082-i2.jpeg'],
   ['ORIG-P099', '/catalog/section_pages/orig-p099-i2.jpeg'],
-  ['ORIG-P100', '/catalog/section_pages/orig-p100-i2.jpeg'],
-  ['ORIG-P101', '/catalog/section_pages/orig-p101-i2.jpeg'],
+  ['ORIG-P100', '/catalog/section_pages/orig-p100-i1.jpeg'],
+  ['ORIG-P101', '/catalog/section_pages/orig-p101-i1.jpeg'],
+]);
+
+// Luxury score (1–10) based on visual assessment of each set's hero image.
+// Higher = more ornate/spectacular: carved baroque frames, crystal detailing,
+// tufted headboard + footboard, gold/silver leafing, full staged room shots.
+const BEDROOM_LUXURY_SCORES = new Map([
+  // Score 10 — most spectacular
+  ['2893A', 10],
+  ['3031',  10],
+  ['3039',  10],
+  ['9818',  10],
+  ['9833',  10],
+  ['ORIG-P059', 10],
+  ['ORIG-P063', 10],
+  ['ORIG-P067', 10],
+  ['ORIG-P073', 10],
+  ['ORIG-P076', 10],
+  ['ORIG-P081', 10],
+  // Score 9 — very luxurious
+  ['2891',  9],
+  ['8210',  9],
+  ['3018',  9],
+  ['ORIG-P060', 9],
+  ['ORIG-P061', 9],
+  ['ORIG-P065', 9],
+  ['ORIG-P066', 9],
+  ['ORIG-P068', 9],
+  ['ORIG-P074', 9],
+  ['ORIG-P075', 9],
+  ['ORIG-P080', 9],
+  // Score 8 — richly appointed
+  ['2895',  8],
+  ['2899',  8],
+  ['2998',  8],
+  ['3002',  8],
+  ['3003',  8],
+  ['3005',  8],
+  ['3006',  8],
+  ['3016',  8],
+  ['3022',  8],
+  ['3023',  8],
+  ['3029',  8],
+  ['3030',  8],
+  ['3052',  8],
+  ['3088',  8],
+  ['6223',  8],
+  ['6801',  8],
+  ['6991',  8],
+  ['8202',  8],
+  ['8215',  8],
+  ['9607',  8],
+  ['9801',  8],
+  ['9901',  8],
+  ['ORIG-P058', 8],
+  ['ORIG-P064', 8],
+  ['ORIG-P072', 8],
+  ['ORIG-P078', 8],
+  ['ORIG-P079', 8],
+  // Score 7 — moderately ornate
+  ['9612',  7],
+  ['ORIG-P062', 7],
+  ['ORIG-P069', 7],
+  ['ORIG-P071', 7],
+  ['ORIG-P077', 7],
+  // Score 6 — simpler
+  ['ORIG-P070', 6],
+  // Score 5 — minimal
+  ['ORIG-P082', 5],
+  // Score 3 — dressing-table only sets (no bed image available)
+  ['ORIG-P099', 3],
+  ['ORIG-P100', 3],
+  ['ORIG-P101', 3],
 ]);
 
 function getCatalogImagePageNumber(imagePath) {
@@ -743,13 +817,10 @@ function getBedroomPreviewImages(images, setCode = '') {
 }
 
 function getBedroomSetScore(set) {
-  const images = prioritizeBedroomImages(set?.images, set?.setCode);
-  const firstImage = images[0] || '';
-  if (isBedroomBedImage(firstImage)) {
-    return 2;
-  }
-
-  return images.some(isBedroomBedImage) ? 1 : 0;
+  const setCode = String(set?.setCode || '').trim();
+  const luxuryScore = BEDROOM_LUXURY_SCORES.get(setCode);
+  // Default to 8 for any set not explicitly scored (all are high-end products)
+  return luxuryScore !== undefined ? luxuryScore : 8;
 }
 
 function buildTrackingInsights(shipment) {
