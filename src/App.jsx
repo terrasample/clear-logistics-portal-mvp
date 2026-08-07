@@ -7752,7 +7752,7 @@ function App() {
           <Route path="/booking" element={BookingPage()} />
           <Route path="/quote" element={QuotePage()} />
           <Route path="/catalog" element={CatalogPage()} />
-          <Route path="/catalog/:sectionKey" element={CatalogSectionPage()} />
+          <Route path="/catalog/:sectionKey" element={<CatalogSectionPage />} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/cart-estimator" element={CartEstimatorPage()} />
