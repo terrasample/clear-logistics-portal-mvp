@@ -281,9 +281,9 @@ const CUSTOMER_CATALOG = [
   },
   {
     key: 'formal-dining-set',
-    category: 'bedroom',
-    title: 'Premium Bedroom Collection',
-    description: 'Elegant bedroom ensemble with coordinated furniture styling for comfort and visual impact.',
+    category: 'dining-room',
+    title: 'Formal Dining Set',
+    description: 'Elegant table-and-chair dining collection for family meals, hosting, and entertaining.',
     image: '/catalog/furniture_from_pdf/furniture_266.jpeg',
   },
 ];
@@ -4164,6 +4164,7 @@ function App() {
   function CatalogPage() {
     const livingRoomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'living-room');
     const bedroomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'bedroom');
+    const diningRoomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'dining-room');
 
     function renderCatalogSection(title, items) {
       return (
@@ -4196,7 +4197,7 @@ function App() {
             <p className="catalog-header__eyebrow">Clear Logistics & Freight Services</p>
             <h2>Catalog</h2>
             <p className="section-intro" style={{ marginBottom: 0 }}>
-              Explore furniture collections by room and message us on WhatsApp for daily deals.
+              Browse furniture by room category. Pricing is shared only on WhatsApp.
             </p>
           </div>
           <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>
@@ -4206,6 +4207,7 @@ function App() {
 
         {renderCatalogSection('Living Room Furniture', livingRoomFurniture)}
         {renderCatalogSection('Bedroom Furniture', bedroomFurniture)}
+        {renderCatalogSection('Dining Room Furniture', diningRoomFurniture)}
       </section>
     );
   }
