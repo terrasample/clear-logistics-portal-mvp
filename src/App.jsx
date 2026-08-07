@@ -588,12 +588,22 @@ const BEDROOM_NON_BED_PAGE_NUMBERS = new Set([
   '061',
 ]);
 
+const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
+  '/catalog/section_pages/cat1-p070-i1.jpeg',
+  '/catalog/section_pages/cat1-p070-i2.jpeg',
+  '/catalog/section_pages/cat1-p070-i6.jpeg',
+]);
+
 function getCatalogImagePageNumber(imagePath) {
   const match = String(imagePath || '').match(/(?:cat1|orig)-p0*([0-9]+)-i\d+\.jpeg$/i);
   return match ? match[1].padStart(3, '0') : '';
 }
 
 function isBedroomBedImage(imagePath) {
+  if (BEDROOM_NON_BED_IMAGE_PATHS.has(String(imagePath || '').trim())) {
+    return false;
+  }
+
   const pageNumber = getCatalogImagePageNumber(imagePath);
   if (!pageNumber) {
     return false;
@@ -4221,12 +4231,17 @@ function App() {
     'living-room': '/catalog/section_pages/cat1-p003-i1.jpeg',
   };
 
-  const openCatalogGallery = (sectionTitle, setLabel, images) => {
+  const openCatalogGallery = (sectionKey, sectionTitle, setLabel, images) => {
     if (!images || images.length === 0) return;
+
+    const normalizedImages = sectionKey === 'bedroom'
+      ? prioritizeBedroomImages(images)
+      : images;
+
     setCatalogGallery({
       title: sectionTitle,
       setLabel,
-      images,
+      images: normalizedImages,
       activeIndex: 0,
     });
   };
@@ -4409,11 +4424,11 @@ function App() {
                 className="set-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => openCatalogGallery(section.title, setLabel, set.images)}
+                onClick={() => openCatalogGallery(section.key, section.title, setLabel, set.images)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    openCatalogGallery(section.title, setLabel, set.images);
+                    openCatalogGallery(section.key, section.title, setLabel, set.images);
                   }
                 }}
                 aria-label={`Open full gallery for ${setLabel}`}
