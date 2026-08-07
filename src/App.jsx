@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
+import { CATALOG_SECTIONS, CATALOG_ITEMS_BY_SECTION } from './catalogData';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
   String(import.meta.env.VITE_API_BASE || '').trim(),
@@ -254,24 +255,6 @@ const BARREL_CATALOG = [
     description: 'Smaller-format barrel for lighter shipments and easier last-mile handling.',
     bestFor: 'Smaller family orders, lightweight items',
     unitPriceUsd: 36,
-  },
-];
-
-const CATALOG_SECTIONS = [
-  {
-    key: 'living-room',
-    title: 'Living Room Furniture',
-    image: '/catalog/furniture_from_pdf/furniture_096.jpeg',
-  },
-  {
-    key: 'bedroom',
-    title: 'Bedroom Furniture',
-    image: '/catalog/furniture_from_pdf/furniture_344.jpeg',
-  },
-  {
-    key: 'dining-room',
-    title: 'Dining Room Furniture',
-    image: '/catalog/furniture_from_pdf/furniture_266.jpeg',
   },
 ];
 
@@ -4149,16 +4132,6 @@ function App() {
   }
 
   function CatalogPage() {
-    const [activeSectionImage, setActiveSectionImage] = useState(null);
-
-    function openSectionImage(section) {
-      setActiveSectionImage(section);
-    }
-
-    function closeSectionImage() {
-      setActiveSectionImage(null);
-    }
-
     return (
       <section className="card card--wide">
         <div className="catalog-header">
@@ -4182,34 +4155,75 @@ function App() {
               <button
                 type="button"
                 className="catalog-section__image-button"
-                onClick={() => openSectionImage(section)}
-                aria-label={`View ${section.title}`}
+                onClick={() => navigate(`/catalog/${section.key}`)}
+                aria-label={`Open ${section.title}`}
               >
                 <img src={section.image} alt={section.title} loading="lazy" className="catalog-section__image" />
               </button>
+              <p className="catalog-section__meta">{section.itemCount} items</p>
               <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
                 Contact via WhatsApp
               </button>
             </section>
           ))}
         </div>
+      </section>
+    );
+  }
 
-        {activeSectionImage && (
-          <div className="catalog-lightbox" role="dialog" aria-modal="true" aria-label={activeSectionImage.title}>
-            <button
-              type="button"
-              className="catalog-lightbox__backdrop"
-              onClick={closeSectionImage}
-              aria-label="Close image preview"
-            />
-            <div className="catalog-lightbox__content">
-              <button type="button" className="catalog-lightbox__close" onClick={closeSectionImage} aria-label="Close image preview">
-                ×
-              </button>
-              <img src={activeSectionImage.image} alt={activeSectionImage.title} className="catalog-lightbox__image" />
-            </div>
+  function CatalogSectionPage() {
+    const { sectionKey } = useParams();
+    const section = CATALOG_SECTIONS.find((entry) => entry.key === sectionKey);
+    const items = section ? (CATALOG_ITEMS_BY_SECTION[section.key] || []) : [];
+
+    if (!section) {
+      return (
+        <section className="card card--wide">
+          <h2>Catalog Section Not Found</h2>
+          <p className="section-intro">Please return to the main catalog and choose a furniture section.</p>
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/catalog')}>
+            Back to Catalog
+          </button>
+        </section>
+      );
+    }
+
+    return (
+      <section className="card card--wide">
+        <div className="catalog-header">
+          <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="catalog-header__logo" />
+          <div>
+            <p className="catalog-header__eyebrow">Clear Logistics & Freight Services</p>
+            <h2>{section.title}</h2>
+            <p className="section-intro" style={{ marginBottom: 0 }}>
+              Browse all available sets in this section.
+            </p>
           </div>
-        )}
+          <div className="catalog-header__actions">
+            <button type="button" className="btn btn--ghost" onClick={() => navigate('/catalog')}>
+              Back to Catalog
+            </button>
+            <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>
+              Contact us on WhatsApp
+            </button>
+          </div>
+        </div>
+
+        <div className="catalog-items-grid">
+          {items.map((item) => (
+            <article key={item.id} className="catalog-item-card">
+              <img src={item.image} alt={item.title} loading="lazy" className="catalog-item-card__image" />
+              <div className="catalog-item-card__body">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+                <p><strong>Dimensions:</strong> {item.dimensions}</p>
+                <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
+                  Contact via WhatsApp
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
     );
   }
@@ -7706,6 +7720,7 @@ function App() {
           <Route path="/booking" element={BookingPage()} />
           <Route path="/quote" element={QuotePage()} />
           <Route path="/catalog" element={CatalogPage()} />
+          <Route path="/catalog/:sectionKey" element={CatalogSectionPage()} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/cart-estimator" element={CartEstimatorPage()} />
