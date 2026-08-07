@@ -1,3 +1,5 @@
+import catalog1Items from './catalog1Items.json';
+
 export const CATALOG_SECTIONS = [
   {
     key: 'living-room',
@@ -923,3 +925,46 @@ export const CATALOG_ITEMS_BY_SECTION = {
     },
   ],
 };
+
+const SECTION_LABELS = {
+  'living-room': 'Living Room',
+  bedroom: 'Bedroom',
+  'dining-room': 'Dining Room',
+};
+
+const SECTION_DESCRIPTIONS = {
+  'living-room': 'French-style living room furniture set extracted from Catalog 1 PDF.',
+  bedroom: 'French-style bedroom furniture set extracted from Catalog 1 PDF.',
+  'dining-room': 'French-style dining furniture set extracted from Catalog 1 PDF.',
+};
+
+const sectionCounters = Object.fromEntries(
+  Object.entries(CATALOG_ITEMS_BY_SECTION).map(([sectionKey, items]) => [sectionKey, items.length]),
+);
+
+for (const item of catalog1Items) {
+  const sectionKey = item.section;
+  const targetItems = CATALOG_ITEMS_BY_SECTION[sectionKey];
+
+  if (!targetItems) {
+    continue;
+  }
+
+  sectionCounters[sectionKey] += 1;
+  const sequence = String(sectionCounters[sectionKey]).padStart(3, '0');
+  const sectionLabel = SECTION_LABELS[sectionKey] || 'Catalog';
+
+  targetItems.push({
+    id: `${sectionKey}-${sequence}`,
+    title: `${sectionLabel} Collection ${sectionCounters[sectionKey]} (Catalog 1)`,
+    description: SECTION_DESCRIPTIONS[sectionKey] || 'Furniture set extracted from Catalog 1 PDF.',
+    dimensions: item.dimensions || 'Dimensions not listed in Catalog 1 PDF',
+    image: item.image,
+    sourcePage: item.sourcePage,
+    setCode: item.setCode || null,
+  });
+}
+
+for (const section of CATALOG_SECTIONS) {
+  section.itemCount = (CATALOG_ITEMS_BY_SECTION[section.key] || []).length;
+}

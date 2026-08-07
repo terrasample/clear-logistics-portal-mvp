@@ -4173,6 +4173,7 @@ function App() {
 
   function CatalogSectionPage() {
     const { sectionKey } = useParams();
+    const [activeSetImage, setActiveSetImage] = useState({});
     const normalizeCatalogSectionKey = (value) => (
       String(value || '')
         .trim()
@@ -4208,6 +4209,49 @@ function App() {
 
     const items = section ? (CATALOG_ITEMS_BY_SECTION[section.key] || []) : [];
 
+    useEffect(() => {
+      setActiveSetImage({});
+    }, [section?.key]);
+
+    const setGroups = useMemo(() => {
+      const groups = [];
+      const indexByKey = new Map();
+
+      for (const item of items) {
+        const groupKey = item.setCode
+          ? `${section?.key || 'catalog'}-${item.setCode}`
+          : `${section?.key || 'catalog'}-${item.id}`;
+
+        let groupIndex = indexByKey.get(groupKey);
+        if (groupIndex == null) {
+          groupIndex = groups.length;
+          indexByKey.set(groupKey, groupIndex);
+          groups.push({
+            key: groupKey,
+            setCode: item.setCode || null,
+            images: [],
+            dimensions: '',
+          });
+        }
+
+        const group = groups[groupIndex];
+        if (item.image && !group.images.includes(item.image)) {
+          group.images.push(item.image);
+        }
+
+        if (!group.dimensions && item.dimensions && !/dimensions not listed/i.test(item.dimensions)) {
+          group.dimensions = item.dimensions
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .slice(0, 4)
+            .join(', ');
+        }
+      }
+
+      return groups;
+    }, [items, section?.key]);
+
     if (!section) {
       return (
         <section className="card card--wide">
@@ -4242,19 +4286,36 @@ function App() {
         </div>
 
         <div className="catalog-items-grid">
-          {items.map((item) => (
-            <article key={item.id} className="catalog-item-card">
-              <img src={item.image} alt={item.title} loading="lazy" className="catalog-item-card__image" />
-              <div className="catalog-item-card__body">
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-                <p><strong>Dimensions:</strong> {item.dimensions}</p>
-                <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
-                  Contact via WhatsApp
-                </button>
-              </div>
-            </article>
-          ))}
+          {setGroups.map((setGroup, index) => {
+            const activeImage = activeSetImage[setGroup.key] || setGroup.images[0];
+            const setLabel = setGroup.setCode
+              ? `${section.title} Set ${setGroup.setCode}`
+              : `${section.title} Set ${index + 1}`;
+
+            return (
+              <article key={setGroup.key} className="catalog-item-card">
+                <img src={activeImage} alt={setLabel} loading="lazy" className="catalog-item-card__image" />
+                {setGroup.images.length > 1 && (
+                  <div className="catalog-item-card__thumbs" aria-label={`${setLabel} image angles`}>
+                    {setGroup.images.map((imagePath, imageIndex) => (
+                      <button
+                        key={imagePath}
+                        type="button"
+                        className={`catalog-item-card__thumb ${activeImage === imagePath ? 'catalog-item-card__thumb--active' : ''}`}
+                        onClick={() => setActiveSetImage((prev) => ({ ...prev, [setGroup.key]: imagePath }))}
+                        aria-label={`View angle ${imageIndex + 1} for ${setLabel}`}
+                      >
+                        <img src={imagePath} alt="" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {setGroup.dimensions && (
+                  <p className="catalog-item-card__dimensions">{setGroup.dimensions}</p>
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
     );
