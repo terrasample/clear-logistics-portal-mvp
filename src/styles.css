@@ -1344,6 +1344,16 @@ body {
   gap: 0.95rem;
 }
 
+.catalog-section {
+  margin-top: 1rem;
+}
+
+.catalog-section__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+  color: var(--brand-dark);
+}
+
 .catalog-card {
   border: 1px solid #dce8e4;
   border-radius: 0.95rem;
