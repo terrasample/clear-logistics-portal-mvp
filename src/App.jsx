@@ -617,11 +617,44 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['9801', '/catalog/section_pages/cat1-p056-i2.jpeg'],
   ['9901', '/catalog/section_pages/cat1-p058-i2.jpeg'],
   ['3022', '/catalog/section_pages/cat1-p061-i2.jpeg'],
+  ['ORIG-P058', '/catalog/section_pages/orig-p058-i2.jpeg'],
+  ['ORIG-P059', '/catalog/section_pages/orig-p059-i2.jpeg'],
+  ['ORIG-P060', '/catalog/section_pages/orig-p060-i2.jpeg'],
+  ['ORIG-P061', '/catalog/section_pages/orig-p061-i2.jpeg'],
+  ['ORIG-P062', '/catalog/section_pages/orig-p062-i2.jpeg'],
+  ['ORIG-P063', '/catalog/section_pages/orig-p063-i2.jpeg'],
+  ['ORIG-P064', '/catalog/section_pages/orig-p064-i2.jpeg'],
+  ['ORIG-P065', '/catalog/section_pages/orig-p065-i2.jpeg'],
+  ['ORIG-P066', '/catalog/section_pages/orig-p066-i2.jpeg'],
+  ['ORIG-P067', '/catalog/section_pages/orig-p067-i2.jpeg'],
+  ['ORIG-P068', '/catalog/section_pages/orig-p068-i2.jpeg'],
+  ['ORIG-P069', '/catalog/section_pages/orig-p069-i2.jpeg'],
+  ['ORIG-P070', '/catalog/section_pages/orig-p070-i2.jpeg'],
+  ['ORIG-P071', '/catalog/section_pages/orig-p071-i2.jpeg'],
+  ['ORIG-P072', '/catalog/section_pages/orig-p072-i2.jpeg'],
+  ['ORIG-P073', '/catalog/section_pages/orig-p073-i2.jpeg'],
+  ['ORIG-P074', '/catalog/section_pages/orig-p074-i2.jpeg'],
+  ['ORIG-P075', '/catalog/section_pages/orig-p075-i2.jpeg'],
+  ['ORIG-P076', '/catalog/section_pages/orig-p076-i2.jpeg'],
+  ['ORIG-P077', '/catalog/section_pages/orig-p077-i2.jpeg'],
+  ['ORIG-P078', '/catalog/section_pages/orig-p078-i2.jpeg'],
+  ['ORIG-P079', '/catalog/section_pages/orig-p079-i2.jpeg'],
+  ['ORIG-P080', '/catalog/section_pages/orig-p080-i2.jpeg'],
+  ['ORIG-P081', '/catalog/section_pages/orig-p081-i2.jpeg'],
+  ['ORIG-P082', '/catalog/section_pages/orig-p082-i2.jpeg'],
+  ['ORIG-P099', '/catalog/section_pages/orig-p099-i2.jpeg'],
+  ['ORIG-P100', '/catalog/section_pages/orig-p100-i2.jpeg'],
+  ['ORIG-P101', '/catalog/section_pages/orig-p101-i2.jpeg'],
 ]);
 
 function getCatalogImagePageNumber(imagePath) {
   const match = String(imagePath || '').match(/(?:cat1|orig)-p0*([0-9]+)-i\d+\.jpeg$/i);
   return match ? match[1].padStart(3, '0') : '';
+}
+
+function getCatalogImageIndex(imagePath) {
+  const match = String(imagePath || '').match(/(?:cat1|orig)-p0*[0-9]+-i(\d+)\.jpeg$/i);
+  return match ? Number(match[1]) : 0;
 }
 
 function isBedroomBedImage(imagePath) {
@@ -652,6 +685,20 @@ function getBedroomImagePriority(imagePath, setCode = '') {
 
   if (BEDROOM_NON_BED_IMAGE_PATHS.has(normalizedImagePath)) {
     return -2;
+  }
+
+  const pageNumber = getCatalogImagePageNumber(normalizedImagePath);
+  const imageIndex = getCatalogImageIndex(normalizedImagePath);
+
+  // On known mixed-detail pages, i1 is often a nightstand/table closeup while i2 is often the bed.
+  if (BEDROOM_NON_BED_PAGE_NUMBERS.has(pageNumber)) {
+    if (imageIndex === 1) {
+      return -1;
+    }
+
+    if (imageIndex === 2) {
+      return 2;
+    }
   }
 
   return isBedroomBedImage(normalizedImagePath) ? 1 : 0;
