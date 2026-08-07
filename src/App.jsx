@@ -725,6 +725,18 @@ function prioritizeBedroomImages(images, setCode = '') {
 }
 
 function getBedroomPreviewImages(images, setCode = '') {
+  const normalizedSetCode = String(setCode || '').trim();
+  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+
+  // When a confirmed hero bed image is defined for this set, show ONLY that image
+  // on the card to prevent nightstands/wardrobes/detail closeups from appearing.
+  if (preferredHeroImage) {
+    const imageList = Array.isArray(images) ? images : [];
+    return imageList.includes(preferredHeroImage)
+      ? [preferredHeroImage]
+      : [preferredHeroImage];
+  }
+
   const prioritizedImages = prioritizeBedroomImages(images, setCode);
   const bedOnlyImages = prioritizedImages.filter((imagePath) => isBedroomBedImage(imagePath));
   return bedOnlyImages.length > 0 ? bedOnlyImages : prioritizedImages;
