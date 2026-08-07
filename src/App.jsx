@@ -594,6 +594,18 @@ const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
   '/catalog/section_pages/cat1-p070-i6.jpeg',
 ]);
 
+const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
+  ['2895', '/catalog/section_pages/cat1-p073-i1.jpeg'],
+  ['2899', '/catalog/section_pages/cat1-p044-i4.jpeg'],
+  ['3052', '/catalog/section_pages/cat1-p057-i2.jpeg'],
+  ['6801', '/catalog/section_pages/cat1-p055-i3.jpeg'],
+  ['6991', '/catalog/section_pages/cat1-p066-i2.jpeg'],
+  ['9607', '/catalog/section_pages/cat1-p045-i2.jpeg'],
+  ['9612', '/catalog/section_pages/cat1-p070-i3.jpeg'],
+  ['9801', '/catalog/section_pages/cat1-p056-i2.jpeg'],
+  ['9901', '/catalog/section_pages/cat1-p058-i2.jpeg'],
+]);
+
 function getCatalogImagePageNumber(imagePath) {
   const match = String(imagePath || '').match(/(?:cat1|orig)-p0*([0-9]+)-i\d+\.jpeg$/i);
   return match ? match[1].padStart(3, '0') : '';
@@ -616,25 +628,41 @@ function isBedroomBedImage(imagePath) {
   return BEDROOM_BED_PAGE_NUMBERS.has(pageNumber);
 }
 
-function prioritizeBedroomImages(images) {
+function getBedroomImagePriority(imagePath, setCode = '') {
+  const normalizedImagePath = String(imagePath || '').trim();
+  const normalizedSetCode = String(setCode || '').trim();
+  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+
+  if (preferredHeroImage && normalizedImagePath === preferredHeroImage) {
+    return 4;
+  }
+
+  if (BEDROOM_NON_BED_IMAGE_PATHS.has(normalizedImagePath)) {
+    return -2;
+  }
+
+  return isBedroomBedImage(normalizedImagePath) ? 1 : 0;
+}
+
+function prioritizeBedroomImages(images, setCode = '') {
   return [...(Array.isArray(images) ? images : [])]
     .map((imagePath, index) => ({
       imagePath,
       index,
-      score: isBedroomBedImage(imagePath) ? 1 : 0,
+      score: getBedroomImagePriority(imagePath, setCode),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.imagePath);
 }
 
-function getBedroomPreviewImages(images) {
-  const prioritizedImages = prioritizeBedroomImages(images);
+function getBedroomPreviewImages(images, setCode = '') {
+  const prioritizedImages = prioritizeBedroomImages(images, setCode);
   const bedOnlyImages = prioritizedImages.filter((imagePath) => isBedroomBedImage(imagePath));
   return bedOnlyImages.length > 0 ? bedOnlyImages : prioritizedImages;
 }
 
 function getBedroomSetScore(set) {
-  const images = prioritizeBedroomImages(set?.images);
+  const images = prioritizeBedroomImages(set?.images, set?.setCode);
   const firstImage = images[0] || '';
   if (isBedroomBedImage(firstImage)) {
     return 2;
@@ -4231,11 +4259,11 @@ function App() {
     'living-room': '/catalog/section_pages/cat1-p003-i1.jpeg',
   };
 
-  const openCatalogGallery = (sectionKey, sectionTitle, setLabel, images) => {
+  const openCatalogGallery = (sectionKey, sectionTitle, setLabel, images, setCode = '') => {
     if (!images || images.length === 0) return;
 
     const normalizedImages = sectionKey === 'bedroom'
-      ? prioritizeBedroomImages(images)
+      ? prioritizeBedroomImages(images, setCode)
       : images;
 
     setCatalogGallery({
@@ -4371,7 +4399,7 @@ function App() {
       return [...sets]
         .map((set, index) => ({
           ...set,
-          previewImages: getBedroomPreviewImages(set.images),
+          previewImages: getBedroomPreviewImages(set.images, set.setCode),
           index,
           score: getBedroomSetScore(set),
         }))
@@ -4424,11 +4452,11 @@ function App() {
                 className="set-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => openCatalogGallery(section.key, section.title, setLabel, set.images)}
+                onClick={() => openCatalogGallery(section.key, section.title, setLabel, set.images, set.setCode)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    openCatalogGallery(section.key, section.title, setLabel, set.images);
+                    openCatalogGallery(section.key, section.title, setLabel, set.images, set.setCode);
                   }
                 }}
                 aria-label={`Open full gallery for ${setLabel}`}
