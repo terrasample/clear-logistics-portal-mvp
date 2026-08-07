@@ -1348,57 +1348,93 @@ body {
   text-transform: uppercase;
 }
 
-.catalog-grid {
+
+.catalog-sections-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 0.95rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
 }
 
 .catalog-section {
   margin-top: 1rem;
-}
-
-.catalog-section__title {
-  margin: 0 0 0.65rem;
-  font-size: 1.05rem;
-  color: var(--brand-dark);
-}
-
-.catalog-card {
   border: 1px solid #dce8e4;
   border-radius: 0.95rem;
   background: #ffffff;
   overflow: hidden;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.7rem;
 }
 
-.catalog-card__image {
+.catalog-section__title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--brand-dark);
+}
+
+.catalog-section__image-button {
+  padding: 0;
+  border: 1px solid #dbe6e3;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.catalog-section__image {
   width: 100%;
-  height: 180px;
+  height: 220px;
   object-fit: cover;
   background: #f1f5f3;
+  display: block;
 }
 
-.catalog-card__body {
-  padding: 0.85rem;
+.catalog-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
   display: grid;
-  gap: 0.55rem;
+  place-items: center;
 }
 
-.catalog-card__body h3 {
-  margin: 0;
-  font-size: 1rem;
+.catalog-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(8, 25, 22, 0.72);
+  cursor: pointer;
 }
 
-.catalog-card__body p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
+.catalog-lightbox__content {
+  position: relative;
+  z-index: 1;
+  width: min(94vw, 980px);
+  max-height: 88vh;
+  background: #ffffff;
+  border-radius: 0.9rem;
+  padding: 0.5rem;
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.28);
 }
 
-.catalog-card__note {
-  color: var(--brand-dark);
-  font-weight: 600;
+.catalog-lightbox__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(8, 25, 22, 0.78);
+  color: #ffffff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.catalog-lightbox__image {
+  width: 100%;
+  max-height: calc(88vh - 1rem);
+  object-fit: contain;
+  border-radius: 0.6rem;
 }
 
 .flow-list {

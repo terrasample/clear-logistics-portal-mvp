@@ -257,33 +257,20 @@ const BARREL_CATALOG = [
   },
 ];
 
-const CUSTOMER_CATALOG = [
+const CATALOG_SECTIONS = [
   {
-    key: 'living-room-set',
-    category: 'living-room',
-    title: 'Luxury Living Room Set',
-    description: 'Premium sofa and accent seating collection from our featured furniture catalog.',
+    key: 'living-room',
+    title: 'Living Room Furniture',
     image: '/catalog/furniture_from_pdf/furniture_096.jpeg',
   },
   {
-    key: 'royal-lounge-suite',
-    category: 'living-room',
-    title: 'Royal Lounge Suite',
-    description: 'Classic carved seating set with matching table pieces for elegant home interiors.',
-    image: '/catalog/furniture_from_pdf/furniture_019.jpeg',
-  },
-  {
-    key: 'ornate-bedroom-set',
-    category: 'bedroom',
-    title: 'Ornate Bedroom Set',
-    description: 'Statement king bed with coordinated nightstands and detailed classic finishing.',
+    key: 'bedroom',
+    title: 'Bedroom Furniture',
     image: '/catalog/furniture_from_pdf/furniture_344.jpeg',
   },
   {
-    key: 'formal-dining-set',
-    category: 'dining-room',
-    title: 'Formal Dining Set',
-    description: 'Elegant table-and-chair dining collection for family meals, hosting, and entertaining.',
+    key: 'dining-room',
+    title: 'Dining Room Furniture',
     image: '/catalog/furniture_from_pdf/furniture_266.jpeg',
   },
 ];
@@ -4162,31 +4149,14 @@ function App() {
   }
 
   function CatalogPage() {
-    const livingRoomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'living-room');
-    const bedroomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'bedroom');
-    const diningRoomFurniture = CUSTOMER_CATALOG.filter((item) => item.category === 'dining-room');
+    const [activeSectionImage, setActiveSectionImage] = useState(null);
 
-    function renderCatalogSection(title, items) {
-      return (
-        <section className="catalog-section" aria-label={title}>
-          <h3 className="catalog-section__title">{title}</h3>
-          <div className="catalog-grid">
-            {items.map((item) => (
-              <article key={item.key} className="catalog-card">
-                <img src={item.image} alt={item.title} loading="lazy" className="catalog-card__image" />
-                <div className="catalog-card__body">
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <p className="catalog-card__note">No public pricing shown. Message us on WhatsApp for daily deals.</p>
-                  <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
-                    Get Deal via WhatsApp
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      );
+    function openSectionImage(section) {
+      setActiveSectionImage(section);
+    }
+
+    function closeSectionImage() {
+      setActiveSectionImage(null);
     }
 
     return (
@@ -4197,17 +4167,49 @@ function App() {
             <p className="catalog-header__eyebrow">Clear Logistics & Freight Services</p>
             <h2>Catalog</h2>
             <p className="section-intro" style={{ marginBottom: 0 }}>
-              Browse furniture by room category. Pricing is shared only on WhatsApp.
+              Browse furniture by room category.
             </p>
           </div>
           <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>
-            Chat on WhatsApp for Today&apos;s Deals
+            Contact us on WhatsApp
           </button>
         </div>
 
-        {renderCatalogSection('Living Room Furniture', livingRoomFurniture)}
-        {renderCatalogSection('Bedroom Furniture', bedroomFurniture)}
-        {renderCatalogSection('Dining Room Furniture', diningRoomFurniture)}
+        <div className="catalog-sections-grid">
+          {CATALOG_SECTIONS.map((section) => (
+            <section key={section.key} className="catalog-section" aria-label={section.title}>
+              <h3 className="catalog-section__title">{section.title}</h3>
+              <button
+                type="button"
+                className="catalog-section__image-button"
+                onClick={() => openSectionImage(section)}
+                aria-label={`View ${section.title}`}
+              >
+                <img src={section.image} alt={section.title} loading="lazy" className="catalog-section__image" />
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
+                Contact via WhatsApp
+              </button>
+            </section>
+          ))}
+        </div>
+
+        {activeSectionImage && (
+          <div className="catalog-lightbox" role="dialog" aria-modal="true" aria-label={activeSectionImage.title}>
+            <button
+              type="button"
+              className="catalog-lightbox__backdrop"
+              onClick={closeSectionImage}
+              aria-label="Close image preview"
+            />
+            <div className="catalog-lightbox__content">
+              <button type="button" className="catalog-lightbox__close" onClick={closeSectionImage} aria-label="Close image preview">
+                ×
+              </button>
+              <img src={activeSectionImage.image} alt={activeSectionImage.title} className="catalog-lightbox__image" />
+            </div>
+          </div>
+        )}
       </section>
     );
   }
