@@ -1365,6 +1365,38 @@ body {
   padding-left: 0.6rem;
 }
 
+.catalog-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.catalog-item-card {
+  border: 1px solid #dce8e4;
+  border-radius: 0.95rem;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(12, 66, 53, 0.06);
+}
+
+.catalog-item-card__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  padding: 0.6rem;
+  height: 100%;
+}
+
+.catalog-item-card__link:hover {
+  background: linear-gradient(180deg, rgba(247, 251, 249, 0.72) 0%, rgba(255, 255, 255, 0) 46%);
+}
+
+.catalog-item-card__link:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0.7rem;
+}
+
 .catalog-sets-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

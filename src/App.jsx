@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, useParams, Navigate, Link } from 'react-router-dom';
 import { CATALOG_SECTIONS } from './catalogData';
 import CATALOG_SETS from './catalogSets.json';
 
@@ -4158,21 +4158,12 @@ function App() {
             const previewImage = section.image || sets[0]?.images?.[0] || '';
 
             return (
-              <article
-                key={section.key}
-                className="catalog-item-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/catalog/${section.key}`)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    navigate(`/catalog/${section.key}`);
-                  }
-                }}
-                style={{ cursor: 'pointer' }}
-                aria-label={`Open ${section.title}`}
-              >
+              <article key={section.key} className="catalog-item-card">
+                <Link
+                  to={`/catalog/${section.key}`}
+                  className="catalog-item-card__link"
+                  aria-label={`Open ${section.title}`}
+                >
                 {previewImage && (
                   <div style={{ position: 'relative' }}>
                     <img
@@ -4203,16 +4194,10 @@ function App() {
                 <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
                   {sets.length} set{sets.length === 1 ? '' : 's'} available.
                 </p>
-                <button
-                  type="button"
-                  className="btn btn--solid"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate(`/catalog/${section.key}`);
-                  }}
-                >
+                <span className="btn btn--solid" style={{ display: 'inline-flex' }}>
                   View {section.title}
-                </button>
+                </span>
+                </Link>
               </article>
             );
           })}
