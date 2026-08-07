@@ -805,6 +805,7 @@ function App() {
   const verificationAttemptRef = useRef('');
   const pendingRouteStatusRef = useRef(null);
   const adminWorkspaceRef = useRef(null);
+  const [catalogGallery, setCatalogGallery] = useState(null);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -4133,6 +4134,21 @@ function App() {
   }
 
   const CATALOG_SECTION_ORDER = ['bedroom', 'dining-room', 'living-room'];
+  const CATALOG_SECTION_COVER_IMAGES = {
+    bedroom: '/catalog/section_pages/cat1-p049-i1.jpeg',
+    'dining-room': '/catalog/section_pages/cat1-p074-i1.jpeg',
+    'living-room': '/catalog/section_pages/cat1-p003-i1.jpeg',
+  };
+
+  const openCatalogGallery = (sectionTitle, setLabel, images) => {
+    if (!images || images.length === 0) return;
+    setCatalogGallery({
+      title: sectionTitle,
+      setLabel,
+      images,
+      activeIndex: 0,
+    });
+  };
 
   function CatalogPage() {
     return (
@@ -4155,7 +4171,7 @@ function App() {
             if (!section) return null;
 
             const sets = CATALOG_SETS[sectionKey] || [];
-            const previewImage = section.image || sets[0]?.images?.[0] || '';
+            const previewImage = CATALOG_SECTION_COVER_IMAGES[sectionKey] || section.image || sets[0]?.images?.[0] || '';
 
             return (
               <article key={section.key} className="catalog-item-card">
@@ -4286,7 +4302,20 @@ function App() {
             const setLabel = `${section.title} Set ${set.setCode || index + 1}`;
 
             return (
-              <article key={`${section.key}-${set.setCode || index}`} className="set-card">
+              <article
+                key={`${section.key}-${set.setCode || index}`}
+                className="set-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => openCatalogGallery(section.title, setLabel, set.images)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openCatalogGallery(section.title, setLabel, set.images);
+                  }
+                }}
+                aria-label={`Open full gallery for ${setLabel}`}
+              >
                 <div className="set-card__rail" role="list" aria-label={setLabel}>
                   {set.images.map((img, idx) => (
                     <img
@@ -4299,12 +4328,6 @@ function App() {
                     />
                   ))}
                 </div>
-                {set.images.length > 1 && (
-                  <p className="set-card__count">{set.images.length} images - swipe to see each</p>
-                )}
-                {set.dimensions && (
-                  <p className="set-card__dims">{set.dimensions}</p>
-                )}
               </article>
             );
           })}
@@ -4320,9 +4343,58 @@ function App() {
           <p>Need help choosing? Message us and we can guide you.</p>
           <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>Chat on WhatsApp</button>
         </div>
+
+        {catalogGallery && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={catalogGallery.setLabel}
+            className="catalog-gallery-modal"
+            onClick={() => setCatalogGallery(null)}
+          >
+            <div
+              className="catalog-gallery-modal__panel"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="catalog-gallery-modal__header">
+                <div>
+                  <p className="catalog-header__eyebrow">{catalogGallery.title}</p>
+                  <h3 style={{ margin: 0 }}>{catalogGallery.setLabel}</h3>
+                </div>
+                <button type="button" className="btn btn--ghost" onClick={() => setCatalogGallery(null)}>
+                  Close
+                </button>
+              </div>
+
+              {catalogGalleryActiveImage && (
+                <img
+                  src={catalogGalleryActiveImage}
+                  alt={catalogGallery.setLabel}
+                  className="catalog-gallery-modal__image"
+                />
+              )}
+
+              <div className="catalog-gallery-modal__thumbs" role="list" aria-label={`${catalogGallery.setLabel} images`}>
+                {catalogGallery.images.map((imagePath, imageIndex) => (
+                  <button
+                    key={imagePath}
+                    type="button"
+                    className={`catalog-gallery-modal__thumb ${catalogGalleryActiveImage === imagePath ? 'catalog-gallery-modal__thumb--active' : ''}`}
+                    onClick={() => setCatalogGallery((current) => current ? { ...current, activeIndex: imageIndex } : current)}
+                    aria-label={`View image ${imageIndex + 1} for ${catalogGallery.setLabel}`}
+                  >
+                    <img src={imagePath} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     );
   }
+
+  const catalogGalleryActiveImage = catalogGallery?.images?.[catalogGallery.activeIndex] || '';
 
   function ShopPage() {
     const assignedReference = String(customerProfile.customerReference || currentUser?.customerReference || '').trim();
