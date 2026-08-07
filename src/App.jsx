@@ -91,6 +91,12 @@ const NAV_ITEMS = [
     activePaths: ['quote'],
   },
   {
+    key: 'catalog',
+    label: 'Catalog',
+    targetPath: '/catalog',
+    activePaths: ['catalog'],
+  },
+  {
     key: 'track',
     label: 'Track',
     targetPath: '/tracking',
@@ -248,6 +254,33 @@ const BARREL_CATALOG = [
     description: 'Smaller-format barrel for lighter shipments and easier last-mile handling.',
     bestFor: 'Smaller family orders, lightweight items',
     unitPriceUsd: 36,
+  },
+];
+
+const CUSTOMER_CATALOG = [
+  {
+    key: 'barrel-cost-guide',
+    title: 'Barrel Shipping Guide (Jamaica)',
+    description: 'Overview of barrel shipment categories, handling notes, and planning tips for faster booking.',
+    image: '/catalog/barrel_cost_jamaica.png',
+  },
+  {
+    key: 'barrel-vs-box',
+    title: 'Barrel vs Box Comparison',
+    description: 'Simple comparison to help you choose the best package type based on item type and volume.',
+    image: '/catalog/barrel_vs_box_comparison.png',
+  },
+  {
+    key: 'prepare-package',
+    title: 'How To Prepare Your Package',
+    description: 'Step-by-step checklist for packing, labeling, and readiness before pickup or warehouse drop-off.',
+    image: '/catalog/prepare_package_international_shipping.png',
+  },
+  {
+    key: 'customs-mistakes',
+    title: 'Avoid Customs Clearance Mistakes',
+    description: 'Best practices to prevent delays by using complete declarations and clean documentation.',
+    image: '/catalog/customs_clearance_mistakes.png',
   },
 ];
 
@@ -1946,15 +1979,19 @@ function App() {
     sendChatMessage(chatInput);
   }
 
-  function openWhatsApp() {
+  function openWhatsApp(initialText = 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.') {
     if (!WHATSAPP_PHONE || WHATSAPP_PLACEHOLDER_NUMBERS.has(WHATSAPP_PHONE)) {
       setStatusMessage('WhatsApp support number is not configured yet. Please use Contact Support while this is updated.');
       navigate('/support');
       return;
     }
 
-    const message = encodeURIComponent('Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.');
+    const message = encodeURIComponent(String(initialText || '').trim() || 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.');
     window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function openDealsWhatsApp() {
+    openWhatsApp('Hi Clear Logistics, please share today\'s shipping and pickup deals.');
   }
 
   async function handleAccountSubmit(event) {
@@ -3457,7 +3494,7 @@ function App() {
                 We come to you, collect your barrels, prepare them for export, and move them into our Jamaica shipping network.
               </p>
             </div>
-            <div className="pickup-offer-card__price-chip">From $100</div>
+            <div className="pickup-offer-card__price-chip">Daily Deals Available</div>
           </div>
 
           <div className="pickup-offer-card__actions">
@@ -3468,19 +3505,15 @@ function App() {
             >
               Reserve My Pickup Window
             </button>
+            <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
+              Chat on WhatsApp for Today&apos;s Deals
+            </button>
           </div>
 
           <details className="pickup-offer-card__details">
-            <summary>View full pickup pricing</summary>
+            <summary>View daily deals</summary>
             <div className="pickup-offer-card__details-body">
-              <p style={{ marginBottom: '0.45rem' }}><strong>Pricing (per pickup):</strong></p>
-              <ul className="type-list" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
-                <li>1-2 barrels: $100</li>
-                <li>3-5 barrels: $150</li>
-                <li>6+ barrels: Custom quote</li>
-              </ul>
-
-              <p style={{ marginBottom: '0.45rem' }}><strong>Includes:</strong></p>
+              <p style={{ marginBottom: '0.45rem' }}><strong>Pickup includes:</strong></p>
               <ul className="type-list" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
                 <li>Scheduled home pickup</li>
                 <li>Driver dispatch and coordination</li>
@@ -3491,8 +3524,11 @@ function App() {
               </ul>
 
               <p className="section-intro" style={{ marginBottom: 0 }}>
-                Service note: Export and customs charges are separate unless included in your shipment quote.
+                For today&apos;s pickup deals and custom offers, chat with our team on WhatsApp.
               </p>
+              <button type="button" className="btn btn--ghost" style={{ marginTop: '0.7rem' }} onClick={openDealsWhatsApp}>
+                Open WhatsApp Deals Chat
+              </button>
             </div>
           </details>
         </section>
@@ -4120,6 +4156,42 @@ function App() {
     );
   }
 
+  function CatalogPage() {
+    return (
+      <section className="card card--wide">
+        <div className="catalog-header">
+          <img src="/catalog/clear-logistics-logo.png" alt="Clear Logistics & Freight Services" className="catalog-header__logo" />
+          <div>
+            <p className="catalog-header__eyebrow">Clear Logistics & Freight Services</p>
+            <h2>Catalog</h2>
+            <p className="section-intro" style={{ marginBottom: 0 }}>
+              English catalog resources with visuals to help you choose the right shipping option.
+            </p>
+          </div>
+          <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>
+            Chat on WhatsApp for Today&apos;s Deals
+          </button>
+        </div>
+
+        <div className="catalog-grid">
+          {CUSTOMER_CATALOG.map((item) => (
+            <article key={item.key} className="catalog-card">
+              <img src={item.image} alt={item.title} loading="lazy" className="catalog-card__image" />
+              <div className="catalog-card__body">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+                <p className="catalog-card__note">No public pricing shown. Message us on WhatsApp for daily deals.</p>
+                <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
+                  Get Deal via WhatsApp
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   function ShopPage() {
     const assignedReference = String(customerProfile.customerReference || currentUser?.customerReference || '').trim();
     const assignedUsAddress = String(customerProfile.usReceivingAddress || currentUser?.usReceivingAddress || '').trim();
@@ -4228,7 +4300,7 @@ function App() {
           <div id="barrel-catalog" className="booking-summary" style={{ marginBottom: '0.9rem' }}>
             <h3 style={{ marginBottom: '0.45rem' }}>Barrel Catalog</h3>
             <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
-              Need empty barrels? Add a barrel option directly to your Shop & Ship cart.
+              Need empty barrels? Add a barrel option directly to your Shop & Ship cart. No public pricing is shown here.
             </p>
             <div style={{ display: 'grid', gap: '0.7rem' }}>
               {BARREL_CATALOG.map((barrel) => (
@@ -4240,7 +4312,10 @@ function App() {
                       <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}><strong>Best for:</strong> {barrel.bestFor}</p>
                     </div>
                     <div style={{ textAlign: 'right', minWidth: '140px' }}>
-                      <p style={{ margin: '0 0 0.4rem', fontWeight: 700 }}>${barrel.unitPriceUsd.toFixed(2)} each</p>
+                      <p style={{ margin: '0 0 0.4rem', fontWeight: 700, color: 'var(--brand-dark)' }}>Daily deals in WhatsApp</p>
+                      <button type="button" className="btn btn--ghost" style={{ marginBottom: '0.4rem' }} onClick={openDealsWhatsApp}>
+                        Ask for Today&apos;s Deal
+                      </button>
                       <button type="button" className="btn btn--ghost" onClick={() => addBarrelToShopCart(barrel)}>
                         Add Barrel
                       </button>
@@ -7606,6 +7681,7 @@ function App() {
           <Route path="/book-pickup" element={BookingPage()} />
           <Route path="/booking" element={BookingPage()} />
           <Route path="/quote" element={QuotePage()} />
+          <Route path="/catalog" element={CatalogPage()} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/cart-estimator" element={CartEstimatorPage()} />
