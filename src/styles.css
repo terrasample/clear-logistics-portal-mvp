@@ -33,6 +33,16 @@ body {
   padding: 4rem 1.25rem 2.5rem;
 }
 
+.hero__brand {
+  margin-bottom: 0.9rem;
+}
+
+.hero__logo {
+  width: min(320px, 78vw);
+  height: auto;
+  object-fit: contain;
+}
+
 .hero__badge {
   display: inline-block;
   background: rgba(11, 107, 97, 0.1);
@@ -2200,6 +2210,18 @@ body {
 
 .footer p {
   margin: 0.5rem 0;
+}
+
+.footer-branding {
+  display: grid;
+  justify-items: center;
+}
+
+.footer__logo {
+  width: min(250px, 72vw);
+  height: auto;
+  object-fit: contain;
+  margin: 0 0 0.8rem;
 }
 
 /* Phase 1: Instant Quote Card */

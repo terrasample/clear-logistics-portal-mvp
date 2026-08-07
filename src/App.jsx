@@ -384,6 +384,7 @@ const SITE_MAP = [
 const RAW_WHATSAPP_PHONE = String(import.meta.env.VITE_WHATSAPP_PHONE || '').trim();
 const WHATSAPP_PHONE = RAW_WHATSAPP_PHONE.replace(/\D/g, '');
 const WHATSAPP_PLACEHOLDER_NUMBERS = new Set(['13055550100', '15550100', '5550100']);
+const BRAND_LOGO_PATH = '/catalog/clear-logistics-logo.png';
 const BOOKING_TAB_LABEL = 'Services';
 const BOOKING_PAGE_LABEL = 'Book Pickup';
 const SHOP_AND_SHIP_HELP_EMAIL = 'support@clearlogistics.com';
@@ -4190,7 +4191,7 @@ function App() {
     return (
       <section className="card card--wide">
         <div className="catalog-header">
-          <img src="/catalog/clear-logistics-logo.png" alt="Clear Logistics & Freight Services" className="catalog-header__logo" />
+          <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="catalog-header__logo" />
           <div>
             <p className="catalog-header__eyebrow">Clear Logistics & Freight Services</p>
             <h2>Catalog</h2>
@@ -7522,8 +7523,8 @@ function App() {
     return (
       <footer className="footer">
         <div className="footer-content">
-          <div style={{ textAlign: 'center' }}>
-            <h3 style={{ margin: '0 0 1rem' }}>Clear Logistics & Freight Services</h3>
+          <div className="footer-branding" style={{ textAlign: 'center' }}>
+            <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="footer__logo" />
             <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>Reliable USA-Jamaica Shipping</p>
             <div className="footer-links">
               <button type="button" className="footer-link" onClick={() => navigate('/')}>Home</button>
@@ -7612,7 +7613,9 @@ function App() {
   return (
     <div className="page-shell">
       <header className="hero">
-        <div className="hero__badge">Clear Logistics & Freight Services</div>
+        <div className="hero__brand">
+          <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="hero__logo" />
+        </div>
         <h1>Ship from the USA to Jamaica with Confidence</h1>
         <p>
           Book a pickup, receive an instant quote, track your shipment in real time, and have it delivered to your door.
