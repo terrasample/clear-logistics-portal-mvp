@@ -552,6 +552,63 @@ function formatCountdown(ms) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+const BEDROOM_BED_PAGE_NUMBERS = new Set([
+  '045',
+  '046',
+  '047',
+  '048',
+  '049',
+  '050',
+  '051',
+  '052',
+  '053',
+  '055',
+  '057',
+  '058',
+  '062',
+  '063',
+  '064',
+  '065',
+  '066',
+  '067',
+  '068',
+  '069',
+  '070',
+  '071',
+  '072',
+  '073',
+]);
+
+function getCatalogImagePageNumber(imagePath) {
+  const match = String(imagePath || '').match(/(?:cat1|orig)-p0*([0-9]+)-i\d+\.jpeg$/i);
+  return match ? match[1].padStart(3, '0') : '';
+}
+
+function isBedroomBedImage(imagePath) {
+  return BEDROOM_BED_PAGE_NUMBERS.has(getCatalogImagePageNumber(imagePath));
+}
+
+function prioritizeBedroomImages(images) {
+  return [...(Array.isArray(images) ? images : [])]
+    .map((imagePath, index) => ({
+      imagePath,
+      index,
+      score: isBedroomBedImage(imagePath) ? 1 : 0,
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.imagePath);
+}
+
+function getBedroomSetScore(set) {
+  const images = prioritizeBedroomImages(set?.images);
+  const firstImage = images[0] || '';
+  if (isBedroomBedImage(firstImage)) {
+    return 2;
+  }
+
+  return images.some(isBedroomBedImage) ? 1 : 0;
+}
+
 function buildTrackingInsights(shipment) {
   if (!shipment) {
     return null;
@@ -4135,7 +4192,7 @@ function App() {
 
   const CATALOG_SECTION_ORDER = ['bedroom', 'dining-room', 'living-room'];
   const CATALOG_SECTION_COVER_IMAGES = {
-    bedroom: '/catalog/section_pages/cat1-p049-i1.jpeg',
+    bedroom: '/catalog/section_pages/bedroom-p058.jpeg',
     'dining-room': '/catalog/section_pages/cat1-p074-i1.jpeg',
     'living-room': '/catalog/section_pages/cat1-p003-i1.jpeg',
   };
@@ -4263,6 +4320,27 @@ function App() {
     }, [navigate, section, sectionKey]);
 
     const sets = section ? (CATALOG_SETS[section.key] || []) : [];
+    const orderedSets = useMemo(() => {
+      if (!section) {
+        return [];
+      }
+
+      if (section.key !== 'bedroom') {
+        return sets;
+      }
+
+      return [...sets]
+        .map((set, index) => {
+          const images = prioritizeBedroomImages(set.images);
+          return {
+            ...set,
+            images,
+            index,
+            score: images.some(isBedroomBedImage) ? 1 : 0,
+          };
+        })
+        .sort((leftSet, rightSet) => rightSet.score - leftSet.score || leftSet.index - rightSet.index);
+    }, [section, sets]);
 
     if (!section) {
       return (
@@ -4298,7 +4376,7 @@ function App() {
         </div>
 
         <div className="catalog-sets-grid">
-          {sets.map((set, index) => {
+          {orderedSets.map((set, index) => {
             const setLabel = `${section.title} Set ${set.setCode || index + 1}`;
 
             return (

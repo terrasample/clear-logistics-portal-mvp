@@ -1387,6 +1387,16 @@ body {
   height: 100%;
 }
 
+.catalog-item-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: 0.7rem;
+  background: #f1f5f3;
+}
+
 .catalog-item-card__link:hover {
   background: linear-gradient(180deg, rgba(247, 251, 249, 0.72) 0%, rgba(255, 255, 255, 0) 46%);
 }
