@@ -591,6 +591,7 @@ const BEDROOM_NON_BED_PAGE_NUMBERS = new Set([
 const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
   '/catalog/section_pages/cat1-p048-i1.jpeg',
   '/catalog/section_pages/cat1-p049-i1.jpeg',
+  '/catalog/section_pages/cat1-p062-i1.jpeg',
   '/catalog/section_pages/cat1-p061-i1.jpeg',
   '/catalog/section_pages/cat1-p061-i3.jpeg',
   '/catalog/section_pages/cat1-p070-i1.jpeg',
@@ -603,6 +604,7 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['2899', '/catalog/section_pages/cat1-p044-i4.jpeg'],
   ['2998', '/catalog/section_pages/cat1-p048-i3.jpeg'],
   ['3002', '/catalog/section_pages/cat1-p049-i2.jpeg'],
+  ['3030', '/catalog/section_pages/cat1-p062-i2.jpeg'],
   ['3052', '/catalog/section_pages/cat1-p057-i2.jpeg'],
   ['6801', '/catalog/section_pages/cat1-p055-i3.jpeg'],
   ['6991', '/catalog/section_pages/cat1-p066-i2.jpeg'],
