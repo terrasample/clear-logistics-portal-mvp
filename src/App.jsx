@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate, Link } from 'react-router-dom';
 import { CATALOG_SECTIONS } from './catalogData';
 import CATALOG_SETS from './catalogSets.json';
+import SUPPLIER_BED_HEROES from './supplierBedHeroes.json';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
   String(import.meta.env.VITE_API_BASE || '').trim(),
@@ -602,6 +603,7 @@ const BEDROOM_NON_BED_IMAGE_PATHS = new Set([
 
 const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['2895', '/catalog/section_pages/cat1-p073-i1.jpeg'],
+  ...Object.entries(SUPPLIER_BED_HEROES || {}),
   ['2899', '/catalog/section_pages/cat1-p044-i4.jpeg'],
   ['2998', '/catalog/section_pages/cat1-p048-i3.jpeg'],
   ['3002', '/catalog/section_pages/cat1-p049-i2.jpeg'],
@@ -656,7 +658,10 @@ function getBedroomImagePriority(imagePath, setCode = '') {
 }
 
 function prioritizeBedroomImages(images, setCode = '') {
-  return [...(Array.isArray(images) ? images : [])]
+  const normalizedSetCode = String(setCode || '').trim();
+  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+
+  const prioritizedImages = [...(Array.isArray(images) ? images : [])]
     .map((imagePath, index) => ({
       imagePath,
       index,
@@ -664,6 +669,12 @@ function prioritizeBedroomImages(images, setCode = '') {
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.imagePath);
+
+  if (preferredHeroImage && !prioritizedImages.includes(preferredHeroImage)) {
+    return [preferredHeroImage, ...prioritizedImages];
+  }
+
+  return prioritizedImages;
 }
 
 function getBedroomPreviewImages(images, setCode = '') {
