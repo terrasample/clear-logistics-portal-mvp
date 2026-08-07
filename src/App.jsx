@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
-import { CATALOG_SECTIONS, CATALOG_ITEMS_BY_SECTION } from './catalogData';
+import { CATALOG_SECTIONS } from './catalogData';
 import CATALOG_SETS from './catalogSets.json';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
@@ -4132,11 +4132,7 @@ function App() {
     );
   }
 
-  const CATALOG_SECTION_LABELS = {
-    'living-room': 'Living Room',
-    'bedroom': 'Bedroom',
-    'dining-room': 'Dining Room',
-  };
+  const CATALOG_SECTION_ORDER = ['bedroom', 'dining-room', 'living-room'];
 
   function CatalogPage() {
     return (
@@ -4149,38 +4145,78 @@ function App() {
           </button>
         </div>
 
-        {['living-room', 'bedroom', 'dining-room'].map((sectionKey) => {
-          const sets = CATALOG_SETS[sectionKey] || [];
-          return (
-            <div key={sectionKey} className="catalog-block">
-              <h3 className="catalog-block__heading">{CATALOG_SECTION_LABELS[sectionKey]}</h3>
-              <div className="catalog-sets-grid">
-                {sets.map((set) => (
-                  <article key={set.setCode} className="set-card">
-                    <div className="set-card__rail" role="list" aria-label={`${set.setCode} furniture set`}>
-                      {set.images.map((img, idx) => (
-                        <img
-                          key={img}
-                          src={img}
-                          alt={idx === 0 ? `${set.setCode} furniture set` : ''}
-                          loading="lazy"
-                          className="set-card__img"
-                          role="listitem"
-                        />
-                      ))}
-                    </div>
-                    {set.images.length > 1 && (
-                      <p className="set-card__count">{set.images.length} pieces — swipe to see each</p>
-                    )}
-                    {set.dimensions && (
-                      <p className="set-card__dims">{set.dimensions}</p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <p className="section-intro" style={{ marginBottom: '0.9rem' }}>
+          Choose a furniture section to browse complete picture sets.
+        </p>
+
+        <div className="catalog-items-grid">
+          {CATALOG_SECTION_ORDER.map((sectionKey) => {
+            const section = CATALOG_SECTIONS.find((entry) => entry.key === sectionKey);
+            if (!section) return null;
+
+            const sets = CATALOG_SETS[sectionKey] || [];
+            const previewImage = section.image || sets[0]?.images?.[0] || '';
+
+            return (
+              <article
+                key={section.key}
+                className="catalog-item-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/catalog/${section.key}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/catalog/${section.key}`);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+                aria-label={`Open ${section.title}`}
+              >
+                {previewImage && (
+                  <div style={{ position: 'relative' }}>
+                    <img
+                      src={previewImage}
+                      alt={section.title}
+                      loading="lazy"
+                      className="catalog-item-card__image"
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '0.55rem',
+                        right: '0.55rem',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '999px',
+                        background: 'rgba(11, 107, 97, 0.9)',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.01em',
+                      }}
+                    >
+                      {sets.length} set{sets.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                )}
+                <h3 style={{ marginTop: '0.75rem', marginBottom: '0.35rem' }}>{section.title}</h3>
+                <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                  {sets.length} set{sets.length === 1 ? '' : 's'} available.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn--solid"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/catalog/${section.key}`);
+                  }}
+                >
+                  View {section.title}
+                </button>
+              </article>
+            );
+          })}
+        </div>
 
         <div className="catalog-footer-cta">
           <p>See something you like? Contact us to ship it to Jamaica.</p>
@@ -4192,9 +4228,6 @@ function App() {
 
   function CatalogSectionPage() {
     const { sectionKey } = useParams();
-    useEffect(() => {
-      navigate('/catalog', { replace: true });
-    }, [sectionKey]);
     const normalizeCatalogSectionKey = (value) => (
       String(value || '')
         .trim()
@@ -4228,50 +4261,7 @@ function App() {
       }
     }, [navigate, section, sectionKey]);
 
-    const items = section ? (CATALOG_ITEMS_BY_SECTION[section.key] || []) : [];
-
-    useEffect(() => {
-      setActiveSetImage({});
-    }, [section?.key]);
-
-    const setGroups = useMemo(() => {
-      const groups = [];
-      const indexByKey = new Map();
-
-      for (const item of items) {
-        const groupKey = item.setCode
-          ? `${section?.key || 'catalog'}-${item.setCode}`
-          : `${section?.key || 'catalog'}-${item.id}`;
-
-        let groupIndex = indexByKey.get(groupKey);
-        if (groupIndex == null) {
-          groupIndex = groups.length;
-          indexByKey.set(groupKey, groupIndex);
-          groups.push({
-            key: groupKey,
-            setCode: item.setCode || null,
-            images: [],
-            dimensions: '',
-          });
-        }
-
-        const group = groups[groupIndex];
-        if (item.image && !group.images.includes(item.image)) {
-          group.images.push(item.image);
-        }
-
-        if (!group.dimensions && item.dimensions && !/dimensions not listed/i.test(item.dimensions)) {
-          group.dimensions = item.dimensions
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean)
-            .slice(0, 4)
-            .join(', ');
-        }
-      }
-
-      return groups;
-    }, [items, section?.key]);
+    const sets = section ? (CATALOG_SETS[section.key] || []) : [];
 
     if (!section) {
       return (
@@ -4306,37 +4296,44 @@ function App() {
           </div>
         </div>
 
-        <div className="catalog-items-grid">
-          {setGroups.map((setGroup, index) => {
-            const activeImage = activeSetImage[setGroup.key] || setGroup.images[0];
-            const setLabel = setGroup.setCode
-              ? `${section.title} Set ${setGroup.setCode}`
-              : `${section.title} Set ${index + 1}`;
+        <div className="catalog-sets-grid">
+          {sets.map((set, index) => {
+            const setLabel = `${section.title} Set ${set.setCode || index + 1}`;
 
             return (
-              <article key={setGroup.key} className="catalog-item-card">
-                <img src={activeImage} alt={setLabel} loading="lazy" className="catalog-item-card__image" />
-                {setGroup.images.length > 1 && (
-                  <div className="catalog-item-card__thumbs" aria-label={`${setLabel} image angles`}>
-                    {setGroup.images.map((imagePath, imageIndex) => (
-                      <button
-                        key={imagePath}
-                        type="button"
-                        className={`catalog-item-card__thumb ${activeImage === imagePath ? 'catalog-item-card__thumb--active' : ''}`}
-                        onClick={() => setActiveSetImage((prev) => ({ ...prev, [setGroup.key]: imagePath }))}
-                        aria-label={`View angle ${imageIndex + 1} for ${setLabel}`}
-                      >
-                        <img src={imagePath} alt="" loading="lazy" />
-                      </button>
-                    ))}
-                  </div>
+              <article key={`${section.key}-${set.setCode || index}`} className="set-card">
+                <div className="set-card__rail" role="list" aria-label={setLabel}>
+                  {set.images.map((img, idx) => (
+                    <img
+                      key={img}
+                      src={img}
+                      alt={idx === 0 ? setLabel : ''}
+                      loading="lazy"
+                      className="set-card__img"
+                      role="listitem"
+                    />
+                  ))}
+                </div>
+                {set.images.length > 1 && (
+                  <p className="set-card__count">{set.images.length} images - swipe to see each</p>
                 )}
-                {setGroup.dimensions && (
-                  <p className="catalog-item-card__dimensions">{setGroup.dimensions}</p>
+                {set.dimensions && (
+                  <p className="set-card__dims">{set.dimensions}</p>
                 )}
               </article>
             );
           })}
+        </div>
+
+        {sets.length === 0 && (
+          <p className="section-intro" style={{ marginTop: '0.9rem' }}>
+            No sets are available in this section yet.
+          </p>
+        )}
+
+        <div className="catalog-footer-cta">
+          <p>Need help choosing? Message us and we can guide you.</p>
+          <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>Chat on WhatsApp</button>
         </div>
       </section>
     );
