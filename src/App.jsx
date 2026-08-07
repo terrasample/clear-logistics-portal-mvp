@@ -259,28 +259,28 @@ const BARREL_CATALOG = [
 
 const CUSTOMER_CATALOG = [
   {
-    key: 'barrel-cost-guide',
-    title: 'Barrel Shipping Guide (Jamaica)',
-    description: 'Overview of barrel shipment categories, handling notes, and planning tips for faster booking.',
-    image: '/catalog/barrel_cost_jamaica.png',
+    key: 'living-room-set',
+    title: 'Luxury Living Room Set',
+    description: 'Premium sofa and accent seating collection from our featured furniture catalog.',
+    image: '/catalog/furniture_from_pdf/furniture_096.jpeg',
   },
   {
-    key: 'barrel-vs-box',
-    title: 'Barrel vs Box Comparison',
-    description: 'Simple comparison to help you choose the best package type based on item type and volume.',
-    image: '/catalog/barrel_vs_box_comparison.png',
+    key: 'royal-lounge-suite',
+    title: 'Royal Lounge Suite',
+    description: 'Classic carved seating set with matching table pieces for elegant home interiors.',
+    image: '/catalog/furniture_from_pdf/furniture_019.jpeg',
   },
   {
-    key: 'prepare-package',
-    title: 'How To Prepare Your Package',
-    description: 'Step-by-step checklist for packing, labeling, and readiness before pickup or warehouse drop-off.',
-    image: '/catalog/prepare_package_international_shipping.png',
+    key: 'ornate-bedroom-set',
+    title: 'Ornate Bedroom Set',
+    description: 'Statement king bed with coordinated nightstands and detailed classic finishing.',
+    image: '/catalog/furniture_from_pdf/furniture_344.jpeg',
   },
   {
-    key: 'customs-mistakes',
-    title: 'Avoid Customs Clearance Mistakes',
-    description: 'Best practices to prevent delays by using complete declarations and clean documentation.',
-    image: '/catalog/customs_clearance_mistakes.png',
+    key: 'formal-dining-set',
+    title: 'Formal Dining Set',
+    description: 'Full dining table and chair set designed for stylish hosting and everyday comfort.',
+    image: '/catalog/furniture_from_pdf/furniture_266.jpeg',
   },
 ];
 
