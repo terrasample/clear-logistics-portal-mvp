@@ -4173,7 +4173,39 @@ function App() {
 
   function CatalogSectionPage() {
     const { sectionKey } = useParams();
-    const section = CATALOG_SECTIONS.find((entry) => entry.key === sectionKey);
+    const normalizeCatalogSectionKey = (value) => (
+      String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/%20/g, ' ')
+        .replace(/[_\s]+/g, '-')
+        .replace(/-furniture$/i, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+    );
+
+    const decodedSectionKey = (() => {
+      try {
+        return decodeURIComponent(String(sectionKey || ''));
+      } catch {
+        return String(sectionKey || '');
+      }
+    })();
+
+    const normalizedSectionKey = normalizeCatalogSectionKey(decodedSectionKey);
+
+    const section = CATALOG_SECTIONS.find((entry) => {
+      const normalizedKey = normalizeCatalogSectionKey(entry.key);
+      const normalizedTitle = normalizeCatalogSectionKey(entry.title);
+      return normalizedSectionKey === normalizedKey || normalizedSectionKey === normalizedTitle;
+    });
+
+    useEffect(() => {
+      if (section && sectionKey && sectionKey !== section.key) {
+        navigate(`/catalog/${section.key}`, { replace: true });
+      }
+    }, [navigate, section, sectionKey]);
+
     const items = section ? (CATALOG_ITEMS_BY_SECTION[section.key] || []) : [];
 
     if (!section) {
