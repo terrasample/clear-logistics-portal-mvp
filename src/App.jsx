@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { CATALOG_SECTIONS, CATALOG_ITEMS_BY_SECTION } from './catalogData';
+import CATALOG_SETS from './catalogSets.json';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
   String(import.meta.env.VITE_API_BASE || '').trim(),
@@ -4131,36 +4132,13 @@ function App() {
     );
   }
 
-  function buildSetGroups(sectionKey, items) {
-    const groups = [];
-    const indexByKey = new Map();
-    for (const item of items) {
-      const groupKey = item.setCode
-        ? `${sectionKey}-${item.setCode}`
-        : `${sectionKey}-${item.id}`;
-      let gi = indexByKey.get(groupKey);
-      if (gi == null) {
-        gi = groups.length;
-        indexByKey.set(groupKey, gi);
-        groups.push({ key: groupKey, images: [], dimensions: '' });
-      }
-      const g = groups[gi];
-      if (item.image && !g.images.includes(item.image)) g.images.push(item.image);
-      if (!g.dimensions && item.dimensions && !/dimensions not listed/i.test(item.dimensions)) {
-        g.dimensions = item.dimensions.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 4).join(', ');
-      }
-    }
-    return groups;
-  }
+  const CATALOG_SECTION_LABELS = {
+    'living-room': 'Living Room',
+    'bedroom': 'Bedroom',
+    'dining-room': 'Dining Room',
+  };
 
   function CatalogPage() {
-    const allSections = useMemo(() => (
-      CATALOG_SECTIONS.map((section) => ({
-        section,
-        groups: buildSetGroups(section.key, CATALOG_ITEMS_BY_SECTION[section.key] || []),
-      }))
-    ), []);
-
     return (
       <section className="card card--wide">
         <div className="catalog-top-bar">
@@ -4171,31 +4149,41 @@ function App() {
           </button>
         </div>
 
-        {allSections.map(({ section, groups }) => (
-          <div key={section.key} className="catalog-block">
-            <h3 className="catalog-block__heading">{section.title}</h3>
-            <div className="catalog-sets-grid">
-              {groups.map((group) => (
-                <article key={group.key} className="set-card">
-                  <div className="set-card__rail">
-                    {group.images.map((img) => (
-                      <img key={img} src={img} alt="" loading="lazy" className="set-card__img" />
-                    ))}
-                  </div>
-                  {group.images.length > 1 && (
-                    <p className="set-card__count">{group.images.length} views — swipe to browse</p>
-                  )}
-                  {group.dimensions && (
-                    <p className="set-card__dims">{group.dimensions}</p>
-                  )}
-                </article>
-              ))}
+        {['living-room', 'bedroom', 'dining-room'].map((sectionKey) => {
+          const sets = CATALOG_SETS[sectionKey] || [];
+          return (
+            <div key={sectionKey} className="catalog-block">
+              <h3 className="catalog-block__heading">{CATALOG_SECTION_LABELS[sectionKey]}</h3>
+              <div className="catalog-sets-grid">
+                {sets.map((set) => (
+                  <article key={set.setCode} className="set-card">
+                    <div className="set-card__rail" role="list" aria-label={`${set.setCode} furniture set`}>
+                      {set.images.map((img, idx) => (
+                        <img
+                          key={img}
+                          src={img}
+                          alt={idx === 0 ? `${set.setCode} furniture set` : ''}
+                          loading="lazy"
+                          className="set-card__img"
+                          role="listitem"
+                        />
+                      ))}
+                    </div>
+                    {set.images.length > 1 && (
+                      <p className="set-card__count">{set.images.length} pieces — swipe to see each</p>
+                    )}
+                    {set.dimensions && (
+                      <p className="set-card__dims">{set.dimensions}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         <div className="catalog-footer-cta">
-          <p>Interested in a set? Contact us to ship it to Jamaica.</p>
+          <p>See something you like? Contact us to ship it to Jamaica.</p>
           <button type="button" className="btn btn--solid" onClick={openDealsWhatsApp}>Chat on WhatsApp</button>
         </div>
       </section>
