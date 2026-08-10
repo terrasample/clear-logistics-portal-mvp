@@ -1588,6 +1588,117 @@
         "/catalog/section_pages/orig-p101-i2.jpeg"
       ],
       "dimensions": ""
+    },
+    {
+      "setCode": "MODEL-2000",
+      "images": [
+        "/catalog/section_pages/model-2000-i1.png",
+        "/catalog/section_pages/model-2000-i2.png",
+        "/catalog/section_pages/model-2000-i3.png"
+      ],
+      "dimensions": "L1942*W2192*H1590, L680*W460*H650, Display Cabinet L1650*W480*H950, Wall Mirror L1050*W800"
+    },
+    {
+      "setCode": "MODEL-2001",
+      "images": [
+        "/catalog/section_pages/model-2001-i1.png",
+        "/catalog/section_pages/model-2001-i2.png"
+      ],
+      "dimensions": "L2150*W2000*H1800, L680*W460*H650"
+    },
+    {
+      "setCode": "MODEL-2002",
+      "images": [
+        "/catalog/section_pages/model-2002-i1.png",
+        "/catalog/section_pages/model-2002-i2.png"
+      ],
+      "dimensions": "L2050*W2150*H1590, L650*W480*H680"
+    },
+    {
+      "setCode": "MODEL-2003",
+      "images": [
+        "/catalog/section_pages/model-2003-i1.png",
+        "/catalog/section_pages/model-2003-i2.png"
+      ],
+      "dimensions": "L2125*W2025*H1550, L550*W420*H580"
+    },
+    {
+      "setCode": "MODEL-2004",
+      "images": [
+        "/catalog/section_pages/model-2004-i1.png"
+      ],
+      "dimensions": "L2050*W2200*H1680"
+    },
+    {
+      "setCode": "MODEL-2005",
+      "images": [
+        "/catalog/section_pages/model-2005-i1.png"
+      ],
+      "dimensions": "L2140*W1950*H1710"
+    },
+    {
+      "setCode": "MODEL-2006",
+      "images": [
+        "/catalog/section_pages/model-2006-i1.png",
+        "/catalog/section_pages/model-2006-i2.png"
+      ],
+      "dimensions": "L2122*W2050*H1550, L550*W420*H600"
+    },
+    {
+      "setCode": "MODEL-2007",
+      "images": [
+        "/catalog/section_pages/model-2007-i1.png",
+        "/catalog/section_pages/model-2007-i2.png",
+        "/catalog/section_pages/model-2007-i3.png",
+        "/catalog/section_pages/model-2007-i4.png",
+        "/catalog/section_pages/model-2007-i5.png",
+        "/catalog/section_pages/model-2007-i6.png",
+        "/catalog/section_pages/model-2007-i7.png",
+        "/catalog/section_pages/model-2007-i8.png"
+      ],
+      "dimensions": "King L1950*W2130*H1520, Queen L1650*W2130*H1470, L550*W420*H580, L2165*W2150*H1650, L648*W470*H715, L1150*W450*H790, L900*W480*H1080, L2190*W1940*H1550, L700*W490*H680"
+    },
+    {
+      "setCode": "MODEL-2008",
+      "images": [
+        "/catalog/section_pages/model-2008-i1.png",
+        "/catalog/section_pages/model-2008-i2.png"
+      ],
+      "dimensions": "L2122*W2022*H1680, L520*W400*H580"
+    },
+    {
+      "setCode": "MODEL-2009",
+      "images": [
+        "/catalog/section_pages/model-2009-i1.png",
+        "/catalog/section_pages/model-2009-i2.png"
+      ],
+      "dimensions": "L2230*W2220*H1705"
+    },
+    {
+      "setCode": "MODEL-2010",
+      "images": [
+        "/catalog/section_pages/model-2010-i1.png",
+        "/catalog/section_pages/model-2010-i2.png",
+        "/catalog/section_pages/model-2010-i3.png"
+      ],
+      "dimensions": "King L2176*W1990*H1585, Queen L2176*W1690*H1550"
+    },
+    {
+      "setCode": "MODEL-2011",
+      "images": [
+        "/catalog/section_pages/model-2011-i1.png",
+        "/catalog/section_pages/model-2011-i2.png"
+      ],
+      "dimensions": "King L2130*W2210*H1630, Queen L2130*W1910*H1630"
+    },
+    {
+      "setCode": "MODEL-2012",
+      "images": [
+        "/catalog/section_pages/model-2012-i1.png",
+        "/catalog/section_pages/model-2012-i2.png",
+        "/catalog/section_pages/model-2012-i3.png"
+      ],
+      "dimensions": "L2230*W2200*H1580, L600*W460*H770, L1246*W460*H770"
     }
   ],
   "dining-room": [
