@@ -1435,35 +1435,65 @@ body {
 }
 
 .set-card__rail {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  gap: 0;
+/* ── Hero image wrapper ── */
+.set-card__hero-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
 }
 
-.set-card__rail::-webkit-scrollbar {
-  display: none;
-}
-
-.set-card__img {
-  flex: 0 0 100%;
-  scroll-snap-align: start;
+.set-card__hero-img {
   width: 100%;
   height: 220px;
   object-fit: cover;
   display: block;
   background: #f1f5f3;
+  transition: transform 0.22s ease;
+}
+
+.set-card:hover .set-card__hero-img {
+  transform: scale(1.04);
 }
 
 .set-card__count {
-  margin: 0;
-  padding: 0.35rem 0.7rem 0.1rem;
-  color: var(--brand);
-  font-size: 0.78rem;
+  position: absolute;
+  bottom: 0.45rem;
+  right: 0.55rem;
+  background: rgba(15, 23, 42, 0.62);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+}
+
+/* ── Label bar ── */
+.set-card__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem 0.55rem;
+  gap: 0.5rem;
+}
+
+.set-card__model-num {
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  color: #0b3d33;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-card__view-cta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--brand);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .set-card__dims {
@@ -2360,7 +2390,7 @@ body {
     gap: 0.65rem;
   }
 
-  .set-card__img {
+  .set-card__hero-img {
     height: min(68vw, 270px);
   }
 
@@ -2387,7 +2417,7 @@ body {
     font-size: 1rem;
   }
 
-  .set-card__img {
+  .set-card__hero-img {
     height: min(72vw, 260px);
   }
 

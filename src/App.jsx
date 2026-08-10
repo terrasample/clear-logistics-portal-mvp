@@ -4600,10 +4600,16 @@ function App() {
 
         <div className="catalog-sets-grid">
           {orderedSets.map((set, index) => {
-            const setLabel = `${section.title} Set ${set.setCode || index + 1}`;
+            const modelLabel = set.setCode
+              ? set.setCode.replace('MODEL-', 'Model ')
+              : `Set ${index + 1}`;
+            const setLabel = `${section.title} – ${modelLabel}`;
+            const allImages = Array.isArray(set.images) ? set.images : [];
             const previewImages = Array.isArray(set.previewImages) && set.previewImages.length > 0
               ? set.previewImages
-              : set.images;
+              : allImages;
+            const heroImage = previewImages[0] || allImages[0] || '';
+            const totalImages = allImages.length;
 
             return (
               <article
@@ -4620,17 +4626,22 @@ function App() {
                 }}
                 aria-label={`Open full gallery for ${setLabel}`}
               >
-                <div className="set-card__rail" role="list" aria-label={setLabel}>
-                  {previewImages.map((img, idx) => (
+                <div className="set-card__hero-wrap">
+                  {heroImage && (
                     <img
-                      key={img}
-                      src={img}
-                      alt={idx === 0 ? setLabel : ''}
+                      src={heroImage}
+                      alt={setLabel}
                       loading="lazy"
-                      className="set-card__img"
-                      role="listitem"
+                      className="set-card__hero-img"
                     />
-                  ))}
+                  )}
+                  {totalImages > 1 && (
+                    <span className="set-card__count">{totalImages} photos</span>
+                  )}
+                </div>
+                <div className="set-card__label">
+                  <span className="set-card__model-num">{modelLabel}</span>
+                  <span className="set-card__view-cta">View Set →</span>
                 </div>
               </article>
             );
