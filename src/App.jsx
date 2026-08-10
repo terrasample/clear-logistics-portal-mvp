@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, Navigate, Link } from 'react-router-dom';
 import { CATALOG_SECTIONS } from './catalogData';
 import CATALOG_SETS from './catalogSets.json';
+import CATALOG_MODEL_NUMBERS from './catalogModelNumbers.json';
 import SUPPLIER_BED_HEROES from './supplierBedHeroes.json';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
@@ -112,12 +113,6 @@ const NAV_ITEMS = [
     activePaths: ['shop'],
   },
   {
-    key: 'ai-estimator',
-    label: 'AI Estimator',
-    targetPath: '/cart-estimator',
-    activePaths: ['cart-estimator'],
-  },
-  {
     key: 'driver-login',
     label: 'Driver Login',
     targetPath: '/driver/login',
@@ -163,6 +158,43 @@ const SERVICE_TIERS = [
   { name: 'Standard', days: '7-12', multiplier: 1.0, label: 'Pickup + shipping + delivery' },
   { name: 'Premium', days: '3-5', multiplier: 1.35, label: 'Priority handling' },
 ];
+
+const FLORIDA_TO_JAMAICA_RATE_CARD_JMD = {
+  1: 875,
+  2: 1350,
+  3: 1800,
+  4: 2250,
+  5: 2700,
+  6: 3150,
+  7: 3600,
+  8: 4050,
+};
+const FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD = 450;
+const JMD_PER_USD = 160;
+const SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD = 240;
+const SINGLE_BARREL_PICKUP_AND_HANDLING_USD = 100;
+const BARREL_ADDITIONAL_DISCOUNT_RATE = 0.03;
+
+function resolveFloridaToJamaicaRateCardJmd(weightLbs) {
+  const roundedWeight = Math.max(1, Math.ceil(Math.max(0, Number(weightLbs || 0))));
+  if (FLORIDA_TO_JAMAICA_RATE_CARD_JMD[roundedWeight]) {
+    return FLORIDA_TO_JAMAICA_RATE_CARD_JMD[roundedWeight];
+  }
+  const base = FLORIDA_TO_JAMAICA_RATE_CARD_JMD[8] || 0;
+  const overageLbs = Math.max(0, roundedWeight - 8);
+  return base + (overageLbs * FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD);
+}
+
+function isFloridaToJamaicaLane(origin, destination) {
+  const normalizedOrigin = String(origin || '').toLowerCase();
+  const normalizedDestination = String(destination || '').toLowerCase();
+  const isFloridaOrigin = normalizedOrigin.includes('florida')
+    || /\bfl\b/.test(normalizedOrigin)
+    || /(miami|jacksonville|orlando|tampa|fort lauderdale|fort myers)/.test(normalizedOrigin);
+  const isJamaicaDestination = normalizedDestination.includes('jamaica')
+    || /(kingston|montego bay|mandeville|ochos? rios|negril|portmore|spanish town)/.test(normalizedDestination);
+  return isFloridaOrigin && isJamaicaDestination;
+}
 
 const HOW_IT_WORKS = [
   {
@@ -360,6 +392,7 @@ const BRAND_LOGO_PATH = '/catalog/clear-logistics-logo.png';
 const BOOKING_TAB_LABEL = 'Services';
 const BOOKING_PAGE_LABEL = 'Book Pickup';
 const SHOP_AND_SHIP_HELP_EMAIL = 'support@clearlogistics.com';
+const INSTAGRAM_PROFILE_URL = String(import.meta.env.VITE_INSTAGRAM_PROFILE_URL || 'https://www.instagram.com/clearlogisticsja/').trim();
 
 const CHATBOT_PROMPTS = [
   {
@@ -465,6 +498,114 @@ function normalizeWebUrl(value) {
     return `https://${input}`;
   }
   return input;
+}
+
+function getCatalogSetRecord(sectionKey, setCode = '') {
+  const normalizedSectionKey = String(sectionKey || '').trim();
+  const normalizedSetCode = String(setCode || '').trim().toUpperCase();
+  const sectionSets = Array.isArray(CATALOG_SETS?.[normalizedSectionKey]) ? CATALOG_SETS[normalizedSectionKey] : [];
+  return sectionSets.find((set) => String(set?.setCode || '').trim().toUpperCase() === normalizedSetCode) || null;
+}
+
+function splitDimensionsList(dimensions = '') {
+  return String(dimensions || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function createCatalogSetDefaultConfig(sectionKey, setCode = '') {
+  const setRecord = getCatalogSetRecord(sectionKey, setCode);
+  const pieceDimensions = splitDimensionsList(setRecord?.dimensions || '');
+
+  if (pieceDimensions.length > 0) {
+    return pieceDimensions.map((_, index) => ({
+      key: `set-piece-${index + 1}`,
+      label: `Set Piece ${index + 1}`,
+      qty: 1,
+    }));
+  }
+
+  // If no piece metadata exists for this set, keep one generic option rather than guessing item types.
+  return [
+    {
+      key: 'set-piece-1',
+      label: 'Set Piece 1',
+      qty: 1,
+    },
+  ];
+}
+
+function formatCatalogSetSelectionSummary(items = []) {
+  const normalizedItems = Array.isArray(items) ? items : [];
+  const selected = normalizedItems.filter((item) => Number(item?.qty || 0) > 0);
+  if (!selected.length) {
+    return 'No pieces selected yet.';
+  }
+  return selected.map((item) => `${Number(item.qty)} x ${item.label}`).join(', ');
+}
+
+function normalizeCatalogModelNumber(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  if (/^MODEL-\d+$/i.test(raw)) {
+    return raw.toUpperCase();
+  }
+
+  const fromLabel = raw.match(/^Model\s+(\d+)$/i);
+  if (fromLabel) {
+    return `MODEL-${fromLabel[1]}`;
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return `MODEL-${raw}`;
+  }
+
+  return raw.toUpperCase();
+}
+
+function buildCatalogSetShareUrl({ sectionKey, setCode, modelLabel }) {
+  const normalizedSection = String(sectionKey || '').trim();
+  if (!normalizedSection) {
+    return '';
+  }
+
+  const params = new URLSearchParams();
+  const normalizedSetCode = String(setCode || '').trim();
+  const normalizedModel = normalizeCatalogModelNumber(modelLabel);
+
+  if (normalizedSetCode) {
+    params.set('set', normalizedSetCode);
+  }
+
+  if (normalizedModel) {
+    params.set('model', normalizedModel);
+  }
+
+  return `${window.location.origin}/catalog/${encodeURIComponent(normalizedSection)}?${params.toString()}`;
+}
+
+function buildCatalogSetInquiryMessage({ inquiryId, setLabel, modelLabel, selectionSummary, notes, fullName, shareLink }) {
+  const noteLine = String(notes || '').trim();
+  const sender = String(fullName || '').trim() || 'Customer';
+  const shareUrl = String(shareLink || '').trim();
+  const baseLines = [
+    `Hi Clear Logistics, I'd like pricing for furniture set inquiry ${inquiryId}.`,
+    `Set: ${setLabel}`,
+    `Model: ${modelLabel}`,
+    `Configuration: ${selectionSummary}`,
+    `Requested by: ${sender}`,
+  ];
+  if (shareUrl) {
+    baseLines.push(`Customer configure link: ${shareUrl}`);
+  }
+  if (noteLine) {
+    baseLines.push(`Notes: ${noteLine}`);
+  }
+  return baseLines.join('\n');
 }
 
 function getStoreNameFromUrl(url) {
@@ -606,6 +747,7 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['MODEL-2153', '/catalog/section_pages/cat1-p046-i1.jpeg'],
   ['MODEL-2154', '/catalog/section_pages/cat1-p047-i1.jpeg'],
   ['MODEL-2155', '/catalog/section_pages/cat1-p073-i1.jpeg'],
+  ['MODEL-2159', '/catalog/section_pages/cat1-p050-i1.jpeg'],
   ...Object.entries(SUPPLIER_BED_HEROES || {}),
   ['MODEL-2156', '/catalog/section_pages/cat1-p044-i4.jpeg'],
   ['MODEL-2157', '/catalog/section_pages/cat1-p048-i3.jpeg'],
@@ -615,14 +757,17 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['MODEL-2164', '/catalog/section_pages/cat1-p062-i2.jpeg'],
   ['MODEL-2165', '/catalog/section_pages/cat1-p063-i1.jpeg'],
   ['MODEL-2166', '/catalog/section_pages/cat1-p064-i1.jpeg'],
-  ['MODEL-2167', '/catalog/section_pages/cat1-p057-i2.jpeg'],
-  ['MODEL-2169', '/catalog/section_pages/cat1-p055-i3.jpeg'],
+  ['MODEL-2167', '/catalog/section_pages/cat1-p057-i1.jpeg'],
+  ['MODEL-2168', '/catalog/section_pages/cat1-p065-i2.jpeg'],
+  ['MODEL-2169', '/catalog/section_pages/cat1-p055-i1.jpeg'],
   ['MODEL-2170', '/catalog/section_pages/cat1-p066-i2.jpeg'],
+  ['MODEL-2171', '/catalog/section_pages/cat1-p067-i2.jpeg'],
   ['MODEL-2172', '/catalog/section_pages/cat1-p068-i1.jpeg'],
-  ['MODEL-2174', '/catalog/section_pages/cat1-p045-i2.jpeg'],
+  ['MODEL-2173', '/catalog/section_pages/cat1-p069-i2.jpeg'],
+  ['MODEL-2174', '/catalog/section_pages/cat1-p045-i1.jpeg'],
   ['MODEL-2175', '/catalog/section_pages/cat1-p070-i3.jpeg'],
   ['MODEL-2176', '/catalog/section_pages/cat1-p056-i2.jpeg'],
-  ['MODEL-2179', '/catalog/section_pages/cat1-p058-i2.jpeg'],
+  ['MODEL-2179', '/catalog/section_pages/cat1-p058-i1.jpeg'],
   ['MODEL-2178', '/catalog/section_pages/cat1-p072-i1.jpeg'],
   ['MODEL-2163', '/catalog/section_pages/cat1-p061-i2.jpeg'],
   ['MODEL-2177', '/catalog/section_pages/cat1-p071-i2.jpeg'],
@@ -639,7 +784,7 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['MODEL-2023', '/catalog/section_pages/orig-p068-i2.jpeg'],
   ['MODEL-2024', '/catalog/section_pages/orig-p069-i2.jpeg'],
   ['MODEL-2025', '/catalog/section_pages/orig-p070-i2.jpeg'],
-  ['MODEL-2026', '/catalog/section_pages/orig-p071-i2.jpeg'],
+  ['MODEL-2026', '/catalog/section_pages/orig-p071-i3.jpeg'],
   ['MODEL-2027', '/catalog/section_pages/orig-p072-i2.jpeg'],
   ['MODEL-2028', '/catalog/section_pages/orig-p073-i2.jpeg'],
   ['MODEL-2029', '/catalog/section_pages/orig-p074-i2.jpeg'],
@@ -652,8 +797,36 @@ const BEDROOM_SET_HERO_IMAGE_PATHS = new Map([
   ['MODEL-2036', '/catalog/section_pages/orig-p081-i2.jpeg'],
   ['MODEL-2037', '/catalog/section_pages/orig-p082-i2.jpeg'],
   ['MODEL-2038', '/catalog/section_pages/orig-p099-i2.jpeg'],
-  ['MODEL-2039', '/catalog/section_pages/orig-p100-i1.jpeg'],
-  ['MODEL-2040', '/catalog/section_pages/orig-p101-i1.jpeg'],
+  ['MODEL-2039', '/catalog/section_pages/orig-p100-i2.jpeg'],
+  ['MODEL-2040', '/catalog/section_pages/orig-p101-i2.jpeg'],
+  ['MODEL-2041', '/catalog/section_pages/orig-p083-i2.jpeg'],
+  ['MODEL-2042', '/catalog/section_pages/orig-p084-i2.jpeg'],
+  ['MODEL-2043', '/catalog/section_pages/orig-p085-i2.jpeg'],
+  ['MODEL-2044', '/catalog/section_pages/orig-p086-i2.jpeg'],
+  ['MODEL-2045', '/catalog/section_pages/orig-p087-i2.jpeg'],
+  ['MODEL-2046', '/catalog/section_pages/orig-p088-i2.jpeg'],
+  ['MODEL-2047', '/catalog/section_pages/orig-p089-i2.jpeg'],
+  ['MODEL-2048', '/catalog/section_pages/orig-p090-i2.jpeg'],
+  ['MODEL-2049', '/catalog/section_pages/orig-p091-i2.jpeg'],
+  ['MODEL-2050', '/catalog/section_pages/orig-p092-i2.jpeg'],
+  ['MODEL-2051', '/catalog/section_pages/orig-p093-i2.jpeg'],
+  ['MODEL-2052', '/catalog/section_pages/orig-p094-i2.jpeg'],
+  ['MODEL-2053', '/catalog/section_pages/orig-p095-i2.jpeg'],
+  ['MODEL-2054', '/catalog/section_pages/orig-p096-i2.jpeg'],
+  ['MODEL-2055', '/catalog/section_pages/orig-p097-i2.jpeg'],
+  ['MODEL-2056', '/catalog/section_pages/orig-p098-i1.jpeg'],
+  ['MODEL-2057', '/catalog/section_pages/orig-p102-i2.jpeg'],
+  ['MODEL-2058', '/catalog/section_pages/orig-p103-i2.jpeg'],
+  ['MODEL-2059', '/catalog/section_pages/orig-p104-i2.jpeg'],
+  ['MODEL-2060', '/catalog/section_pages/orig-p105-i2.jpeg'],
+  ['MODEL-2061', '/catalog/section_pages/orig-p106-i2.jpeg'],
+  ['MODEL-2062', '/catalog/section_pages/orig-p107-i2.jpeg'],
+  ['MODEL-2063', '/catalog/section_pages/orig-p108-i2.jpeg'],
+  ['MODEL-2064', '/catalog/section_pages/orig-p109-i2.jpeg'],
+  ['MODEL-2065', '/catalog/section_pages/orig-p110-i2.jpeg'],
+  ['MODEL-2066', '/catalog/section_pages/orig-p111-i2.jpeg'],
+  ['MODEL-2067', '/catalog/section_pages/orig-p112-i2.jpeg'],
+  ['MODEL-2068', '/catalog/section_pages/orig-p113-i1.jpeg'],
 ]);
 
 // Luxury score (1–10) based on visual assessment of each set's hero image.
@@ -739,6 +912,12 @@ function getCatalogImageIndex(imagePath) {
 }
 
 function isBedroomBedImage(imagePath) {
+  const modelImageMatch = String(imagePath || '').match(/model-\d+-i(\d+)\.png$/i);
+  if (modelImageMatch) {
+    // Generated model png sets typically use i1 as the front bed hero image.
+    return Number(modelImageMatch[1]) === 1;
+  }
+
   if (BEDROOM_NON_BED_IMAGE_PATHS.has(String(imagePath || '').trim())) {
     return false;
   }
@@ -755,10 +934,27 @@ function isBedroomBedImage(imagePath) {
   return BEDROOM_BED_PAGE_NUMBERS.has(pageNumber);
 }
 
+function getBedroomPreferredHeroImagePath(setCode = '') {
+  const normalizedSetCode = String(setCode || '').trim();
+  if (!normalizedSetCode) {
+    return '';
+  }
+
+  const displaySetCode = getCatalogDisplaySetCode('bedroom', normalizedSetCode);
+  const candidateKeys = [normalizedSetCode, String(displaySetCode || '').trim()].filter(Boolean);
+
+  for (const key of candidateKeys) {
+    if (BEDROOM_SET_HERO_IMAGE_PATHS.has(key)) {
+      return BEDROOM_SET_HERO_IMAGE_PATHS.get(key);
+    }
+  }
+
+  return '';
+}
+
 function getBedroomImagePriority(imagePath, setCode = '') {
   const normalizedImagePath = String(imagePath || '').trim();
-  const normalizedSetCode = String(setCode || '').trim();
-  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+  const preferredHeroImage = getBedroomPreferredHeroImagePath(setCode);
 
   if (preferredHeroImage && normalizedImagePath === preferredHeroImage) {
     return 4;
@@ -786,8 +982,7 @@ function getBedroomImagePriority(imagePath, setCode = '') {
 }
 
 function prioritizeBedroomImages(images, setCode = '') {
-  const normalizedSetCode = String(setCode || '').trim();
-  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+  const preferredHeroImage = getBedroomPreferredHeroImagePath(setCode);
 
   const prioritizedImages = [...(Array.isArray(images) ? images : [])]
     .map((imagePath, index) => ({
@@ -806,8 +1001,7 @@ function prioritizeBedroomImages(images, setCode = '') {
 }
 
 function getBedroomPreviewImages(images, setCode = '') {
-  const normalizedSetCode = String(setCode || '').trim();
-  const preferredHeroImage = BEDROOM_SET_HERO_IMAGE_PATHS.get(normalizedSetCode);
+  const preferredHeroImage = getBedroomPreferredHeroImagePath(setCode);
 
   // When a confirmed hero bed image is defined for this set, show ONLY that image
   // on the card to prevent nightstands/wardrobes/detail closeups from appearing.
@@ -828,6 +1022,73 @@ function getBedroomSetScore(set) {
   const luxuryScore = BEDROOM_LUXURY_SCORES.get(setCode);
   // Default to 8 for any set not explicitly scored (all are high-end products)
   return luxuryScore !== undefined ? luxuryScore : 8;
+}
+
+function getCatalogDisplaySetCode(sectionKey, setCode = '') {
+  const normalizedSectionKey = String(sectionKey || '').trim();
+  const normalizedSetCode = String(setCode || '').trim();
+
+  if (!normalizedSetCode) {
+    return '';
+  }
+
+  return CATALOG_MODEL_NUMBERS?.[normalizedSectionKey]?.[normalizedSetCode] || normalizedSetCode;
+}
+
+function formatCatalogModelLabel(sectionKey, setCode = '', fallbackIndex = 0) {
+  const displaySetCode = getCatalogDisplaySetCode(sectionKey, setCode);
+
+  if (!displaySetCode) {
+    return `Set ${fallbackIndex + 1}`;
+  }
+
+  if (displaySetCode.startsWith('MODEL-')) {
+    return displaySetCode.replace('MODEL-', 'Model ');
+  }
+
+  if (/^[A-Z]+-P\d+$/i.test(displaySetCode)) {
+    return displaySetCode;
+  }
+
+  return `Model ${displaySetCode}`;
+}
+
+function groupCatalogSetsByDisplayModel(sectionKey, sets = []) {
+  const grouped = [];
+  const groupedByModel = new Map();
+
+  for (const set of Array.isArray(sets) ? sets : []) {
+    const internalSetCode = String(set?.setCode || '').trim();
+    const displaySetCode = getCatalogDisplaySetCode(sectionKey, internalSetCode);
+    const groupingKey = displaySetCode || internalSetCode || `set-${grouped.length + 1}`;
+
+    if (!groupedByModel.has(groupingKey)) {
+      const nextSet = {
+        ...set,
+        setCode: internalSetCode,
+        displaySetCode,
+        images: [],
+      };
+      groupedByModel.set(groupingKey, nextSet);
+      grouped.push(nextSet);
+    }
+
+    const targetSet = groupedByModel.get(groupingKey);
+    const existingImages = new Set(Array.isArray(targetSet.images) ? targetSet.images : []);
+
+    for (const imagePath of Array.isArray(set?.images) ? set.images : []) {
+      if (!existingImages.has(imagePath)) {
+        targetSet.images.push(imagePath);
+        existingImages.add(imagePath);
+      }
+    }
+
+    if (!String(targetSet.dimensions || '').trim() && String(set?.dimensions || '').trim()) {
+      targetSet.dimensions = set.dimensions;
+    }
+  }
+
+  return grouped;
 }
 
 function buildTrackingInsights(shipment) {
@@ -898,6 +1159,7 @@ function App() {
   const location = useLocation();
   const { stepKey } = useParams();
   const currentPath = location.pathname.replace(/^\/+/, '') || 'home';
+  const isCatalogRoute = currentPath.startsWith('catalog');
 
   const [accountForm, setAccountForm] = useState({
     fullName: '',
@@ -911,6 +1173,7 @@ function App() {
     email: '',
     phone: '',
     cargoType: 'Box',
+    handoffType: 'pickup',
     serviceLevel: 'Standard',
     itemCategory: '',
     spaceTier: 'auto',
@@ -1032,6 +1295,8 @@ function App() {
     origin: 'Miami, FL',
     destination: 'Kingston, Jamaica',
     cargoType: 'Box',
+    handoffType: 'pickup',
+    barrelQuantity: '1',
     weight: '',
   });
   const [instantQuoteResult, setInstantQuoteResult] = useState(null);
@@ -1083,7 +1348,17 @@ function App() {
   const verificationAttemptRef = useRef('');
   const pendingRouteStatusRef = useRef(null);
   const adminWorkspaceRef = useRef(null);
+  const catalogSharedAutoOpenRef = useRef('');
   const [catalogGallery, setCatalogGallery] = useState(null);
+  const [catalogSetConfigurator, setCatalogSetConfigurator] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    notes: '',
+    items: [],
+  });
+  const [catalogSetInquiryLoading, setCatalogSetInquiryLoading] = useState(false);
+  const [catalogSetInquiryMessage, setCatalogSetInquiryMessage] = useState('');
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -2234,15 +2509,33 @@ function App() {
     sendChatMessage(chatInput);
   }
 
-  function openWhatsApp(initialText = 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.') {
+  function buildWhatsAppUrl(initialText = 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.') {
     if (!WHATSAPP_PHONE || WHATSAPP_PLACEHOLDER_NUMBERS.has(WHATSAPP_PHONE)) {
       setStatusMessage('WhatsApp support number is not configured yet. Please use Contact Support while this is updated.');
       navigate('/support');
-      return;
+      return '';
     }
 
     const message = encodeURIComponent(String(initialText || '').trim() || 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.');
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank', 'noopener,noreferrer');
+    return `https://wa.me/${WHATSAPP_PHONE}?text=${message}`;
+  }
+
+  function openWhatsApp(initialText = 'Hi, I need help with booking/shipment tracking on Clear Logistics & Freight Services.', targetWindow = null) {
+    const whatsappUrl = buildWhatsAppUrl(initialText);
+    if (!whatsappUrl) {
+      return false;
+    }
+
+    if (targetWindow && !targetWindow.closed) {
+      targetWindow.location.href = whatsappUrl;
+      return true;
+    }
+
+    const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      window.location.href = whatsappUrl;
+    }
+    return true;
   }
 
   function openDealsWhatsApp() {
@@ -2311,6 +2604,10 @@ function App() {
       if (!response.ok) throw new Error(result.error || 'Unable to submit quote request.');
       const modeLabel = result.quote?.pricingMode === 'estimated'
         ? 'Estimated'
+        : result.quote?.pricingMode === 'barrel-flat-rate'
+          ? 'Barrel flat rate'
+        : result.quote?.pricingMode === 'air-rate-card'
+          ? 'Air rate card'
         : result.quote?.pricingMode === 'hybrid-space-weight'
           ? 'Shared-space hybrid'
           : 'Weight-based';
@@ -3610,29 +3907,67 @@ function App() {
     function handleInstantQuoteChange(event) {
       const { name, value } = event.target;
       setInstantQuoteForm((prev) => ({ ...prev, [name]: value }));
+      // Clear stale results whenever quote inputs change.
+      setInstantQuoteResult(null);
     }
 
     function handleInstantQuoteSubmit(event) {
       event.preventDefault();
-      const { cargoType, weight } = instantQuoteForm;
-      if (!weight || Number(weight) <= 0) {
+      const { cargoType, handoffType, barrelQuantity, weight, origin, destination } = instantQuoteForm;
+      const normalizedCargoType = String(cargoType || '').trim().toLowerCase();
+      const isBarrelShipment = normalizedCargoType === 'barrel';
+      if (!isBarrelShipment && (!weight || Number(weight) <= 0)) {
         setInstantQuoteResult({ error: 'Please enter a valid weight.' });
         return;
       }
+      if (isBarrelShipment && (!barrelQuantity || Number(barrelQuantity) <= 0)) {
+        setInstantQuoteResult({ error: 'Please enter a valid barrel quantity.' });
+        return;
+      }
+      const numericWeight = Number(weight || 0);
+      const normalizedBarrelQuantity = Math.max(1, Math.ceil(Number(barrelQuantity || 1)));
       const estimatedBaseCost = SERVICE_TIERS.find((t) => t.name === 'Standard')?.multiplier || 1.0;
       const catInfer = inferCategoryFromUrl('');
       const defaultPrice = inferDefaultPrice(catInfer);
-      const totalCost = (Number(weight) / 10) * defaultPrice * estimatedBaseCost;
-      const transitDays = '7-12';
+      const baseEstimatedCost = (numericWeight / 10) * defaultPrice * estimatedBaseCost;
+      const isFloridaJamaicaLane = isFloridaToJamaicaLane(origin, destination);
+      const isAirFreightLane = !isBarrelShipment && isFloridaJamaicaLane;
+      const pickupAndHandlingUsd = String(handoffType || '').toLowerCase() === 'dropoff'
+        ? 0
+        : SINGLE_BARREL_PICKUP_AND_HANDLING_USD;
+      const firstBarrelFreightAndCustomsUsd = SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD;
+      const additionalBarrelFreightAndCustomsUsd = Math.max(0, normalizedBarrelQuantity - 1)
+        * SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD
+        * (1 - BARREL_ADDITIONAL_DISCOUNT_RATE);
+      const barrelRateTotalUsd = firstBarrelFreightAndCustomsUsd
+        + additionalBarrelFreightAndCustomsUsd
+        + pickupAndHandlingUsd;
+      let costUsd = 0;
+      let costJmd = 0;
+
+      if (isBarrelShipment) {
+        costUsd = Number(barrelRateTotalUsd.toFixed(2));
+        costJmd = Math.round(costUsd * JMD_PER_USD);
+      } else if (isAirFreightLane) {
+        costJmd = resolveFloridaToJamaicaRateCardJmd(numericWeight);
+        costUsd = Number((costJmd / JMD_PER_USD).toFixed(2));
+      } else {
+        costUsd = Number(baseEstimatedCost.toFixed(2));
+        costJmd = Math.round(costUsd * JMD_PER_USD);
+      }
+      const transitDays = isBarrelShipment
+        ? '7-12'
+        : (isAirFreightLane ? '3-4' : '5-10');
       setInstantQuoteResult({
-        cost: totalCost.toFixed(2),
+        costUsd,
+        costJmd,
         transit: transitDays,
       });
     }
 
     return (
       <>
-        <section className="card" style={{ textAlign: 'center', padding: '3rem 2rem', background: 'linear-gradient(135deg, #f0f7f6 0%, #fff 100%)' }}>
+        <section className="card home-hero-card">
           <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Ship from the USA to Jamaica with Confidence</h2>
           <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#555', maxWidth: '600px', margin: '0 auto 2rem' }}>
             Book pickups, track shipments, pay online. Everything in minutes, zero hassle.
@@ -3654,7 +3989,7 @@ function App() {
             <div className="instant-quote-row">
               <div className="instant-quote-field">
                 <label htmlFor="quote-origin">Pickup Location</label>
-                <select id="quote-origin" name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
+                <select id="quote-origin" className="instant-quote-control" name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
                   <option>Miami, FL</option>
                   <option>Jacksonville, FL</option>
                   <option>Atlanta, GA</option>
@@ -3664,7 +3999,7 @@ function App() {
               </div>
               <div className="instant-quote-field">
                 <label htmlFor="quote-destination">Destination</label>
-                <select id="quote-destination" name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
+                <select id="quote-destination" className="instant-quote-control" name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
                   <option>Kingston, Jamaica</option>
                   <option>Montego Bay, Jamaica</option>
                   <option>Other Jamaica Location</option>
@@ -3672,7 +4007,7 @@ function App() {
               </div>
               <div className="instant-quote-field">
                 <label htmlFor="quote-cargo">What Type?</label>
-                <select id="quote-cargo" name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
+                <select id="quote-cargo" className="instant-quote-control" name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
                   <option>Box</option>
                   <option>Barrel</option>
                   <option>Furniture</option>
@@ -3681,16 +4016,39 @@ function App() {
                 </select>
               </div>
               <div className="instant-quote-field">
-                <label htmlFor="quote-weight">Weight (lbs)</label>
-                <input
-                  id="quote-weight"
-                  type="number"
-                  name="weight"
-                  value={instantQuoteForm.weight}
-                  onChange={handleInstantQuoteChange}
-                  placeholder="e.g., 25"
-                  min="1"
-                />
+                <label htmlFor="quote-handoff">Handoff</label>
+                <select id="quote-handoff" className="instant-quote-control" name="handoffType" value={instantQuoteForm.handoffType} onChange={handleInstantQuoteChange}>
+                  <option value="pickup">We pick up</option>
+                  <option value="dropoff">I will drop off</option>
+                </select>
+              </div>
+              <div className="instant-quote-field">
+                <label htmlFor="quote-weight">
+                  {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Barrel Quantity' : 'Weight (lbs)'}
+                </label>
+                {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' ? (
+                  <input
+                    id="quote-weight"
+                    className="instant-quote-control"
+                    type="number"
+                    name="barrelQuantity"
+                    value={instantQuoteForm.barrelQuantity}
+                    onChange={handleInstantQuoteChange}
+                    placeholder="e.g., 2"
+                    min="1"
+                  />
+                ) : (
+                  <input
+                    id="quote-weight"
+                    className="instant-quote-control"
+                    type="number"
+                    name="weight"
+                    value={instantQuoteForm.weight}
+                    onChange={handleInstantQuoteChange}
+                    placeholder="e.g., 25"
+                    min="1"
+                  />
+                )}
               </div>
             </div>
 
@@ -3701,13 +4059,23 @@ function App() {
             {instantQuoteResult && !instantQuoteResult.error && (
               <div className="instant-quote-result">
                 <div className="result-item">
-                  <span>Estimated Cost:</span>
-                  <strong>${instantQuoteResult.cost}</strong>
+                  <span>Estimated Cost (USD):</span>
+                  <strong>${Number(instantQuoteResult.costUsd || 0).toFixed(2)}</strong>
+                </div>
+                <div className="result-item">
+                  <span>Estimated Cost (JMD):</span>
+                  <strong>JMD ${Number(instantQuoteResult.costJmd || 0).toLocaleString()}</strong>
                 </div>
                 <div className="result-item">
                   <span>Transit Time:</span>
                   <strong>{instantQuoteResult.transit} days</strong>
                 </div>
+                {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' && (
+                  <div className="result-item">
+                    <span>Barrel Discount:</span>
+                    <strong>3% off each barrel after the first</strong>
+                  </div>
+                )}
                 <button
                   type="button"
                   className="btn btn--solid"
@@ -4045,6 +4413,13 @@ function App() {
                 <option>Commercial Freight</option>
               </select>
             </label>
+            <label htmlFor="quote-handoffType">
+              Shipment Handoff
+              <select id="quote-handoffType" name="handoffType" value={quoteForm.handoffType} onChange={handleQuoteChange}>
+                <option value="pickup">We pick up</option>
+                <option value="dropoff">Customer drop-off</option>
+              </select>
+            </label>
             <label htmlFor="quote-serviceLevel">
               Service Level
               <select id="quote-serviceLevel" name="serviceLevel" value={quoteForm.serviceLevel} onChange={handleQuoteChange}>
@@ -4265,148 +4640,6 @@ function App() {
           )}
         </div>
 
-        <div>
-          <section className="booking-summary ai-assistant-panel" aria-live="polite">
-            <div className="ai-assistant-panel__header">
-              <div>
-                <h3 style={{ marginTop: 0 }}>AI Quote Assistant</h3>
-                <p className="section-intro" style={{ marginBottom: 0 }}>
-                  Generate estimate, paperwork, email draft, and PDF.
-                </p>
-              </div>
-            </div>
-            <p className="ai-assistant-hint">Uses the quote details from your form.</p>
-
-            <form className="form ai-assistant-form" onSubmit={handleGenerateAiQuotePack}>
-              <details className="ai-assistant-optional">
-                <summary>Add special requirements (optional)</summary>
-                <label htmlFor="assistant-pickup-requirements" className="ai-assistant-form__field">
-                  Pickup Requirements
-                  <textarea
-                    id="assistant-pickup-requirements"
-                    name="pickupRequirements"
-                    rows="2"
-                    placeholder="Gate code, elevator, fragile handling, etc."
-                    value={assistantRequirements.pickupRequirements}
-                    onChange={handleAssistantRequirementsChange}
-                  />
-                </label>
-                <label htmlFor="assistant-delivery-requirements" className="ai-assistant-form__field">
-                  Delivery Requirements
-                  <textarea
-                    id="assistant-delivery-requirements"
-                    name="deliveryRequirements"
-                    rows="2"
-                    placeholder="Delivery window, call before arrival, etc."
-                    value={assistantRequirements.deliveryRequirements}
-                    onChange={handleAssistantRequirementsChange}
-                  />
-                </label>
-              </details>
-              <button type="submit" className="btn btn--solid ai-assistant-submit" disabled={aiAssistantLoading || !assistantIntakeReady}>
-                {aiAssistantLoading ? 'Generating AI Quote Pack...' : 'Generate AI Quote Pack'}
-              </button>
-            </form>
-
-            {aiAssistantResult && (
-              <div className="ai-assistant-results">
-                <div className="ai-assistant-summary">
-                  <p><strong>Reference:</strong> {aiAssistantResult.assistantQuoteId}</p>
-                  <p><strong>Estimate:</strong> {aiAssistantResult.freightEstimate?.label || 'N/A'}</p>
-                  <p><strong>Confidence:</strong> {aiAssistantResult.freightEstimate?.confidence || 'N/A'}%</p>
-                  <p><strong>Email:</strong> {assistantEmailPresentation?.label || 'Not sent yet'}</p>
-                </div>
-
-                <div className="ai-assistant-grid">
-                  <div className="ai-assistant-card">
-                    <p className="ai-assistant-card__title">Required Paperwork</p>
-                    <ul>
-                      {(aiAssistantResult.requiredPaperwork || []).map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="ai-assistant-card">
-                    <p className="ai-assistant-card__title">Customs Checklist</p>
-                    <ul>
-                      {(aiAssistantResult.customsChecklist || []).map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="ai-assistant-card">
-                    <p className="ai-assistant-card__title">Assumptions</p>
-                    <ul>
-                      {(aiAssistantResult.assumptions || []).map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="ai-assistant-card ai-assistant-card--email">
-                    <p className="ai-assistant-card__title">Customer Email Draft</p>
-                    <p className="ai-assistant-card__subtitle">
-                      <strong>Subject:</strong> {aiAssistantResult.customerEmail?.subject || 'N/A'}
-                    </p>
-                    <textarea
-                      readOnly
-                      rows="9"
-                      value={aiAssistantResult.customerEmail?.body || ''}
-                    />
-                    <div className="ai-assistant-actions ai-assistant-actions--inline">
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => copyTextToClipboard(aiAssistantResult.customerEmail?.body || '', 'AI email draft')}
-                      >
-                        Copy Draft
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ai-assistant-actions">
-                  <button
-                    type="button"
-                    className="btn btn--solid"
-                    onClick={() => downloadBase64Pdf(aiAssistantResult.quotePdf?.base64, aiAssistantResult.quotePdf?.fileName)}
-                    disabled={!aiAssistantResult.quotePdf?.base64}
-                  >
-                    Download Quote PDF
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => handleBookAiQuote({
-                      assistantQuoteId: aiAssistantResult.assistantQuoteId,
-                      origin: aiAssistantResult.intakeSummary?.origin,
-                      destination: aiAssistantResult.intakeSummary?.destination,
-                      deliveryParish: aiAssistantResult.intakeSummary?.deliveryParish,
-                      cargoType: aiAssistantResult.intakeSummary?.cargoType,
-                      quantity: aiAssistantResult.intakeSummary?.quantity,
-                      weightLbs: aiAssistantResult.intakeSummary?.weightLbs,
-                      dimensions: aiAssistantResult.intakeSummary?.dimensions,
-                      declaredValueUsd: aiAssistantResult.intakeSummary?.declaredValueUsd,
-                      pickupRequirements: aiAssistantResult.intakeSummary?.pickupRequirements,
-                      deliveryRequirements: aiAssistantResult.intakeSummary?.deliveryRequirements,
-                      serviceLevel: aiAssistantResult.intakeSummary?.serviceLevel,
-                      itemCategory: aiAssistantResult.intakeSummary?.itemCategory,
-                      intakeSummary: {
-                        serviceLevel: aiAssistantResult.intakeSummary?.serviceLevel,
-                        itemCategory: aiAssistantResult.intakeSummary?.itemCategory,
-                        contact: aiAssistantResult.intakeSummary?.contact || {},
-                      },
-                    })}
-                  >
-                    Book this AI Quote
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
       </section>
     );
   }
@@ -4418,7 +4651,7 @@ function App() {
     'living-room': '/catalog/section_pages/cat1-p003-i1.jpeg',
   };
 
-  const openCatalogGallery = (sectionKey, sectionTitle, setLabel, images, setCode = '') => {
+  const openCatalogGallery = (sectionKey, sectionTitle, setLabel, images, setCode = '', modelLabel = '') => {
     if (!images || images.length === 0) return;
 
     const normalizedImages = sectionKey === 'bedroom'
@@ -4426,12 +4659,164 @@ function App() {
       : images;
 
     setCatalogGallery({
+      sectionKey,
       title: sectionTitle,
       setLabel,
+      setCode,
+      modelLabel,
       images: normalizedImages,
       activeIndex: 0,
     });
+
+    setCatalogSetConfigurator({
+      fullName: String(currentUser?.fullName || '').trim(),
+      email: String(currentUser?.email || '').trim(),
+      phone: String(currentUser?.phone || '').trim(),
+      notes: '',
+      items: createCatalogSetDefaultConfig(sectionKey, setCode),
+    });
+
+    setCatalogSetInquiryMessage('');
   };
+
+  function updateCatalogConfiguratorField(field, value) {
+    setCatalogSetConfigurator((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function updateCatalogConfiguratorQty(componentKey, nextQty) {
+    const safeNextQty = Math.max(0, Math.min(99, Number(nextQty || 0)));
+    setCatalogSetConfigurator((current) => ({
+      ...current,
+      items: (Array.isArray(current.items) ? current.items : []).map((item) => (
+        item.key === componentKey
+          ? { ...item, qty: safeNextQty }
+          : item
+      )),
+    }));
+  }
+
+  async function handleCatalogSetInquirySubmit(channel = 'email') {
+    if (!catalogGallery) {
+      return;
+    }
+
+    const fullName = String(catalogSetConfigurator.fullName || '').trim();
+    const email = String(catalogSetConfigurator.email || '').trim().toLowerCase();
+    const phone = String(catalogSetConfigurator.phone || '').trim();
+    const notes = String(catalogSetConfigurator.notes || '').trim();
+    const selectedItems = (Array.isArray(catalogSetConfigurator.items) ? catalogSetConfigurator.items : [])
+      .filter((item) => Number(item?.qty || 0) > 0)
+      .map((item) => ({
+        itemCode: `${String(catalogGallery.modelLabel || 'MODEL').replace(/\s+/g, '-').toUpperCase()}-${item.key}`,
+        label: item.label,
+        qty: Number(item.qty),
+      }));
+
+    if (!fullName || !email) {
+      const message = 'Please provide at least your name and email before sending for pricing.';
+      setCatalogSetInquiryMessage(message);
+      setStatusMessage(message);
+      return;
+    }
+
+    if (!selectedItems.length) {
+      const message = 'Please select at least one furniture piece before sending for pricing.';
+      setCatalogSetInquiryMessage(message);
+      setStatusMessage(message);
+      return;
+    }
+
+    setCatalogSetInquiryLoading(true);
+    setCatalogSetInquiryMessage('Preparing your request...');
+    setStatusMessage('');
+
+    const shareLink = buildCatalogSetShareUrl({
+      sectionKey: catalogGallery.sectionKey,
+      setCode: catalogGallery.setCode,
+      modelLabel: catalogGallery.modelLabel,
+    });
+
+    let outboundWindow = null;
+    if (channel === 'whatsapp' || channel === 'instagram') {
+      outboundWindow = window.open('', '_blank');
+      if (outboundWindow) {
+        outboundWindow.opener = null;
+      }
+    }
+
+    try {
+      const response = await fetchWithApiFallback('/catalog-set-inquiries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({
+          fullName,
+          email,
+          phone,
+          sectionKey: catalogGallery.sectionKey,
+          setCode: catalogGallery.setCode,
+          setLabel: catalogGallery.setLabel,
+          modelNumber: catalogGallery.modelLabel,
+          selectedItems,
+          notes,
+          sourceChannel: channel,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to send furniture configuration right now. Please try again.');
+      }
+
+      const inquiryId = String(result?.inquiry?.inquiryId || '').trim();
+      const selectionSummary = formatCatalogSetSelectionSummary(catalogSetConfigurator.items);
+      const inquiryMessage = buildCatalogSetInquiryMessage({
+        inquiryId,
+        setLabel: catalogGallery.setLabel,
+        modelLabel: catalogGallery.modelLabel,
+        selectionSummary,
+        notes,
+        fullName,
+        shareLink,
+      });
+
+      if (channel === 'email') {
+        const subject = encodeURIComponent(`Furniture Set Pricing Request ${inquiryId}`);
+        const body = encodeURIComponent(inquiryMessage);
+        window.location.href = `mailto:${SHOP_AND_SHIP_HELP_EMAIL}?subject=${subject}&body=${body}`;
+      } else if (channel === 'whatsapp') {
+        const sent = openWhatsApp(inquiryMessage, outboundWindow);
+        if (!sent && outboundWindow && !outboundWindow.closed) {
+          outboundWindow.close();
+        }
+      } else if (channel === 'instagram') {
+        await copyTextToClipboard(inquiryMessage, 'Instagram message draft');
+        if (outboundWindow && !outboundWindow.closed) {
+          outboundWindow.location.href = INSTAGRAM_PROFILE_URL;
+        } else {
+          window.open(INSTAGRAM_PROFILE_URL, '_blank', 'noopener,noreferrer');
+        }
+      }
+
+      const successMessage = `Configuration ${inquiryId} captured. Continue in ${channel === 'email' ? 'email' : channel === 'whatsapp' ? 'WhatsApp' : 'Instagram'} for pricing.`;
+      setCatalogSetInquiryMessage(successMessage);
+      setStatusMessage(successMessage);
+    } catch (error) {
+      if (outboundWindow && !outboundWindow.closed) {
+        outboundWindow.close();
+      }
+      const errorMessage = error.message || 'Unable to send set configuration right now.';
+      setCatalogSetInquiryMessage(errorMessage);
+      setStatusMessage(errorMessage);
+    } finally {
+      setCatalogSetInquiryLoading(false);
+    }
+  }
 
   function CatalogPage() {
     return (
@@ -4512,6 +4897,7 @@ function App() {
 
   function CatalogSectionPage() {
     const { sectionKey } = useParams();
+    const sectionPageRef = useRef(null);
     const normalizeCatalogSectionKey = (value) => (
       String(value || '')
         .trim()
@@ -4545,7 +4931,31 @@ function App() {
       }
     }, [navigate, section, sectionKey]);
 
-    const sets = section ? (CATALOG_SETS[section.key] || []) : [];
+    useEffect(() => {
+      if (!sectionPageRef.current) {
+        return;
+      }
+
+      const isSmallScreen = window.matchMedia('(max-width: 640px)').matches;
+      if (!isSmallScreen) {
+        return;
+      }
+
+      const timer = window.setTimeout(() => {
+        sectionPageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }, [section]);
+
+    const sets = useMemo(() => {
+      if (!section) {
+        return [];
+      }
+
+      return groupCatalogSetsByDisplayModel(section.key, CATALOG_SETS[section.key] || []);
+    }, [section]);
+
     const orderedSets = useMemo(() => {
       if (!section) {
         return [];
@@ -4556,14 +4966,73 @@ function App() {
       }
 
       return [...sets]
-        .map((set, index) => ({
-          ...set,
-          previewImages: getBedroomPreviewImages(set.images, set.setCode),
-          index,
-          score: getBedroomSetScore(set),
-        }))
+        .map((set, index) => {
+          const prioritizedImages = prioritizeBedroomImages(set.images, set.setCode);
+          const previewImages = getBedroomPreviewImages(prioritizedImages, set.setCode);
+          return {
+            ...set,
+            previewImages,
+            hasBedImage: prioritizedImages.some((imagePath) => isBedroomBedImage(imagePath)),
+            index,
+            score: getBedroomSetScore(set),
+          };
+        })
+        .filter((set) => set.hasBedImage)
         .sort((leftSet, rightSet) => rightSet.score - leftSet.score || leftSet.index - rightSet.index);
     }, [section, sets]);
+
+    useEffect(() => {
+      if (!section || !orderedSets.length) {
+        return;
+      }
+
+      const params = new URLSearchParams(location.search);
+      const setParam = String(params.get('set') || '').trim();
+      const modelParam = normalizeCatalogModelNumber(params.get('model') || '');
+      if (!setParam && !modelParam) {
+        return;
+      }
+
+      const openKey = `${section.key}|${setParam.toUpperCase()}|${modelParam}`;
+      if (catalogSharedAutoOpenRef.current === openKey) {
+        return;
+      }
+
+      const targetIndex = orderedSets.findIndex((set, index) => {
+        const displayCode = String(set.displaySetCode || getCatalogDisplaySetCode(section.key, set.setCode)).trim();
+        const modelLabel = formatCatalogModelLabel(section.key, displayCode || set.setCode, index);
+        const normalizedLabel = normalizeCatalogModelNumber(modelLabel);
+        const normalizedDisplayCode = normalizeCatalogModelNumber(displayCode);
+        const normalizedSetCode = String(set.setCode || '').trim().toUpperCase();
+        const targetSetParam = String(setParam || '').trim().toUpperCase();
+
+        const setMatch = !targetSetParam
+          || targetSetParam === normalizedSetCode
+          || targetSetParam === String(displayCode || '').trim().toUpperCase()
+          || targetSetParam === normalizedLabel;
+
+        const modelMatch = !modelParam
+          || modelParam === normalizedLabel
+          || modelParam === normalizedDisplayCode;
+
+        return setMatch && modelMatch;
+      });
+
+      if (targetIndex < 0) {
+        return;
+      }
+
+      const target = orderedSets[targetIndex];
+      const modelLabel = target.displaySetCode
+        ? formatCatalogModelLabel(section.key, target.displaySetCode, targetIndex)
+        : formatCatalogModelLabel(section.key, target.setCode, targetIndex);
+      const setLabel = `${section.title} – ${modelLabel}`;
+      openCatalogGallery(section.key, section.title, setLabel, target.images || [], target.setCode, modelLabel);
+      catalogSharedAutoOpenRef.current = openKey;
+      const infoMessage = 'Opened shared set link. You can configure this set and send for pricing.';
+      setCatalogSetInquiryMessage(infoMessage);
+      setStatusMessage(infoMessage);
+    }, [location.search, orderedSets, section]);
 
     if (!section) {
       return (
@@ -4578,7 +5047,7 @@ function App() {
     }
 
     return (
-      <section className="card card--wide">
+      <section className="card card--wide" ref={sectionPageRef} tabIndex={-1}>
         <div className="catalog-header">
           <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="catalog-header__logo" />
           <div>
@@ -4600,9 +5069,9 @@ function App() {
 
         <div className="catalog-sets-grid">
           {orderedSets.map((set, index) => {
-            const modelLabel = set.setCode
-              ? set.setCode.replace('MODEL-', 'Model ')
-              : `Set ${index + 1}`;
+            const modelLabel = set.displaySetCode
+              ? formatCatalogModelLabel(section.key, set.displaySetCode, index)
+              : formatCatalogModelLabel(section.key, set.setCode, index);
             const setLabel = `${section.title} – ${modelLabel}`;
             const allImages = Array.isArray(set.images) ? set.images : [];
             const previewImages = Array.isArray(set.previewImages) && set.previewImages.length > 0
@@ -4617,15 +5086,21 @@ function App() {
                 className="set-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => openCatalogGallery(section.key, section.title, setLabel, set.images, set.setCode)}
+                onClick={() => openCatalogGallery(section.key, section.title, setLabel, allImages, set.setCode, modelLabel)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    openCatalogGallery(section.key, section.title, setLabel, set.images, set.setCode);
+                    openCatalogGallery(section.key, section.title, setLabel, allImages, set.setCode, modelLabel);
                   }
                 }}
                 aria-label={`Open full gallery for ${setLabel}`}
               >
+                <div className="set-card__title-row">
+                  <span className="set-card__title-model">{modelLabel}</span>
+                  {totalImages > 1 && (
+                    <span className="set-card__title-count">{totalImages} photos</span>
+                  )}
+                </div>
                 <div className="set-card__hero-wrap">
                   {heroImage && (
                     <img
@@ -4635,6 +5110,7 @@ function App() {
                       className="set-card__hero-img"
                     />
                   )}
+                  <span className="set-card__model-badge">{modelLabel}</span>
                   {totalImages > 1 && (
                     <span className="set-card__count">{totalImages} photos</span>
                   )}
@@ -4701,6 +5177,160 @@ function App() {
                     <img src={imagePath} alt="" loading="lazy" />
                   </button>
                 ))}
+              </div>
+
+              <div className="booking-summary" style={{ marginTop: '0.85rem' }}>
+                <h4 style={{ margin: '0 0 0.35rem' }}>Customize This Set</h4>
+                <p className="section-intro" style={{ marginBottom: '0.7rem' }}>
+                  Adjust quantities, then send your configured set for pricing.
+                </p>
+
+                <div style={{ display: 'grid', gap: '0.45rem', marginBottom: '0.7rem' }}>
+                  <label style={{ margin: 0 }}>
+                    Share Link (for Instagram caption)
+                    <input
+                      readOnly
+                      value={buildCatalogSetShareUrl({
+                        sectionKey: catalogGallery.sectionKey,
+                        setCode: catalogGallery.setCode,
+                        modelLabel: catalogGallery.modelLabel,
+                      })}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    style={{ justifySelf: 'start' }}
+                    onClick={() => copyTextToClipboard(
+                      buildCatalogSetShareUrl({
+                        sectionKey: catalogGallery.sectionKey,
+                        setCode: catalogGallery.setCode,
+                        modelLabel: catalogGallery.modelLabel,
+                      }),
+                      'set share link'
+                    )}
+                  >
+                    Copy Share Link
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gap: '0.45rem', marginBottom: '0.75rem' }}>
+                  {(Array.isArray(catalogSetConfigurator.items) ? catalogSetConfigurator.items : []).map((item) => (
+                    <div
+                      key={item.key}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.45rem 0.55rem',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(12,108,94,0.16)',
+                        background: 'rgba(255,255,255,0.85)',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{item.label}</span>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          style={{ minWidth: '2rem', padding: '0.22rem 0.5rem' }}
+                          onClick={() => updateCatalogConfiguratorQty(item.key, Number(item.qty || 0) - 1)}
+                          aria-label={`Decrease ${item.label}`}
+                        >
+                          -
+                        </button>
+                        <span style={{ minWidth: '1.5rem', textAlign: 'center', fontWeight: 700 }}>{Number(item.qty || 0)}</span>
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          style={{ minWidth: '2rem', padding: '0.22rem 0.5rem' }}
+                          onClick={() => updateCatalogConfiguratorQty(item.key, Number(item.qty || 0) + 1)}
+                          aria-label={`Increase ${item.label}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="section-intro" style={{ marginBottom: '0.65rem' }}>
+                  Selected: {formatCatalogSetSelectionSummary(catalogSetConfigurator.items)}
+                </p>
+
+                <div className="form-row">
+                  <label>
+                    Name
+                    <input
+                      value={catalogSetConfigurator.fullName}
+                      onChange={(event) => updateCatalogConfiguratorField('fullName', event.target.value)}
+                      placeholder="Your full name"
+                    />
+                  </label>
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      value={catalogSetConfigurator.email}
+                      onChange={(event) => updateCatalogConfiguratorField('email', event.target.value)}
+                      placeholder="name@example.com"
+                    />
+                  </label>
+                </div>
+
+                <div className="form-row">
+                  <label>
+                    Phone (optional)
+                    <input
+                      value={catalogSetConfigurator.phone}
+                      onChange={(event) => updateCatalogConfiguratorField('phone', event.target.value)}
+                      placeholder="+1 876 000 0000"
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  Notes (optional)
+                  <textarea
+                    rows={2}
+                    value={catalogSetConfigurator.notes}
+                    onChange={(event) => updateCatalogConfiguratorField('notes', event.target.value)}
+                    placeholder="Example: Keep Set Piece 1 and Set Piece 2 only"
+                  />
+                </label>
+
+                <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn--solid"
+                    disabled={catalogSetInquiryLoading}
+                    onClick={() => handleCatalogSetInquirySubmit('email')}
+                  >
+                    {catalogSetInquiryLoading ? 'Sending...' : 'Send via Email'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    disabled={catalogSetInquiryLoading}
+                    onClick={() => handleCatalogSetInquirySubmit('whatsapp')}
+                  >
+                    Send via WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    disabled={catalogSetInquiryLoading}
+                    onClick={() => handleCatalogSetInquirySubmit('instagram')}
+                  >
+                    Send via Instagram
+                  </button>
+                </div>
+                {catalogSetInquiryMessage && (
+                  <p className="section-intro" style={{ marginTop: '0.7rem', marginBottom: 0 }}>
+                    {catalogSetInquiryMessage}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -4847,12 +5477,6 @@ function App() {
 
           <h2>Purchase Assistance</h2>
           <p className="section-intro">Need us to purchase items on your behalf? Submit links and preferences below.</p>
-          <div className="booking-summary" style={{ marginBottom: '0.8rem' }}>
-            <p><strong>Want a fast landed-cost preview first?</strong> Use AI Estimator, then import the estimate into this cart.</p>
-            <button type="button" className="btn btn--ghost" onClick={() => navigate('/cart-estimator')}>
-              Open AI Estimator
-            </button>
-          </div>
           {!isAuthenticated && shopAccessMode !== 'guest' ? (
             <div className="guest-gate">
               <p className="section-intro">Choose how you want to proceed before sharing your product links.</p>
@@ -5318,31 +5942,6 @@ function App() {
           </div>
         </section>
 
-        <section className="card" style={{ background: '#f9f9f9', textAlign: 'center' }}>
-          <h2>Why Use the AI Estimator?</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>⚡</p>
-              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Instant Quotes</h3>
-              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>No waiting. Get your landed cost in seconds.</p>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>🎯</p>
-              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Accurate Pricing</h3>
-              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>Includes shipping, duties, taxes, and processing fees.</p>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>🛍️</p>
-              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Shop Freely</h3>
-              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>Browse any US store, know the total cost upfront.</p>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>✅</p>
-              <h3 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>Book & Ship</h3>
-              <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>One-click import to checkout. No surprises at payment.</p>
-            </div>
-          </div>
-        </section>
       </>
     );
   }
@@ -6172,14 +6771,6 @@ function App() {
               >
                 📦 Book Shipment
               </button>
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={() => navigate('/cart-estimator')}
-                style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
-              >
-                🤖 AI Estimator
-              </button>
             </div>
           </div>
         </section>
@@ -6313,6 +6904,10 @@ function App() {
                 const deliveryMeta = getQuoteDeliveryPresentation(delivery);
                 const pricingLabel = quote.pricingMode === 'estimated' && quote.estimatedRangeUsd
                   ? `$${quote.estimatedRangeUsd.low} - $${quote.estimatedRangeUsd.high} (estimated)`
+                  : quote.pricingMode === 'barrel-flat-rate' && Number.isFinite(Number(quote.quotedPriceUsd))
+                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (barrel flat rate)`
+                  : quote.pricingMode === 'air-rate-card' && Number.isFinite(Number(quote.quotedPriceUsd))
+                    ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (air rate card)`
                   : quote.pricingMode === 'hybrid-space-weight' && Number.isFinite(Number(quote.quotedPriceUsd))
                     ? `$${Number(quote.quotedPriceUsd).toFixed(2)} (hybrid${quote.spaceTierLabel ? ` • ${quote.spaceTierLabel}` : ''})`
                     : Number.isFinite(Number(quote.quotedPriceUsd))
@@ -6428,39 +7023,6 @@ function App() {
           )}
         </section>
 
-        {/* AI Estimator Feature Card */}
-        <section className="card dashboard-ai-feature">
-          <div className="ai-feature-header">
-            <div>
-              <h2>✨ Smart Shipping Estimator</h2>
-              <p className="section-intro">Paste an Amazon, Walmart, or eBay link. Get an instant quote in seconds.</p>
-            </div>
-          </div>
-          <div className="ai-feature-demo">
-            <div className="ai-feature-step">
-              <div className="step-number">1</div>
-              <p>Paste a product or cart link</p>
-            </div>
-            <div className="ai-feature-arrow">→</div>
-            <div className="ai-feature-step">
-              <div className="step-number">2</div>
-              <p>Get instant cost estimate</p>
-            </div>
-            <div className="ai-feature-arrow">→</div>
-            <div className="ai-feature-step">
-              <div className="step-number">3</div>
-              <p>Book with one click</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn--solid"
-            onClick={() => navigate('/cart-estimator')}
-            style={{ width: '100%', marginTop: '1.5rem' }}
-          >
-            Try the AI Estimator
-          </button>
-        </section>
 
         {/* Quick Actions Grid */}
         <section className="card">
@@ -8044,75 +8606,8 @@ function App() {
     );
   }
 
-  function ChatAssistant() {
-    return (
-      <>
-        <div className="floating-actions" aria-label="Support actions">
-          <button
-            type="button"
-            className="whatsapp-fab"
-            onClick={openWhatsApp}
-            aria-label="Open WhatsApp support"
-            title="WhatsApp support"
-          >
-            WhatsApp
-          </button>
-          <button
-            type="button"
-            className="chat-fab"
-            onClick={() => setChatOpen((open) => !open)}
-            aria-label="Open AI chat assistant"
-            title="AI chat assistant"
-          >
-            AI Chat
-          </button>
-        </div>
-
-        {chatOpen && (
-          <div className="chat-panel" role="dialog" aria-label="AI chat assistant">
-            <div className="chat-panel__header">
-              <div>
-                <strong>AI Chat Assistant</strong>
-                <p>Ask about booking, tracking, payment, or support.</p>
-              </div>
-              <button type="button" className="chat-panel__close" onClick={() => setChatOpen(false)} aria-label="Close chat assistant">
-                ×
-              </button>
-            </div>
-
-            <div className="chat-panel__messages" ref={chatMessagesRef}>
-              {chatMessages.map((message) => (
-                <div key={message.id} className={`chat-message chat-message--${message.role}`}>
-                  {message.text}
-                </div>
-              ))}
-            </div>
-
-            <div className="chat-panel__suggestions">
-              {CHATBOT_PROMPTS.map((prompt) => (
-                <button key={prompt.label} type="button" className="chat-suggestion" onClick={() => sendSuggestedChatPrompt(prompt)}>
-                  {prompt.label}
-                </button>
-              ))}
-            </div>
-
-            <form className="chat-panel__form" onSubmit={handleChatSubmit}>
-              <input
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder="Ask a question..."
-                aria-label="Chat message"
-              />
-              <button type="submit" className="btn btn--solid">Send</button>
-            </form>
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
-    <div className="page-shell">
+    <div className={`page-shell ${isCatalogRoute ? 'page-shell--catalog' : ''}`.trim()}>
       <header className="hero">
         <div className="hero__brand">
           <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="hero__logo" />
@@ -8206,7 +8701,7 @@ function App() {
           <Route path="/catalog/:sectionKey" element={<CatalogSectionPage />} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
-          <Route path="/cart-estimator" element={CartEstimatorPage()} />
+          <Route path="/cart-estimator" element={<Navigate to="/" replace />} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route
             path="/dashboard"
@@ -8250,7 +8745,6 @@ function App() {
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
-      <ChatAssistant />
       <Footer />
     </div>
   );
