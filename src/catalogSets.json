@@ -1,7 +1,7 @@
 {
   "living-room": [
     {
-      "setCode": "1250",
+      "setCode": "MODEL-2180",
       "images": [
         "/catalog/section_pages/cat1-p098-i1.jpeg",
         "/catalog/section_pages/cat1-p098-i2.jpeg",
@@ -10,7 +10,7 @@
       "dimensions": "1680*850*800, 720*670*1250"
     },
     {
-      "setCode": "2005",
+      "setCode": "MODEL-2181",
       "images": [
         "/catalog/section_pages/cat1-p043-i1.jpeg",
         "/catalog/section_pages/cat1-p043-i2.jpeg",
@@ -20,7 +20,7 @@
       "dimensions": "400*400*980, 380*380*910, 500*530*1150, 420*420*720"
     },
     {
-      "setCode": "2070",
+      "setCode": "MODEL-2182",
       "images": [
         "/catalog/section_pages/cat1-p096-i1.jpeg",
         "/catalog/section_pages/cat1-p096-i2.jpeg",
@@ -29,7 +29,7 @@
       "dimensions": "1955*460*2070, 1600*735*800, 700*700*1160"
     },
     {
-      "setCode": "2380",
+      "setCode": "MODEL-2183",
       "images": [
         "/catalog/section_pages/cat1-p097-i1.jpeg",
         "/catalog/section_pages/cat1-p097-i2.jpeg",
@@ -40,7 +40,7 @@
       "dimensions": "1880*500*2380, 1480*710*780, 720*740*1200"
     },
     {
-      "setCode": "2890",
+      "setCode": "MODEL-2184",
       "images": [
         "/catalog/section_pages/cat1-p003-i1.jpeg",
         "/catalog/section_pages/cat1-p003-i2.jpeg",
@@ -52,7 +52,7 @@
       "dimensions": "1120*1000*1180, 1780*1000*1250, 2180*1000*1290, 2600*1000*1310, 1230*1230*565, 710*710*670, 1600*910*510"
     },
     {
-      "setCode": "2891",
+      "setCode": "MODEL-2185",
       "images": [
         "/catalog/section_pages/cat1-p005-i1.jpeg",
         "/catalog/section_pages/cat1-p009-i1.jpeg",
@@ -67,7 +67,7 @@
       "dimensions": "1300*1300*510, 2000*1000*1120, 2760*1000*1220, 2380*1000*1150"
     },
     {
-      "setCode": "2893",
+      "setCode": "MODEL-2186",
       "images": [
         "/catalog/section_pages/cat1-p006-i1.jpeg",
         "/catalog/section_pages/cat1-p036-i1.jpeg",
@@ -82,7 +82,7 @@
       "dimensions": "920*865*1040, 630*630*580"
     },
     {
-      "setCode": "2898",
+      "setCode": "MODEL-2224",
       "images": [
         "/catalog/section_pages/cat1-p038-i1.jpeg",
         "/catalog/section_pages/cat1-p039-i1.jpeg",
@@ -98,7 +98,7 @@
       "dimensions": "2000*510*580, 2200*510*580, 2400*510*580, 2400*530*500, 2000*480*580, 2200*480*580, 2000*525*630, 2200*525*630"
     },
     {
-      "setCode": "2998",
+      "setCode": "MODEL-2188",
       "images": [
         "/catalog/section_pages/cat1-p008-i1.jpeg",
         "/catalog/section_pages/cat1-p008-i2.jpeg",
@@ -109,7 +109,7 @@
       "dimensions": "2000*1050*1260, 2960*1020*1300, 620*620*610, 800*840*1100, 1480*890*480, 2360*1020*1300"
     },
     {
-      "setCode": "3003",
+      "setCode": "MODEL-2189",
       "images": [
         "/catalog/section_pages/cat1-p010-i1.jpeg",
         "/catalog/section_pages/cat1-p011-i1.jpeg",
@@ -128,7 +128,7 @@
       "dimensions": "2350*1300*1430, 2850*1300*1500, 3200*1300*1500"
     },
     {
-      "setCode": "3005",
+      "setCode": "MODEL-2190",
       "images": [
         "/catalog/section_pages/cat1-p013-i1.jpeg",
         "/catalog/section_pages/cat1-p013-i2.jpeg",
@@ -141,7 +141,7 @@
       "dimensions": "1320*1100*1300, 670*500*430, 350*360*660, 2380*1000*1290, 2000*1100*1350, 3080*1100*1380, 580*450*450, 435*500*760"
     },
     {
-      "setCode": "3006",
+      "setCode": "MODEL-2191",
       "images": [
         "/catalog/section_pages/cat1-p015-i1.jpeg",
         "/catalog/section_pages/cat1-p015-i2.jpeg",
@@ -152,7 +152,7 @@
       "dimensions": "1180*1000*1220, 1960*1000*1390, 2500*1000*1390, 1280*1280*480, 700*700*650"
     },
     {
-      "setCode": "3012",
+      "setCode": "MODEL-2192",
       "images": [
         "/catalog/section_pages/cat1-p016-i1.jpeg",
         "/catalog/section_pages/cat1-p016-i2.jpeg",
@@ -162,7 +162,7 @@
       "dimensions": "1350*1050*1300, 2600*1050*1400, 2050*1050*1390, 2950*1050*1500, 1230*1230*565, 710*710*670, 1600*900*500"
     },
     {
-      "setCode": "3013",
+      "setCode": "MODEL-2193",
       "images": [
         "/catalog/section_pages/cat1-p017-i1.jpeg",
         "/catalog/section_pages/cat1-p017-i2.jpeg",
@@ -171,7 +171,7 @@
       "dimensions": "1300*1000*1280, 2450*1000*1350, 1850*1000*1300, 2850*1000*1380"
     },
     {
-      "setCode": "3022",
+      "setCode": "MODEL-2194",
       "images": [
         "/catalog/section_pages/cat1-p018-i1.jpeg",
         "/catalog/section_pages/cat1-p018-i2.jpeg",
@@ -180,7 +180,7 @@
       "dimensions": "1330*1070*1300, 2420*1030*1400, 1830*1050*1350, 2950*1070*1400, 570*570*650, 1200*1200*480"
     },
     {
-      "setCode": "3029",
+      "setCode": "MODEL-2195",
       "images": [
         "/catalog/section_pages/cat1-p019-i1.jpeg",
         "/catalog/section_pages/cat1-p019-i2.jpeg",
@@ -191,7 +191,7 @@
       "dimensions": "1290*1000*1280, 2450*1000*1300, 1960*1000*1290, 2960*1000*1320, 1300*1030*500, 600*600*635, 2200*500*650"
     },
     {
-      "setCode": "3035",
+      "setCode": "MODEL-2196",
       "images": [
         "/catalog/section_pages/cat1-p020-i1.jpeg",
         "/catalog/section_pages/cat1-p020-i2.jpeg",
@@ -202,7 +202,7 @@
       "dimensions": "1280*980*1280, 1670*1000*550, 660*660*735"
     },
     {
-      "setCode": "3051",
+      "setCode": "MODEL-2197",
       "images": [
         "/catalog/section_pages/cat1-p021-i1.jpeg",
         "/catalog/section_pages/cat1-p021-i2.jpeg",
@@ -212,14 +212,14 @@
       "dimensions": "1250*1150*1360, 2420*1100*1410, 1880*1130*1380, 2830*1100*1470, 1580*880*520, 620*620*650"
     },
     {
-      "setCode": "3055",
+      "setCode": "MODEL-2198",
       "images": [
         "/catalog/section_pages/cat1-p022-i1.jpeg"
       ],
       "dimensions": "1120*1100*1300, 2320*1100*1142, 1800*1100*1370, 750*750*610, 1600*900*500"
     },
     {
-      "setCode": "5003",
+      "setCode": "MODEL-2199",
       "images": [
         "/catalog/section_pages/cat1-p023-i1.jpeg",
         "/catalog/section_pages/cat1-p029-i1.jpeg",
@@ -234,7 +234,7 @@
       "dimensions": "2060*1050*1230, 1580*1050*1220, 1080*1050*1200, 1600*900*500"
     },
     {
-      "setCode": "6801",
+      "setCode": "MODEL-2200",
       "images": [
         "/catalog/section_pages/cat1-p041-i1.jpeg",
         "/catalog/section_pages/cat1-p041-i2.jpeg",
@@ -249,7 +249,7 @@
       "dimensions": "1350*425*870, 1500*430*880, 1550*470*900, 1380*528*845, 425*925, 1515*460*880, 1260*480*980, 1380*410*935"
     },
     {
-      "setCode": "6990",
+      "setCode": "MODEL-2201",
       "images": [
         "/catalog/section_pages/cat1-p025-i1.jpeg",
         "/catalog/section_pages/cat1-p025-i2.jpeg",
@@ -260,7 +260,7 @@
       "dimensions": "1200*1000*1300, 2090*1080*1300, 3195*1280*1490, 820*870*1160, 600*600*630"
     },
     {
-      "setCode": "6991",
+      "setCode": "MODEL-2202",
       "images": [
         "/catalog/section_pages/cat1-p026-i1.jpeg",
         "/catalog/section_pages/cat1-p026-i2.jpeg"
@@ -268,7 +268,7 @@
       "dimensions": "1200*1100*1330, 2350*1100*1350, 1850*1100*1350, 2820*1120*1420, 1600*850*500, 680*680*640, 1220*580*830"
     },
     {
-      "setCode": "8095",
+      "setCode": "MODEL-2203",
       "images": [
         "/catalog/section_pages/cat1-p042-i1.jpeg",
         "/catalog/section_pages/cat1-p042-i2.jpeg",
@@ -277,7 +277,7 @@
       "dimensions": "1220*700*780, 1480*813*780, 1750*990*780, 1600*900*780, 1800*900*780, 2030*970*780"
     },
     {
-      "setCode": "8201",
+      "setCode": "MODEL-2204",
       "images": [
         "/catalog/section_pages/cat1-p014-i1.jpeg",
         "/catalog/section_pages/cat1-p037-i1.jpeg",
@@ -290,7 +290,7 @@
       "dimensions": "680*680*710"
     },
     {
-      "setCode": "8202",
+      "setCode": "MODEL-2228",
       "images": [
         "/catalog/section_pages/cat1-p030-i1.jpeg",
         "/catalog/section_pages/cat1-p030-i2.jpeg",
@@ -300,7 +300,7 @@
       "dimensions": "1310*1130*1320, 1910*1130*1400, 2400*1130*1460, 680*680*720"
     },
     {
-      "setCode": "8210",
+      "setCode": "MODEL-2206",
       "images": [
         "/catalog/section_pages/cat1-p031-i1.jpeg",
         "/catalog/section_pages/cat1-p031-i2.jpeg",
@@ -309,7 +309,7 @@
       "dimensions": "1230*1030*1240, 1760*1040*1260, 2260*1050*1320, 1600*850*500, 680*680*640, 2200*480*480, 2400*480*480"
     },
     {
-      "setCode": "9612",
+      "setCode": "MODEL-2207",
       "images": [
         "/catalog/section_pages/cat1-p028-i1.jpeg",
         "/catalog/section_pages/cat1-p028-i2.jpeg",
@@ -320,7 +320,7 @@
       "dimensions": "600*600*610, 1600*850*510, 1180*1000*1170, 1730*1000*1120, 2320*1000*1230"
     },
     {
-      "setCode": "9828A",
+      "setCode": "MODEL-2208",
       "images": [
         "/catalog/section_pages/cat1-p032-i1.jpeg",
         "/catalog/section_pages/cat1-p032-i2.jpeg",
@@ -331,7 +331,7 @@
       "dimensions": "640*640*590, 1300*1300*520, 1580*1400*1380, 2250*1400*1400, 2900*1400*1450"
     },
     {
-      "setCode": "9830",
+      "setCode": "MODEL-2232",
       "images": [
         "/catalog/section_pages/cat1-p033-i1.jpeg",
         "/catalog/section_pages/cat1-p033-i2.jpeg",
@@ -340,7 +340,7 @@
       "dimensions": "1450*1150*1330, 2650*1150*1400, 2120*1150*1390, 3040*1150*1460"
     },
     {
-      "setCode": "9833",
+      "setCode": "MODEL-2233",
       "images": [
         "/catalog/section_pages/cat1-p034-i1.jpeg",
         "/catalog/section_pages/cat1-p034-i2.jpeg",
@@ -353,7 +353,7 @@
       "dimensions": "1200*1000*1180, 1800*1050*1280, 2260*1050*1330, 1200*1200*520, 630*630*650, 590*540*630, 650*650*675, 680*680*710"
     },
     {
-      "setCode": "9851",
+      "setCode": "MODEL-2211",
       "images": [
         "/catalog/section_pages/cat1-p035-i1.jpeg",
         "/catalog/section_pages/cat1-p035-i2.jpeg",
@@ -363,7 +363,7 @@
       "dimensions": "1260*1100*1350, 2370*1100*1450, 1800*1100*1380, 3000*1100*1490, 1800*1000*530, 1380*1380*500, 738*768*620"
     },
     {
-      "setCode": "CAT1-P001",
+      "setCode": "MODEL-2212",
       "images": [
         "/catalog/section_pages/cat1-p001-i1.jpeg",
         "/catalog/section_pages/cat1-p001-i2.jpeg"
@@ -371,7 +371,7 @@
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P002",
+      "setCode": "MODEL-2213",
       "images": [
         "/catalog/section_pages/cat1-p002-i1.jpeg",
         "/catalog/section_pages/cat1-p002-i2.jpeg",
@@ -382,7 +382,7 @@
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P004",
+      "setCode": "MODEL-2214",
       "images": [
         "/catalog/section_pages/cat1-p004-i1.jpeg",
         "/catalog/section_pages/cat1-p004-i2.jpeg",
@@ -391,7 +391,7 @@
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P007",
+      "setCode": "MODEL-2215",
       "images": [
         "/catalog/section_pages/cat1-p007-i1.jpeg",
         "/catalog/section_pages/cat1-p007-i2.jpeg",
@@ -400,7 +400,7 @@
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P012",
+      "setCode": "MODEL-2216",
       "images": [
         "/catalog/section_pages/cat1-p012-i1.jpeg",
         "/catalog/section_pages/cat1-p012-i2.jpeg"
@@ -408,21 +408,21 @@
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P024",
+      "setCode": "MODEL-2217",
       "images": [
         "/catalog/section_pages/cat1-p024-i1.jpeg"
       ],
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P027",
+      "setCode": "MODEL-2218",
       "images": [
         "/catalog/section_pages/cat1-p027-i1.jpeg"
       ],
       "dimensions": ""
     },
     {
-      "setCode": "CAT1-P051",
+      "setCode": "MODEL-2219",
       "images": [
         "/catalog/section_pages/cat1-p051-i1.jpeg",
         "/catalog/section_pages/cat1-p051-i2.jpeg",
@@ -998,7 +998,7 @@
   ],
   "bedroom": [
     {
-      "setCode": "2891",
+      "setCode": "MODEL-2153",
       "images": [
         "/catalog/section_pages/cat1-p046-i1.jpeg",
         "/catalog/section_pages/cat1-p046-i2.jpeg",
@@ -1007,7 +1007,7 @@
       "dimensions": "2230*2200*1580, 2430*2400*1580"
     },
     {
-      "setCode": "2893A",
+      "setCode": "MODEL-2154",
       "images": [
         "/catalog/section_pages/cat1-p047-i1.jpeg",
         "/catalog/section_pages/cat1-p047-i2.jpeg",
@@ -1018,7 +1018,7 @@
       "dimensions": "2010*2160*1700, 600*450*635, 930*440*1125, 1460*480*460, 750*660*1880"
     },
     {
-      "setCode": "2895",
+      "setCode": "MODEL-2155",
       "images": [
         "/catalog/section_pages/cat1-p054-i1.jpeg",
         "/catalog/section_pages/cat1-p073-i1.jpeg",
@@ -1033,7 +1033,7 @@
       "dimensions": "620*450*600, 485*485*1870, 1820*750*1150, 2180*2180*1700, 1360*450*800, 500*500*1040, 860*480*1120"
     },
     {
-      "setCode": "2899",
+      "setCode": "MODEL-2156",
       "images": [
         "/catalog/section_pages/cat1-p044-i1.jpeg",
         "/catalog/section_pages/cat1-p044-i2.jpeg",
@@ -1044,7 +1044,7 @@
       "dimensions": "1470*450*820, 1200*480*820, 500*500*1040, 2060*2130*1620, 600*450*635"
     },
     {
-      "setCode": "2998",
+      "setCode": "MODEL-2157",
       "images": [
         "/catalog/section_pages/cat1-p048-i1.jpeg",
         "/catalog/section_pages/cat1-p048-i2.jpeg",
@@ -1056,7 +1056,7 @@
       "dimensions": "2060*2200*1730, 2350*2400*1780, 620*450*680, 1480*530*450, 700*460*1050"
     },
     {
-      "setCode": "3002",
+      "setCode": "MODEL-2158",
       "images": [
         "/catalog/section_pages/cat1-p049-i1.jpeg",
         "/catalog/section_pages/cat1-p049-i2.jpeg",
@@ -1067,7 +1067,7 @@
       "dimensions": "2240*2140*1910, 560*420*620, 900*480*1080, 1600*620*880"
     },
     {
-      "setCode": "3003",
+      "setCode": "MODEL-2159",
       "images": [
         "/catalog/section_pages/cat1-p050-i1.jpeg",
         "/catalog/section_pages/cat1-p050-i2.jpeg",
@@ -1077,7 +1077,7 @@
       "dimensions": "2480*2200*1780, 680*465*690, 1400*450*500"
     },
     {
-      "setCode": "3005",
+      "setCode": "MODEL-2160",
       "images": [
         "/catalog/section_pages/cat1-p052-i1.jpeg",
         "/catalog/section_pages/cat1-p052-i2.jpeg",
@@ -1087,7 +1087,7 @@
       "dimensions": "2520*2150*1990, 2730*2350*1990, 600*480*642, 1800*620*480"
     },
     {
-      "setCode": "3006",
+      "setCode": "MODEL-2161",
       "images": [
         "/catalog/section_pages/cat1-p053-i1.jpeg",
         "/catalog/section_pages/cat1-p060-i1.jpeg",
@@ -1102,7 +1102,7 @@
       "dimensions": "1935*2285*1800, 670*458*682, 1180*480*780, 550*550*790, 580*390*515, 1595*715*835"
     },
     {
-      "setCode": "3018",
+      "setCode": "MODEL-2162",
       "images": [
         "/catalog/section_pages/cat1-p059-i1.jpeg",
         "/catalog/section_pages/cat1-p059-i2.jpeg",
@@ -1111,7 +1111,7 @@
       "dimensions": "2150*2150*1850, 650*500*660, 1280*500*790, 460*520*880"
     },
     {
-      "setCode": "3022",
+      "setCode": "MODEL-2163",
       "images": [
         "/catalog/section_pages/cat1-p061-i1.jpeg",
         "/catalog/section_pages/cat1-p061-i2.jpeg",
@@ -1120,7 +1120,7 @@
       "dimensions": "2450*2230*1880, 610*440*655, 1030*500, 480*480*458"
     },
     {
-      "setCode": "3030",
+      "setCode": "MODEL-2164",
       "images": [
         "/catalog/section_pages/cat1-p062-i1.jpeg",
         "/catalog/section_pages/cat1-p062-i2.jpeg"
@@ -1128,7 +1128,7 @@
       "dimensions": "2320*2250*1840, 500*450*650, 650*450*650"
     },
     {
-      "setCode": "3031",
+      "setCode": "MODEL-2165",
       "images": [
         "/catalog/section_pages/cat1-p063-i1.jpeg",
         "/catalog/section_pages/cat1-p063-i2.jpeg"
@@ -1136,7 +1136,7 @@
       "dimensions": "2050*2140*1755, 600*450*670"
     },
     {
-      "setCode": "3039",
+      "setCode": "MODEL-2166",
       "images": [
         "/catalog/section_pages/cat1-p064-i1.jpeg",
         "/catalog/section_pages/cat1-p064-i2.jpeg"
@@ -1144,7 +1144,7 @@
       "dimensions": "2220*2250*1670, 730*510*690"
     },
     {
-      "setCode": "3052",
+      "setCode": "MODEL-2167",
       "images": [
         "/catalog/section_pages/cat1-p057-i1.jpeg",
         "/catalog/section_pages/cat1-p057-i2.jpeg",
@@ -1156,7 +1156,7 @@
       "dimensions": "590*430*700, 2130*2150*1170, 570*520*780, 1350*480*790"
     },
     {
-      "setCode": "6223",
+      "setCode": "MODEL-2168",
       "images": [
         "/catalog/section_pages/cat1-p065-i1.jpeg",
         "/catalog/section_pages/cat1-p065-i2.jpeg"
@@ -1164,7 +1164,7 @@
       "dimensions": "2150*2200*1750, 650*450*690"
     },
     {
-      "setCode": "6801",
+      "setCode": "MODEL-2169",
       "images": [
         "/catalog/section_pages/cat1-p055-i1.jpeg",
         "/catalog/section_pages/cat1-p055-i2.jpeg",
@@ -1175,7 +1175,7 @@
       "dimensions": "2030*810*960, 650*480*680, 2140*2150*1850, 1300*500*810, 2000*685*2250, 430*350*450"
     },
     {
-      "setCode": "6991",
+      "setCode": "MODEL-2170",
       "images": [
         "/catalog/section_pages/cat1-p066-i1.jpeg",
         "/catalog/section_pages/cat1-p066-i2.jpeg"
@@ -1183,7 +1183,7 @@
       "dimensions": "2150*2200*1750, 700*460*1050"
     },
     {
-      "setCode": "8202",
+      "setCode": "MODEL-2171",
       "images": [
         "/catalog/section_pages/cat1-p067-i1.jpeg",
         "/catalog/section_pages/cat1-p067-i2.jpeg"
@@ -1191,7 +1191,7 @@
       "dimensions": "2150*2160*1720, 650*460*630"
     },
     {
-      "setCode": "8210",
+      "setCode": "MODEL-2172",
       "images": [
         "/catalog/section_pages/cat1-p068-i1.jpeg",
         "/catalog/section_pages/cat1-p068-i2.jpeg"
@@ -1199,7 +1199,7 @@
       "dimensions": "1820*2160*1620, 2120*2100*1670, 600*400*650"
     },
     {
-      "setCode": "8215",
+      "setCode": "MODEL-2173",
       "images": [
         "/catalog/section_pages/cat1-p069-i1.jpeg",
         "/catalog/section_pages/cat1-p069-i2.jpeg"
@@ -1207,7 +1207,7 @@
       "dimensions": "2100*2180*1620, 670*450*710"
     },
     {
-      "setCode": "9607",
+      "setCode": "MODEL-2174",
       "images": [
         "/catalog/section_pages/cat1-p045-i1.jpeg",
         "/catalog/section_pages/cat1-p045-i2.jpeg",
@@ -1218,7 +1218,7 @@
       "dimensions": "648*470*715, 2165*2150*1650, 2365*2350*1650"
     },
     {
-      "setCode": "9612",
+      "setCode": "MODEL-2175",
       "images": [
         "/catalog/section_pages/cat1-p070-i1.jpeg",
         "/catalog/section_pages/cat1-p070-i2.jpeg",
@@ -1230,7 +1230,7 @@
       "dimensions": "1990*2176*1585, 590*450*600, 490*570*825, 1139*450*790"
     },
     {
-      "setCode": "9801",
+      "setCode": "MODEL-2176",
       "images": [
         "/catalog/section_pages/cat1-p056-i1.jpeg",
         "/catalog/section_pages/cat1-p056-i2.jpeg"
@@ -1238,7 +1238,7 @@
       "dimensions": "660*450*650, 2200*2150*1700"
     },
     {
-      "setCode": "9818",
+      "setCode": "MODEL-2177",
       "images": [
         "/catalog/section_pages/cat1-p071-i1.jpeg",
         "/catalog/section_pages/cat1-p071-i2.jpeg"
@@ -1246,7 +1246,7 @@
       "dimensions": "2330*2280*1750, 655*455*680"
     },
     {
-      "setCode": "9833",
+      "setCode": "MODEL-2178",
       "images": [
         "/catalog/section_pages/cat1-p072-i1.jpeg",
         "/catalog/section_pages/cat1-p072-i2.jpeg",
@@ -1255,7 +1255,7 @@
       "dimensions": "2000*2160*1730, 600*400*650"
     },
     {
-      "setCode": "9901",
+      "setCode": "MODEL-2179",
       "images": [
         "/catalog/section_pages/cat1-p058-i1.jpeg",
         "/catalog/section_pages/cat1-p058-i2.jpeg",
@@ -1925,7 +1925,7 @@
   ],
   "dining-room": [
     {
-      "setCode": "1160",
+      "setCode": "MODEL-2220",
       "images": [
         "/catalog/section_pages/cat1-p083-i1.jpeg",
         "/catalog/section_pages/cat1-p083-i2.jpeg",
@@ -1935,7 +1935,7 @@
       "dimensions": "1280*490*920, 1580*490*920, 1600*850*790, 590*570*1160, 620*570*1160"
     },
     {
-      "setCode": "1180",
+      "setCode": "MODEL-2221",
       "images": [
         "/catalog/section_pages/cat1-p080-i1.jpeg",
         "/catalog/section_pages/cat1-p080-i2.jpeg",
@@ -1945,7 +1945,7 @@
       "dimensions": "680*630*1180, 1330*430*2200, 1350*1350*800, 1500*1500*800"
     },
     {
-      "setCode": "2008",
+      "setCode": "MODEL-2222",
       "images": [
         "/catalog/section_pages/cat1-p088-i1.jpeg",
         "/catalog/section_pages/cat1-p088-i2.jpeg",
@@ -1955,7 +1955,7 @@
       "dimensions": "1800*970*800, 560*530*1150"
     },
     {
-      "setCode": "2895",
+      "setCode": "MODEL-2223",
       "images": [
         "/catalog/section_pages/cat1-p076-i1.jpeg",
         "/catalog/section_pages/cat1-p076-i2.jpeg",
@@ -1965,7 +1965,7 @@
       "dimensions": "570*550*1120, 1350*1350*780, 1500*1500*780"
     },
     {
-      "setCode": "2898",
+      "setCode": "MODEL-2224",
       "images": [
         "/catalog/section_pages/cat1-p040-i1.jpeg",
         "/catalog/section_pages/cat1-p085-i1.jpeg",
@@ -1981,7 +1981,7 @@
       "dimensions": "2000*510*580, 2200*510*580, 2400*510*580, 690*470*2070, 1080*470*2085"
     },
     {
-      "setCode": "5001",
+      "setCode": "MODEL-2225",
       "images": [
         "/catalog/section_pages/cat1-p075-i1.jpeg",
         "/catalog/section_pages/cat1-p075-i2.jpeg",
@@ -1991,7 +1991,7 @@
       "dimensions": "1350*1350*800, 1500*1500*820, 670*590*1140"
     },
     {
-      "setCode": "5005",
+      "setCode": "MODEL-2226",
       "images": [
         "/catalog/section_pages/cat1-p077-i1.jpeg",
         "/catalog/section_pages/cat1-p078-i1.jpeg",
@@ -2007,7 +2007,7 @@
       "dimensions": "1500*1500*780, 640*600*1170"
     },
     {
-      "setCode": "6225",
+      "setCode": "MODEL-2227",
       "images": [
         "/catalog/section_pages/cat1-p086-i1.jpeg",
         "/catalog/section_pages/cat1-p086-i2.jpeg",
@@ -2017,7 +2017,7 @@
       "dimensions": "1600*900*800, 1800*1050*800, 610*650*1140, 660*650*1160, 700*700*1160"
     },
     {
-      "setCode": "8202",
+      "setCode": "MODEL-2228",
       "images": [
         "/catalog/section_pages/cat1-p087-i1.jpeg",
         "/catalog/section_pages/cat1-p087-i2.jpeg",
@@ -2026,7 +2026,7 @@
       "dimensions": "1600*950*800, 1800*1000*800, 660*620*1170, 660*640*1170"
     },
     {
-      "setCode": "8208",
+      "setCode": "MODEL-2229",
       "images": [
         "/catalog/section_pages/cat1-p079-i1.jpeg",
         "/catalog/section_pages/cat1-p079-i2.jpeg",
@@ -2035,7 +2035,7 @@
       "dimensions": "1350*1350*780, 1500*1500*780, 650*620*1170, 500*700*1950"
     },
     {
-      "setCode": "9219",
+      "setCode": "MODEL-2230",
       "images": [
         "/catalog/section_pages/cat1-p084-i1.jpeg",
         "/catalog/section_pages/cat1-p084-i2.jpeg",
@@ -2046,7 +2046,7 @@
       "dimensions": "1600*490*880, 2200*1200*780, 630*670*1200, 550*450*1330"
     },
     {
-      "setCode": "9803",
+      "setCode": "MODEL-2231",
       "images": [
         "/catalog/section_pages/cat1-p074-i1.jpeg",
         "/catalog/section_pages/cat1-p082-i1.jpeg",
@@ -2065,7 +2065,7 @@
       "dimensions": "1350*1350*840, 1500*1500*800, 600*680*1190"
     },
     {
-      "setCode": "9830",
+      "setCode": "MODEL-2232",
       "images": [
         "/catalog/section_pages/cat1-p081-i1.jpeg",
         "/catalog/section_pages/cat1-p092-i1.jpeg",
@@ -2076,7 +2076,7 @@
       "dimensions": "650*650*1200, 1905*460*2150, 1380*1380*820"
     },
     {
-      "setCode": "9833",
+      "setCode": "MODEL-2233",
       "images": [
         "/catalog/section_pages/cat1-p089-i1.jpeg",
         "/catalog/section_pages/cat1-p089-i2.jpeg",
@@ -2087,7 +2087,7 @@
       "dimensions": "1600*1000*800, 1800*1050*800, 660*650*1160, 700*700*1160, 690*470*2070, 1080*470*2085, 1600*500*890"
     },
     {
-      "setCode": "9906",
+      "setCode": "MODEL-2234",
       "images": [
         "/catalog/section_pages/cat1-p094-i1.jpeg",
         "/catalog/section_pages/cat1-p094-i2.jpeg"
