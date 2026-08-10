@@ -4070,6 +4070,9 @@ function App() {
                   <span>Transit Time:</span>
                   <strong>{instantQuoteResult.transit} days</strong>
                 </div>
+                <p className="section-intro" style={{ marginTop: '0.35rem', marginBottom: 0 }}>
+                  Quoted pricing includes freight and customs clearance.
+                </p>
                 {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' && (
                   <div className="result-item">
                     <span>Barrel Discount:</span>
@@ -4595,7 +4598,7 @@ function App() {
                 Price locked for 48 hours.
               </p>
               <div className="booking-summary" style={{ marginBottom: '0.7rem' }}>
-                <p><strong>Included now:</strong> base transport, delivery zone, and known handling surcharges.</p>
+                <p><strong>Included now:</strong> freight, customs clearance, base transport, delivery zone, and known handling surcharges.</p>
                 <p><strong>Could change:</strong> final declared value, restricted items, or warehouse re-weigh variance.</p>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
