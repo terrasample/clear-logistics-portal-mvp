@@ -1424,7 +1424,7 @@ function App() {
   }, [selectedAdminItem, currentPath]);
 
   useEffect(() => {
-    if (selectedAdminItem?.sectionKey !== 'bookings') {
+    if (!['bookings', 'shipments'].includes(selectedAdminItem?.sectionKey)) {
       setAdminShipmentStatusNote('');
       return;
     }
@@ -7239,11 +7239,43 @@ function App() {
         return acc;
       }, {});
     }, [adminOverview?.shipments]);
+    const shipmentGroups = useMemo(() => {
+      const source = Array.isArray(adminOverview?.shipments) ? adminOverview.shipments : [];
+      const groups = {
+        upcoming: [],
+        active: [],
+        past: [],
+      };
+
+      source.forEach((shipment) => {
+        const status = String(shipment?.status || '').trim().toLowerCase();
+        const isPast = status.includes('delivered')
+          || status.includes('cancel')
+          || status.includes('returned')
+          || status.includes('completed');
+        const isUpcoming = status.includes('order received')
+          || status.includes('pickup scheduled')
+          || status.includes('payment received');
+
+        if (isPast) {
+          groups.past.push(shipment);
+          return;
+        }
+        if (isUpcoming) {
+          groups.upcoming.push(shipment);
+          return;
+        }
+        groups.active.push(shipment);
+      });
+
+      return groups;
+    }, [adminOverview?.shipments]);
 
     const sectionMap = {
       rfqs: { key: 'rfqs', label: 'RFQs' },
       aiQuotePacks: { key: 'aiQuotePacks', label: 'AI Quote Packs' },
       bookings: { key: 'recentBookings', label: 'Bookings' },
+      shipments: { key: 'shipments', label: 'Shipments' },
       purchaseRequests: { key: 'purchaseRequests', label: 'Purchase Requests' },
       supportTickets: { key: 'supportTickets', label: 'Support Tickets' },
       scanEvents: { key: 'recentScans', label: 'Barcode Scans' },
@@ -7304,6 +7336,10 @@ function App() {
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'bookings' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('bookings')}>
             <strong>{counts?.bookings || 0}</strong>
             <span>Bookings</span>
+          </button>
+          <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'shipments' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('shipments')}>
+            <strong>{counts?.shipments || 0}</strong>
+            <span>Shipments</span>
           </button>
           <button type="button" className={`card admin-metric-card admin-metric-card--interactive ${activeAdminSection === 'purchaseRequests' ? 'is-active' : ''}`} onClick={() => handleMetricSelect('purchaseRequests')}>
             <strong>{counts?.purchaseRequests || 0}</strong>
@@ -7542,6 +7578,77 @@ function App() {
               ))}
               {!adminOverview?.supportTickets?.length && <p className="section-intro">No support tickets yet.</p>}
             </div>
+          </div>
+        </section>
+
+        <section className="card card--split">
+          <div>
+            <h2>Upcoming Shipments ({shipmentGroups.upcoming.length})</h2>
+            <div className="admin-list">
+              {shipmentGroups.upcoming.map((shipment) => (
+                <button
+                  type="button"
+                  key={`upcoming-${shipment.shipmentId}`}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('shipments');
+                    setSelectedAdminItem({ sectionKey: 'shipments', item: shipment });
+                  }}
+                >
+                  <p><strong>{shipment.shipmentId}</strong> - {shipment.fullName || 'Customer'}</p>
+                  <p><strong>Status:</strong> {shipment.status || 'Order Received'}</p>
+                  <p><strong>Pickup:</strong> {shipment.pickupDate || 'TBD'} {shipment.pickupCity ? `(${shipment.pickupCity})` : ''}</p>
+                </button>
+              ))}
+              {!shipmentGroups.upcoming.length && <p className="section-intro">No upcoming shipments.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h2>Active Shipments ({shipmentGroups.active.length})</h2>
+            <div className="admin-list">
+              {shipmentGroups.active.map((shipment) => (
+                <button
+                  type="button"
+                  key={`active-${shipment.shipmentId}`}
+                  className="booking-summary booking-summary--interactive"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => {
+                    setActiveAdminSection('shipments');
+                    setSelectedAdminItem({ sectionKey: 'shipments', item: shipment });
+                  }}
+                >
+                  <p><strong>{shipment.shipmentId}</strong> - {shipment.fullName || 'Customer'}</p>
+                  <p><strong>Status:</strong> {shipment.status || 'In Transit'}</p>
+                  <p><strong>Cargo:</strong> {shipment.quantity || '1'} {shipment.cargoType || shipment.unitType || 'Shipment'}</p>
+                </button>
+              ))}
+              {!shipmentGroups.active.length && <p className="section-intro">No active shipments.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <h2>Past Shipments ({shipmentGroups.past.length})</h2>
+          <div className="admin-list">
+            {shipmentGroups.past.map((shipment) => (
+              <button
+                type="button"
+                key={`past-${shipment.shipmentId}`}
+                className="booking-summary booking-summary--interactive"
+                style={{ marginBottom: '0.75rem' }}
+                onClick={() => {
+                  setActiveAdminSection('shipments');
+                  setSelectedAdminItem({ sectionKey: 'shipments', item: shipment });
+                }}
+              >
+                <p><strong>{shipment.shipmentId}</strong> - {shipment.fullName || 'Customer'}</p>
+                <p><strong>Status:</strong> {shipment.status || 'Delivered'}</p>
+                <p><strong>Last Updated:</strong> {shipment.lastStatusUpdatedAt ? new Date(shipment.lastStatusUpdatedAt).toLocaleString() : 'N/A'}</p>
+              </button>
+            ))}
+            {!shipmentGroups.past.length && <p className="section-intro">No past shipments.</p>}
           </div>
         </section>
 
@@ -7797,6 +7904,67 @@ function App() {
                       Mark Resolved
                     </button>
                   </div>
+                ) : null}
+
+                {selectedAdminItem.sectionKey === 'shipments' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.35rem 1rem', margin: '0.75rem 0' }}>
+                      <p><strong>Shipment Journey:</strong> {shipmentStatusById[selectedAdminItem.item.shipmentId] || selectedAdminItem.item.status || 'Order Received'}</p>
+                      <p><strong>Pickup Date:</strong> {selectedAdminItem.item.pickupDate || 'TBD'}</p>
+                      <p><strong>Pickup City:</strong> {selectedAdminItem.item.pickupCity || 'N/A'}</p>
+                      <p><strong>Cargo:</strong> {selectedAdminItem.item.quantity || '1'} {selectedAdminItem.item.cargoType || selectedAdminItem.item.unitType || 'Shipment'}</p>
+                    </div>
+
+                    <label>
+                      Update Shipment Journey
+                      <select
+                        value={adminShipmentStatusDraft}
+                        onChange={(event) => setAdminShipmentStatusDraft(event.target.value)}
+                        disabled={adminActionLoading}
+                      >
+                        {ADMIN_SHIPMENT_JOURNEY_STATUS_OPTIONS.map((statusOption) => (
+                          <option key={statusOption} value={statusOption}>{statusOption}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Admin Note (optional)
+                      <textarea
+                        rows="2"
+                        value={adminShipmentStatusNote}
+                        onChange={(event) => setAdminShipmentStatusNote(event.target.value)}
+                        placeholder="Example: Forwarder confirmed vessel loaded."
+                        disabled={adminActionLoading}
+                      />
+                    </label>
+
+                    <div className="admin-action-row">
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        disabled={adminActionLoading || !selectedAdminItem.item.shipmentId || !adminShipmentStatusDraft}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/shipments/${selectedAdminItem.item.shipmentId}/status`,
+                          body: { status: adminShipmentStatusDraft, note: adminShipmentStatusNote },
+                          successMessage: `Shipment ${selectedAdminItem.item.shipmentId} moved to ${adminShipmentStatusDraft}.`
+                        })}
+                      >
+                        Update Journey Status
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => {
+                          if (selectedAdminItem.item.shipmentId) {
+                            setTrackingId(selectedAdminItem.item.shipmentId);
+                            navigate('/tracking');
+                          }
+                        }}
+                      >
+                        Open Tracking
+                      </button>
+                    </div>
+                  </>
                 ) : null}
 
                 {selectedAdminItem.sectionKey === 'bookings' ? (

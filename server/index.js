@@ -3273,6 +3273,26 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
   const visibleSupportTickets = filterDemoRecordsForEmail(data.supportTickets, req.user.email);
   const visibleScanEvents = filterDemoRecordsForEmail(data.scanEvents, req.user.email);
   const visibleShipments = filterDemoRecordsForEmail(data.shipments, req.user.email);
+  const bookingByShipmentId = visibleBookings.reduce((acc, booking) => {
+    const shipmentId = String(booking?.shipmentId || '').trim();
+    if (!shipmentId) return acc;
+    acc[shipmentId] = booking;
+    return acc;
+  }, {});
+
+  const visibleShipmentsEnriched = visibleShipments.map((shipment) => {
+    const shipmentId = String(shipment?.shipmentId || '').trim();
+    const booking = bookingByShipmentId[shipmentId] || null;
+    return {
+      ...shipment,
+      fullName: shipment?.fullName || booking?.fullName || '',
+      email: shipment?.email || booking?.email || '',
+      phone: shipment?.phone || booking?.phone || '',
+      pickupDate: shipment?.pickupDate || booking?.pickupDate || '',
+      pickupCity: shipment?.pickupCity || booking?.pickupCity || '',
+      createdAt: shipment?.createdAt || booking?.createdAt || '',
+    };
+  });
 
   const sortByCreated = (items) => [...items].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
@@ -3292,7 +3312,7 @@ app.get('/api/admin/overview', requireAuth, async (req, res) => {
     purchaseRequests: sortByCreated(visiblePurchaseRequests).slice(0, 12),
     supportTickets: sortByCreated(visibleSupportTickets).slice(0, 12),
     recentScans: sortByCreated(visibleScanEvents).slice(0, 12),
-    shipments: sortByCreated(visibleShipments).slice(0, 12),
+    shipments: sortByCreated(visibleShipmentsEnriched),
   });
 });
 
