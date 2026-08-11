@@ -373,6 +373,18 @@ const PERSONAL_FEATURES = [
   'Fast support for delivery questions',
 ];
 
+const ADMIN_SHIPMENT_JOURNEY_STATUS_OPTIONS = [
+  'Order Received',
+  'Pickup Scheduled',
+  'Picked Up',
+  'Freight Received',
+  'Loaded on Vessel',
+  'Arrived in Kingston',
+  'Customs Clearance',
+  'Out for Delivery',
+  'Delivered',
+];
+
 const SITE_MAP = [
   'Home',
   'Services: Freight Shipping, Air Freight, Vehicle Imports, Commercial Freight, Door-to-Door',
@@ -1330,6 +1342,8 @@ function App() {
   const [dispatcherReassignMap, setDispatcherReassignMap] = useState({});
   const [activeAdminSection, setActiveAdminSection] = useState('rfqs');
   const [selectedAdminItem, setSelectedAdminItem] = useState(null);
+  const [adminShipmentStatusDraft, setAdminShipmentStatusDraft] = useState('Order Received');
+  const [adminShipmentStatusNote, setAdminShipmentStatusNote] = useState('');
   const [shopAccessMode, setShopAccessMode] = useState('');
   const [shopStoreInputMode, setShopStoreInputMode] = useState('catalog');
   const [customStoreName, setCustomStoreName] = useState('');
@@ -1408,6 +1422,19 @@ function App() {
       adminWorkspaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [selectedAdminItem, currentPath]);
+
+  useEffect(() => {
+    if (selectedAdminItem?.sectionKey !== 'bookings') {
+      setAdminShipmentStatusNote('');
+      return;
+    }
+
+    const shipmentId = String(selectedAdminItem?.item?.shipmentId || '').trim();
+    const shipment = (adminOverview?.shipments || []).find((entry) => String(entry?.shipmentId || '').trim() === shipmentId);
+    const currentStatus = String(shipment?.status || selectedAdminItem?.item?.status || 'Order Received').trim() || 'Order Received';
+    setAdminShipmentStatusDraft(currentStatus);
+    setAdminShipmentStatusNote('');
+  }, [selectedAdminItem, adminOverview]);
 
   const [scannedShipmentId, setScannedShipmentId] = useState('');
   const [scanInput, setScanInput] = useState('');
@@ -7202,6 +7229,16 @@ function App() {
 
   function AdminDashboardPage({ overviewOnly = false } = {}) {
     const counts = adminOverview?.counts;
+    const shipmentStatusById = useMemo(() => {
+      const source = Array.isArray(adminOverview?.shipments) ? adminOverview.shipments : [];
+      return source.reduce((acc, shipment) => {
+        const shipmentId = String(shipment?.shipmentId || '').trim();
+        if (shipmentId) {
+          acc[shipmentId] = String(shipment?.status || '').trim() || 'Order Received';
+        }
+        return acc;
+      }, {});
+    }, [adminOverview?.shipments]);
 
     const sectionMap = {
       rfqs: { key: 'rfqs', label: 'RFQs' },
@@ -7442,6 +7479,7 @@ function App() {
                 >
                   <p><strong>{booking.shipmentId}</strong> - {booking.fullName}</p>
                   <p><strong>Status:</strong> {booking.paymentStatus || 'pending'} / {booking.serviceLevel}</p>
+                  <p><strong>Journey:</strong> {shipmentStatusById[booking.shipmentId] || booking.status || 'Order Received'}</p>
                   <p><strong>Pickup:</strong> {booking.pickupCity} on {booking.pickupDate}</p>
                 </button>
               ))}
@@ -7762,44 +7800,85 @@ function App() {
                 ) : null}
 
                 {selectedAdminItem.sectionKey === 'bookings' ? (
-                  <div className="admin-action-row">
-                    <button
-                      type="button"
-                      className="btn btn--solid"
-                      disabled={adminActionLoading}
-                      onClick={() => handleAdminRecordAction({
-                        endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
-                        body: { paymentStatus: 'paid' },
-                        successMessage: `Booking ${selectedAdminItem.item.bookingId} marked paid.`
-                      })}
-                    >
-                      Mark Paid
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      disabled={adminActionLoading}
-                      onClick={() => handleAdminRecordAction({
-                        endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
-                        body: { paymentStatus: 'pending' },
-                        successMessage: `Booking ${selectedAdminItem.item.bookingId} moved to pending payment.`
-                      })}
-                    >
-                      Set Pending
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      onClick={() => {
-                        if (selectedAdminItem.item.shipmentId) {
-                          setTrackingId(selectedAdminItem.item.shipmentId);
-                          navigate('/tracking');
-                        }
-                      }}
-                    >
-                      Open Tracking
-                    </button>
-                  </div>
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.35rem 1rem', margin: '0.75rem 0' }}>
+                      <p><strong>Shipment Journey:</strong> {shipmentStatusById[selectedAdminItem.item.shipmentId] || selectedAdminItem.item.status || 'Order Received'}</p>
+                    </div>
+
+                    <label>
+                      Update Shipment Journey
+                      <select
+                        value={adminShipmentStatusDraft}
+                        onChange={(event) => setAdminShipmentStatusDraft(event.target.value)}
+                        disabled={adminActionLoading}
+                      >
+                        {ADMIN_SHIPMENT_JOURNEY_STATUS_OPTIONS.map((statusOption) => (
+                          <option key={statusOption} value={statusOption}>{statusOption}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Admin Note (optional)
+                      <textarea
+                        rows="2"
+                        value={adminShipmentStatusNote}
+                        onChange={(event) => setAdminShipmentStatusNote(event.target.value)}
+                        placeholder="Example: Freight forwarder confirmed loaded on vessel."
+                        disabled={adminActionLoading}
+                      />
+                    </label>
+
+                    <div className="admin-action-row">
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        disabled={adminActionLoading || !selectedAdminItem.item.shipmentId || !adminShipmentStatusDraft}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/shipments/${selectedAdminItem.item.shipmentId}/status`,
+                          body: { status: adminShipmentStatusDraft, note: adminShipmentStatusNote },
+                          successMessage: `Shipment ${selectedAdminItem.item.shipmentId} moved to ${adminShipmentStatusDraft}.`
+                        })}
+                      >
+                        Update Journey Status
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--solid"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
+                          body: { paymentStatus: 'paid' },
+                          successMessage: `Booking ${selectedAdminItem.item.bookingId} marked paid.`
+                        })}
+                      >
+                        Mark Paid
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={adminActionLoading}
+                        onClick={() => handleAdminRecordAction({
+                          endpoint: `/admin/bookings/${selectedAdminItem.item.bookingId}/payment`,
+                          body: { paymentStatus: 'pending' },
+                          successMessage: `Booking ${selectedAdminItem.item.bookingId} moved to pending payment.`
+                        })}
+                      >
+                        Set Pending
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => {
+                          if (selectedAdminItem.item.shipmentId) {
+                            setTrackingId(selectedAdminItem.item.shipmentId);
+                            navigate('/tracking');
+                          }
+                        }}
+                      >
+                        Open Tracking
+                      </button>
+                    </div>
+                  </>
                 ) : null}
               </div>
             ) : (
