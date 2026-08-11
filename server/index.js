@@ -56,7 +56,11 @@ const QUOTE_NUDGE_DEFAULT_STEPS_MS = [
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-const publicApiBase = process.env.PUBLIC_API_BASE || `http://localhost:${port}`;
+const configuredPublicApiBase = String(process.env.PUBLIC_API_BASE || '').trim();
+let activePort = port;
+function getPublicApiBase() {
+  return configuredPublicApiBase || `http://localhost:${activePort}`;
+}
 const allowDemoSeed = String(
   process.env.ALLOW_DEMO_SEED || (process.env.NODE_ENV === 'production' ? 'false' : 'true')
 ).toLowerCase() === 'true';
@@ -69,6 +73,32 @@ let quoteNudgeWorkerTimer = null;
 let quoteNudgeTickInProgress = false;
 let scanAlertWorkerTimer = null;
 let scanAlertTickInProgress = false;
+
+function startServerWithPortRetry(initialPort, maxAttempts = 50) {
+  const sanitizedInitialPort = Number.isInteger(initialPort) && initialPort > 0 ? initialPort : 8787;
+
+  return new Promise((resolve, reject) => {
+    const attemptListen = (candidatePort, attemptNumber) => {
+      const server = app.listen(candidatePort, () => {
+        resolve({ server, port: candidatePort, attemptNumber });
+      });
+
+      server.once('error', (error) => {
+        const isPortInUse = error && String(error.code || '') === 'EADDRINUSE';
+        if (isPortInUse && attemptNumber < maxAttempts) {
+          console.warn(
+            `[startup] Port ${candidatePort} is in use. Retrying on ${candidatePort + 1} (attempt ${attemptNumber + 1}/${maxAttempts}).`
+          );
+          attemptListen(candidatePort + 1, attemptNumber + 1);
+          return;
+        }
+        reject(error);
+      });
+    };
+
+    attemptListen(sanitizedInitialPort, 1);
+  });
+}
 const requirePersistentDataPath = String(
   process.env.REQUIRE_PERSISTENT_DATA_PATH || 'false'
 ).toLowerCase() === 'true';
@@ -2094,7 +2124,7 @@ function buildQuoteNudgeContent(quote, stepIndex) {
       : 'Your pricing estimate is ready in the portal.';
 
   const bookingUrl = `${frontendUrl}/booking`;
-  const unsubscribeUrl = `${publicApiBase}/api/quotes/${encodeURIComponent(quoteId)}/nudges/unsubscribe?email=${encodeURIComponent(String(quote?.email || ''))}`;
+  const unsubscribeUrl = `${getPublicApiBase()}/api/quotes/${encodeURIComponent(quoteId)}/nudges/unsubscribe?email=${encodeURIComponent(String(quote?.email || ''))}`;
 
   const text = [
     `Hi ${recipientName},`,
@@ -5747,11 +5777,14 @@ ensureDataFile()
         recommendations: emailHealth.recommendations,
       });
     }
-    app.listen(port, () => {
-      console.log(`API running on http://localhost:${port}`);
-      startQuoteNudgeWorker();
-      startScanAlertWorker();
-    });
+    const { port: listeningPort } = await startServerWithPortRetry(port);
+    activePort = listeningPort;
+    if (listeningPort !== port) {
+      console.warn(`[startup] Requested port ${port} was busy. Listening on port ${listeningPort}.`);
+    }
+    console.log(`API running on http://localhost:${listeningPort}`);
+    startQuoteNudgeWorker();
+    startScanAlertWorker();
   })
   .catch((error) => {
     console.error('Failed to start API:', error);
