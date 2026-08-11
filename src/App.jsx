@@ -7,12 +7,14 @@ import SUPPLIER_BED_HEROES from './supplierBedHeroes.json';
 
 const API_BASE_CANDIDATES = Array.from(new Set([
   String(import.meta.env.VITE_API_BASE || '').trim(),
-  window.location.hostname === 'localhost'
-    ? 'http://localhost:8787/api'
-    : 'https://clear-logistics-api.onrender.com/api',
-  window.location.hostname === 'localhost'
-    ? ''
-    : `${window.location.origin}/api`,
+  // On a real device (Capacitor native), window.location.hostname is 'localhost'
+  // via capacitor:// scheme — detect native to use the real production API
+  (window.Capacitor?.isNativePlatform?.() || window.location.hostname !== 'localhost')
+    ? 'https://clear-logistics-api.onrender.com/api'
+    : 'http://localhost:8787/api',
+  (!window.Capacitor?.isNativePlatform?.() && window.location.hostname !== 'localhost')
+    ? `${window.location.origin}/api`
+    : null,
 ].filter(Boolean).map((base) => base.replace(/\/$/, ''))));
 
 const API_BASE = API_BASE_CANDIDATES[0];
