@@ -4539,21 +4539,23 @@ function App() {
               {String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Barrel Quantity' : 'Package Quantity'}
               <input id="quote-quantity" type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
             </label>
-            <label htmlFor="quote-weight-form">
-              {String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Weight (not required for barrels)' : 'Weight (lbs)'}
-              <input
-                id="quote-weight-form"
-                type="number"
-                name="weight"
-                value={quoteForm.weight}
-                onChange={handleQuoteChange}
-                min="0.01"
-                step="0.01"
-                required={String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && !quoteForm.dontKnowWeight && !quoteForm.hasMixedBoxWeights}
-                disabled={String(quoteForm.cargoType || '').toLowerCase() === 'barrel' || quoteForm.dontKnowWeight || quoteForm.hasMixedBoxWeights}
-                placeholder={String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Skipped for barrel pricing' : (quoteForm.dontKnowWeight ? 'Skip when unknown' : '')}
-              />
-            </label>
+            {String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && (
+              <label htmlFor="quote-weight-form">
+                Weight (lbs)
+                <input
+                  id="quote-weight-form"
+                  type="number"
+                  name="weight"
+                  value={quoteForm.weight}
+                  onChange={handleQuoteChange}
+                  min="0.01"
+                  step="0.01"
+                  required={!quoteForm.dontKnowWeight && !quoteForm.hasMixedBoxWeights}
+                  disabled={quoteForm.dontKnowWeight || quoteForm.hasMixedBoxWeights}
+                  placeholder={quoteForm.dontKnowWeight ? 'Skip when unknown' : ''}
+                />
+              </label>
+            )}
             {String(quoteForm.cargoType || '').toLowerCase() === 'box' && !quoteForm.dontKnowWeight && (
               <label htmlFor="quote-hasMixedBoxWeights" className="checkbox-label">
                 <input
