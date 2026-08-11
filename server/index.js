@@ -148,7 +148,8 @@ const quoteNudgeStepsMs = [
   Number(process.env.NUDGE_QUOTE_STEP_2_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[1]),
   Number(process.env.NUDGE_QUOTE_STEP_3_MS || QUOTE_NUDGE_DEFAULT_STEPS_MS[2]),
 ].filter((ms) => Number.isFinite(ms) && ms > 0);
-const scanAlertsEnabled = String(process.env.SCAN_ALERTS_ENABLED || 'true').toLowerCase() === 'true';
+const isRealEnvironment = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+const scanAlertsEnabled = isRealEnvironment && String(process.env.SCAN_ALERTS_ENABLED || 'true').toLowerCase() === 'true';
 const scanAlertIntervalMs = Math.max(60 * 1000, Number(process.env.SCAN_ALERT_INTERVAL_MS || 5 * 60 * 1000));
 const scanRepeatWindowMs = Math.max(60 * 1000, Number(process.env.SCAN_REPEAT_WINDOW_MINUTES || 10) * 60 * 1000);
 const scanRepeatThreshold = Math.max(2, Number(process.env.SCAN_REPEAT_THRESHOLD || 3));
@@ -601,7 +602,11 @@ const FLORIDA_TO_JAMAICA_RATE_CARD_JMD = {
 const FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD = 450;
 const JMD_PER_USD = 160;
 const SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD = 240;
-const SINGLE_BARREL_PICKUP_AND_HANDLING_USD = 100;
+const JACKSONVILLE_BARREL_PICKUP_AND_HANDLING_USD = 139;
+const BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE = Number(process.env.BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE || 1.35);
+const BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON = Number(process.env.BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON || 3.9);
+const BARREL_PICKUP_VEHICLE_MPG = Number(process.env.BARREL_PICKUP_VEHICLE_MPG || 17);
+const BARREL_PICKUP_GAS_COST_MULTIPLIER = Number(process.env.BARREL_PICKUP_GAS_COST_MULTIPLIER || 1);
 const BARREL_ADDITIONAL_DISCOUNT_RATE = 0.03;
 
 function normalizeCargoKey(value) {
@@ -615,6 +620,92 @@ function normalizeParishKey(value) {
 function isDropOffHandoff(payload) {
   const handoffType = String(payload?.handoffType || '').trim().toLowerCase();
   return handoffType === 'dropoff' || handoffType === 'drop-off' || handoffType === 'drop_off';
+}
+
+function resolvePositiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isJacksonvilleAreaPickup(payload) {
+  const locationBlob = [
+    payload?.pickupCity,
+    payload?.pickupAddress,
+    payload?.origin,
+    payload?.pickupLocation,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return /(jacksonville|jax|duval)/.test(locationBlob);
+}
+
+function resolvePickupDistanceMiles(payload) {
+  const candidates = [
+    payload?.pickupDistanceMiles,
+    payload?.distanceMiles,
+    payload?.pickupMiles,
+    payload?.mileageMiles,
+    payload?.mileage,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return 0;
+}
+
+function resolveBarrelPickupAndHandling(payload) {
+  if (isDropOffHandoff(payload)) {
+    return {
+      totalUsd: 0,
+      model: 'dropoff',
+    };
+  }
+
+  if (isJacksonvilleAreaPickup(payload)) {
+    return {
+      totalUsd: JACKSONVILLE_BARREL_PICKUP_AND_HANDLING_USD,
+      model: 'jacksonville-flat-rate',
+    };
+  }
+
+  const distanceMiles = resolvePickupDistanceMiles(payload);
+  const mileageRateUsdPerMile = resolvePositiveNumber(payload?.barrelMileageRateUsdPerMile, BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE);
+  const gasPriceUsdPerGallon = resolvePositiveNumber(payload?.gasPriceUsdPerGallon, BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON);
+  const vehicleMpg = resolvePositiveNumber(payload?.vehicleMpg, BARREL_PICKUP_VEHICLE_MPG);
+  const gasCostMultiplier = resolvePositiveNumber(payload?.gasCostMultiplier, BARREL_PICKUP_GAS_COST_MULTIPLIER);
+
+  if (distanceMiles <= 0) {
+    return {
+      totalUsd: JACKSONVILLE_BARREL_PICKUP_AND_HANDLING_USD,
+      model: 'outside-jacksonville-fallback-flat-rate',
+      distanceMiles,
+      mileageRateUsdPerMile,
+      gasPriceUsdPerGallon,
+      vehicleMpg,
+      gasCostMultiplier,
+      fallbackApplied: true,
+    };
+  }
+
+  const mileageChargeUsd = distanceMiles * mileageRateUsdPerMile;
+  const gasChargeUsd = (distanceMiles / vehicleMpg) * gasPriceUsdPerGallon * gasCostMultiplier;
+  const totalUsd = mileageChargeUsd + gasChargeUsd;
+
+  return {
+    totalUsd,
+    model: 'outside-jacksonville-mileage-gas',
+    distanceMiles,
+    mileageRateUsdPerMile,
+    gasPriceUsdPerGallon,
+    vehicleMpg,
+    gasCostMultiplier,
+    mileageChargeUsd,
+    gasChargeUsd,
+  };
 }
 
 function resolveFloridaToJamaicaRateCardJmd(weightLbs) {
@@ -698,7 +789,8 @@ function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
   const isAirFreightLane = cargoKey !== 'barrel' && isFloridaToJamaicaLane(payload) && explicitWeight > 0;
 
   if (isBarrelShipment) {
-    const pickupAndHandlingUsd = isDropOffHandoff(payload) ? 0 : SINGLE_BARREL_PICKUP_AND_HANDLING_USD;
+    const pickupPricing = resolveBarrelPickupAndHandling(payload);
+    const pickupAndHandlingUsd = pickupPricing.totalUsd;
     const firstBarrelFreightAndCustomsUsd = SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD;
     const additionalBarrelFreightAndCustomsUsd = Math.max(0, quantity - 1)
       * SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD
@@ -720,6 +812,15 @@ function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
         additionalBarrelFreightAndCustoms: Number(additionalBarrelFreightAndCustomsUsd.toFixed(2)),
         freightAndCustoms: Number(freightAndCustomsUsd.toFixed(2)),
         pickupAndHandling: Number(pickupAndHandlingUsd.toFixed(2)),
+        pickupAndHandlingModel: pickupPricing.model,
+        pickupDistanceMiles: Number((pickupPricing.distanceMiles || 0).toFixed(2)),
+        pickupMileageRateUsdPerMile: Number((pickupPricing.mileageRateUsdPerMile || 0).toFixed(2)),
+        pickupGasPriceUsdPerGallon: Number((pickupPricing.gasPriceUsdPerGallon || 0).toFixed(2)),
+        pickupVehicleMpg: Number((pickupPricing.vehicleMpg || 0).toFixed(2)),
+        pickupGasCostMultiplier: Number((pickupPricing.gasCostMultiplier || 0).toFixed(2)),
+        pickupMileageCharge: Number((pickupPricing.mileageChargeUsd || 0).toFixed(2)),
+        pickupGasCharge: Number((pickupPricing.gasChargeUsd || 0).toFixed(2)),
+        pickupFallbackApplied: Boolean(pickupPricing.fallbackApplied),
         minimumShipmentFee: Number(MINIMUM_SHIPMENT_FEE_USD.toFixed(2)),
       },
       freightMode: 'sea-freight',
@@ -2318,6 +2419,9 @@ async function runScanAlertsTick() {
 
 function startScanAlertWorker() {
   if (!scanAlertsEnabled || scanAlertWorkerTimer) {
+    if (!scanAlertsEnabled) {
+      console.log('[scan-alerts] disabled outside production or via SCAN_ALERTS_ENABLED=false');
+    }
     return;
   }
 

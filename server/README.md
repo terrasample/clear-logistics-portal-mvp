@@ -55,3 +55,23 @@ Email deliverability hardening (recommended):
 	- email.senderDomainIsFreeMailbox should be false.
 	- email.checks.spf.found, email.checks.dkim.found, email.checks.dmarc.found should all be true.
 	- email.recommendations should be empty.
+
+Production-only scan alerts:
+1) Scan cutoff emails only run when NODE_ENV=production.
+2) Set SCAN_ALERTS_ENABLED=false to disable them even in production.
+3) Keep scan alerts off in local or staging environments to avoid test email noise.
+
+Barrel pickup pricing policy:
+1) Jacksonville-area pickup + handling is a flat $139.
+2) Outside Jacksonville, pickup + handling is calculated from mileage + gas.
+3) Configure defaults with:
+	- BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE (default: 1.35)
+	- BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON (default: 3.9)
+	- BARREL_PICKUP_VEHICLE_MPG (default: 17)
+	- BARREL_PICKUP_GAS_COST_MULTIPLIER (default: 1)
+4) Per-quote overrides are supported in payload with:
+	- pickupDistanceMiles (or distanceMiles/pickupMiles/mileageMiles/mileage)
+	- barrelMileageRateUsdPerMile
+	- gasPriceUsdPerGallon
+	- vehicleMpg
+	- gasCostMultiplier

@@ -174,7 +174,11 @@ const FLORIDA_TO_JAMAICA_RATE_CARD_JMD = {
 const FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD = 450;
 const JMD_PER_USD = 160;
 const SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD = 240;
-const SINGLE_BARREL_PICKUP_AND_HANDLING_USD = 100;
+const JACKSONVILLE_BARREL_PICKUP_AND_HANDLING_USD = 139;
+const BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE = 1.35;
+const BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON = 3.9;
+const BARREL_PICKUP_VEHICLE_MPG = 17;
+const BARREL_PICKUP_GAS_COST_MULTIPLIER = 1;
 const BARREL_ADDITIONAL_DISCOUNT_RATE = 0.03;
 
 function resolveFloridaToJamaicaRateCardJmd(weightLbs) {
@@ -196,6 +200,29 @@ function isFloridaToJamaicaLane(origin, destination) {
   const isJamaicaDestination = normalizedDestination.includes('jamaica')
     || /(kingston|montego bay|mandeville|ochos? rios|negril|portmore|spanish town)/.test(normalizedDestination);
   return isFloridaOrigin && isJamaicaDestination;
+}
+
+function isJacksonvilleAreaPickupLocation(origin) {
+  const normalizedOrigin = String(origin || '').toLowerCase();
+  return /(jacksonville|jax|duval)/.test(normalizedOrigin);
+}
+
+function resolveInstantBarrelPickupAndHandlingUsd({ handoffType, origin }) {
+  if (String(handoffType || '').toLowerCase() === 'dropoff') {
+    return 0;
+  }
+
+  if (isJacksonvilleAreaPickupLocation(origin)) {
+    return JACKSONVILLE_BARREL_PICKUP_AND_HANDLING_USD;
+  }
+
+  // Instant quote does not collect mileage yet, so use default assumptions for outside-Jacksonville estimates.
+  const assumedDistanceMiles = 25;
+  const mileageChargeUsd = assumedDistanceMiles * BARREL_PICKUP_MILEAGE_RATE_USD_PER_MILE;
+  const gasChargeUsd = (assumedDistanceMiles / BARREL_PICKUP_VEHICLE_MPG)
+    * BARREL_PICKUP_GAS_PRICE_USD_PER_GALLON
+    * BARREL_PICKUP_GAS_COST_MULTIPLIER;
+  return mileageChargeUsd + gasChargeUsd;
 }
 
 const HOW_IT_WORKS = [
@@ -4015,9 +4042,7 @@ function App() {
       const baseEstimatedCost = (numericWeight / 10) * defaultPrice * estimatedBaseCost;
       const isFloridaJamaicaLane = isFloridaToJamaicaLane(origin, destination);
       const isAirFreightLane = !isBarrelShipment && isFloridaJamaicaLane;
-      const pickupAndHandlingUsd = String(handoffType || '').toLowerCase() === 'dropoff'
-        ? 0
-        : SINGLE_BARREL_PICKUP_AND_HANDLING_USD;
+      const pickupAndHandlingUsd = resolveInstantBarrelPickupAndHandlingUsd({ handoffType, origin });
       const firstBarrelFreightAndCustomsUsd = SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD;
       const additionalBarrelFreightAndCustomsUsd = Math.max(0, normalizedBarrelQuantity - 1)
         * SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD
