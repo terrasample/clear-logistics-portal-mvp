@@ -1345,6 +1345,7 @@ function App() {
   const [adminShipmentStatusDraft, setAdminShipmentStatusDraft] = useState('Order Received');
   const [adminShipmentStatusNote, setAdminShipmentStatusNote] = useState('');
   const [adminShipmentViewFilter, setAdminShipmentViewFilter] = useState('all');
+  const [adminShipmentAttentionFilter, setAdminShipmentAttentionFilter] = useState('all');
   const [adminShipmentSearchQuery, setAdminShipmentSearchQuery] = useState('');
   const [shopAccessMode, setShopAccessMode] = useState('');
   const [shopStoreInputMode, setShopStoreInputMode] = useState('catalog');
@@ -7273,6 +7274,33 @@ function App() {
       return groups;
     }, [adminOverview?.shipments]);
     const shipmentSearchQueryNormalized = String(adminShipmentSearchQuery || '').trim().toLowerCase();
+    const classifyShipmentAttention = (shipment) => {
+      const status = String(shipment?.status || '').trim().toLowerCase();
+      const isCustomsIssue = status.includes('customs hold')
+        || (status.includes('customs') && status.includes('required'))
+        || status.includes('documents required')
+        || status.includes('clearance hold');
+      const isPaymentIssue = status.includes('payment failed')
+        || status.includes('retry required')
+        || (status.includes('payment') && status.includes('failed'));
+      const isDeliveryIssue = status.includes('recipient unavailable')
+        || status.includes('delivery rescheduled')
+        || status.includes('delivery exception')
+        || status.includes('unable to deliver');
+      const isGeneralIssue = status.includes('hold')
+        || status.includes('failed')
+        || status.includes('retry')
+        || status.includes('unavailable')
+        || status.includes('rescheduled')
+        || status.includes('exception')
+        || status.includes('delayed');
+      return {
+        isCustomsIssue,
+        isPaymentIssue,
+        isDeliveryIssue,
+        isNeedsAction: isGeneralIssue || isCustomsIssue || isPaymentIssue || isDeliveryIssue,
+      };
+    };
     const shipmentMatchesSearch = (shipment) => {
       if (!shipmentSearchQueryNormalized) return true;
       const searchable = [
@@ -7287,11 +7315,38 @@ function App() {
         .join(' ');
       return searchable.includes(shipmentSearchQueryNormalized);
     };
+    const shipmentMatchesAttentionFilter = (shipment) => {
+      const attention = classifyShipmentAttention(shipment);
+      if (adminShipmentAttentionFilter === 'all') return true;
+      if (adminShipmentAttentionFilter === 'needs-action') return attention.isNeedsAction;
+      if (adminShipmentAttentionFilter === 'customs') return attention.isCustomsIssue;
+      if (adminShipmentAttentionFilter === 'payment') return attention.isPaymentIssue;
+      if (adminShipmentAttentionFilter === 'delivery') return attention.isDeliveryIssue;
+      return true;
+    };
+    const filteredAttentionCounts = useMemo(() => {
+      const source = Array.isArray(adminOverview?.shipments) ? adminOverview.shipments : [];
+      return source
+        .filter(shipmentMatchesSearch)
+        .reduce((counts, shipment) => {
+          const attention = classifyShipmentAttention(shipment);
+          if (attention.isNeedsAction) counts.needsAction += 1;
+          if (attention.isCustomsIssue) counts.customs += 1;
+          if (attention.isPaymentIssue) counts.payment += 1;
+          if (attention.isDeliveryIssue) counts.delivery += 1;
+          return counts;
+        }, {
+          needsAction: 0,
+          customs: 0,
+          payment: 0,
+          delivery: 0,
+        });
+    }, [adminOverview?.shipments, shipmentSearchQueryNormalized]);
     const filteredShipmentGroups = useMemo(() => ({
-      upcoming: shipmentGroups.upcoming.filter(shipmentMatchesSearch),
-      active: shipmentGroups.active.filter(shipmentMatchesSearch),
-      past: shipmentGroups.past.filter(shipmentMatchesSearch),
-    }), [shipmentGroups, shipmentSearchQueryNormalized]);
+      upcoming: shipmentGroups.upcoming.filter((shipment) => shipmentMatchesSearch(shipment) && shipmentMatchesAttentionFilter(shipment)),
+      active: shipmentGroups.active.filter((shipment) => shipmentMatchesSearch(shipment) && shipmentMatchesAttentionFilter(shipment)),
+      past: shipmentGroups.past.filter((shipment) => shipmentMatchesSearch(shipment) && shipmentMatchesAttentionFilter(shipment)),
+    }), [shipmentGroups, shipmentSearchQueryNormalized, adminShipmentAttentionFilter]);
 
     const sectionMap = {
       rfqs: { key: 'rfqs', label: 'RFQs' },
@@ -7638,6 +7693,43 @@ function App() {
               Past
             </button>
           </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <button
+                type="button"
+                className={adminShipmentAttentionFilter === 'all' ? 'btn btn--solid' : 'btn btn--ghost'}
+                onClick={() => setAdminShipmentAttentionFilter('all')}
+              >
+                All Conditions
+              </button>
+              <button
+                type="button"
+                className={adminShipmentAttentionFilter === 'needs-action' ? 'btn btn--solid' : 'btn btn--ghost'}
+                onClick={() => setAdminShipmentAttentionFilter('needs-action')}
+              >
+                Needs Action ({filteredAttentionCounts.needsAction})
+              </button>
+              <button
+                type="button"
+                className={adminShipmentAttentionFilter === 'customs' ? 'btn btn--solid' : 'btn btn--ghost'}
+                onClick={() => setAdminShipmentAttentionFilter('customs')}
+              >
+                Customs Hold ({filteredAttentionCounts.customs})
+              </button>
+              <button
+                type="button"
+                className={adminShipmentAttentionFilter === 'payment' ? 'btn btn--solid' : 'btn btn--ghost'}
+                onClick={() => setAdminShipmentAttentionFilter('payment')}
+              >
+                Payment Issues ({filteredAttentionCounts.payment})
+              </button>
+              <button
+                type="button"
+                className={adminShipmentAttentionFilter === 'delivery' ? 'btn btn--solid' : 'btn btn--ghost'}
+                onClick={() => setAdminShipmentAttentionFilter('delivery')}
+              >
+                Delivery Issues ({filteredAttentionCounts.delivery})
+              </button>
+            </div>
           <label className="inline-label" style={{ marginBottom: 0 }}>
             Search Shipments
             <input
