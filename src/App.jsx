@@ -160,7 +160,7 @@ const SERVICE_TIERS = [
 ];
 
 const FLORIDA_TO_JAMAICA_RATE_CARD_JMD = {
-  1: 875,
+  1: 850,
   2: 1350,
   3: 1800,
   4: 2250,

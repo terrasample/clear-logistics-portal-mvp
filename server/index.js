@@ -554,6 +554,18 @@ const DEFAULT_SPACE_CUBIC_FEET_BY_CARGO = {
 };
 
 const MINIMUM_SHIPMENT_FEE_USD = 48;
+const FLORIDA_TO_JAMAICA_RATE_CARD_JMD = {
+  1: 850,
+  2: 1350,
+  3: 1800,
+  4: 2250,
+  5: 2700,
+  6: 3150,
+  7: 3600,
+  8: 4050,
+};
+const FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD = 450;
+const JMD_PER_USD = 160;
 const SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD = 240;
 const SINGLE_BARREL_PICKUP_AND_HANDLING_USD = 100;
 const BARREL_ADDITIONAL_DISCOUNT_RATE = 0.03;
@@ -569,6 +581,27 @@ function normalizeParishKey(value) {
 function isDropOffHandoff(payload) {
   const handoffType = String(payload?.handoffType || '').trim().toLowerCase();
   return handoffType === 'dropoff' || handoffType === 'drop-off' || handoffType === 'drop_off';
+}
+
+function resolveFloridaToJamaicaRateCardJmd(weightLbs) {
+  const roundedWeight = Math.max(1, Math.ceil(Math.max(0, Number(weightLbs || 0))));
+  if (FLORIDA_TO_JAMAICA_RATE_CARD_JMD[roundedWeight]) {
+    return FLORIDA_TO_JAMAICA_RATE_CARD_JMD[roundedWeight];
+  }
+  const base = FLORIDA_TO_JAMAICA_RATE_CARD_JMD[8] || 0;
+  const overageLbs = Math.max(0, roundedWeight - 8);
+  return base + (overageLbs * FLORIDA_TO_JAMAICA_RATE_CARD_INCREMENT_JMD);
+}
+
+function isFloridaToJamaicaLane(payload) {
+  const origin = String(payload?.origin || '').toLowerCase();
+  const destination = String(payload?.destination || '').toLowerCase();
+  const isFloridaOrigin = origin.includes('florida')
+    || /\bfl\b/.test(origin)
+    || /(miami|jacksonville|orlando|tampa|fort lauderdale|fort myers)/.test(origin);
+  const isJamaicaDestination = destination.includes('jamaica')
+    || /(kingston|montego bay|mandeville|ochos? rios|negril|portmore|spanish town)/.test(destination);
+  return isFloridaOrigin && isJamaicaDestination;
 }
 
 function getServiceMultiplier(serviceLevel) {
@@ -628,6 +661,7 @@ function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
     : billableCubicFeet * density;
   const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
   const valueFeeUsd = declaredValueUsd > 0 ? declaredValueUsd * 0.02 : 0;
+  const isAirFreightLane = cargoKey !== 'barrel' && isFloridaToJamaicaLane(payload) && explicitWeight > 0;
 
   if (isBarrelShipment) {
     const pickupAndHandlingUsd = isDropOffHandoff(payload) ? 0 : SINGLE_BARREL_PICKUP_AND_HANDLING_USD;
@@ -681,6 +715,59 @@ function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
 
     return {
       pricingMode: 'barrel-flat-rate',
+      quotedPriceUsd: Number(totalUsd.toFixed(2)),
+      estimatedRangeUsd: null,
+      spaceTierKey: selectedTier.key,
+      spaceTierLabel: selectedTier.label,
+      deliveryZone,
+      pricingBreakdown: {
+        ...breakdown,
+        finalPriceUsd: Number(totalUsd.toFixed(2)),
+      },
+    };
+  }
+
+  if (isAirFreightLane) {
+    const billableWeightLbs = Math.max(1, Math.ceil(computedWeight));
+    const rateCardJmd = resolveFloridaToJamaicaRateCardJmd(billableWeightLbs);
+    const totalUsd = rateCardJmd / JMD_PER_USD;
+    const breakdown = {
+      strategy: 'air-rate-card',
+      spaceTierKey: selectedTier.key,
+      spaceTierLabel: selectedTier.label,
+      billableCubicFeet: Number(billableCubicFeet.toFixed(2)),
+      weightLbs: Number(billableWeightLbs.toFixed(2)),
+      chargesUsd: {
+        airRateCardBase: Number(totalUsd.toFixed(2)),
+        selectedBase: Number(totalUsd.toFixed(2)),
+      },
+      rateCardJmd,
+      freightMode: 'air-freight',
+      deliveryZone: {
+        key: deliveryZone.key,
+        label: deliveryZone.label,
+      },
+    };
+
+    if (estimateOnly) {
+      const low = Math.max(1, Math.round(totalUsd * 0.95));
+      const high = Math.max(low + 1, Math.round(totalUsd * 1.05));
+      return {
+        pricingMode: 'air-rate-card',
+        estimatedRangeUsd: { low, high },
+        quotedPriceUsd: null,
+        spaceTierKey: selectedTier.key,
+        spaceTierLabel: selectedTier.label,
+        deliveryZone,
+        pricingBreakdown: {
+          ...breakdown,
+          estimatedRangeUsd: { low, high },
+        },
+      };
+    }
+
+    return {
+      pricingMode: 'air-rate-card',
       quotedPriceUsd: Number(totalUsd.toFixed(2)),
       estimatedRangeUsd: null,
       spaceTierKey: selectedTier.key,
