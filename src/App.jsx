@@ -4414,14 +4414,6 @@ function App() {
     const quoteSupplyAddons = useMemo(() => getSupplyAddons(quoteForm), [quoteForm]);
     const quoteSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(quoteForm), [quoteForm]);
     const quoteBreakdown = latestQuoteResult?.quote?.pricingBreakdown || null;
-    const quoteDeliveryStatus = latestQuoteResult?.emailStatus?.customer || latestQuoteResult?.quote?.emailStatus?.customer || null;
-    const quoteDeliverySummary = buildQuoteEmailStatusLine({
-      delivered: Boolean(quoteDeliveryStatus?.delivered),
-      mode: quoteDeliveryStatus?.mode,
-      provider: quoteDeliveryStatus?.provider,
-      reason: quoteDeliveryStatus?.reason,
-      code: quoteDeliveryStatus?.code,
-    });
     const assistantConfidence = Number(aiAssistantResult?.freightEstimate?.confidence || 0);
     const assistantEmailPresentation = aiAssistantResult?.emailStatus?.customer
       ? getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer)
@@ -4669,15 +4661,12 @@ function App() {
               </h3>
               <p className="section-intro" style={{ marginBottom: '0.5rem' }}>
                 Quote ID: {latestQuoteResult.quote.quoteId}.
-                {latestQuoteResult.quote.spaceTierLabel ? ` ${latestQuoteResult.quote.spaceTierLabel}.` : ''}
-                {latestQuoteResult.quote.deliveryZone?.label ? ` ${latestQuoteResult.quote.deliveryZone.label}.` : ''}
-                {quoteDeliverySummary}
               </p>
               <p style={{ marginBottom: '0.6rem', color: '#2f5a4c', fontSize: '0.84rem', fontWeight: 600 }}>
                 Price locked for 48 hours.
               </p>
               <div className="booking-summary" style={{ marginBottom: '0.7rem' }}>
-                <p><strong>Included now:</strong> freight, customs clearance, base transport, delivery zone, and known handling surcharges.</p>
+                <p><strong>Included:</strong> Freight &amp; Customs Clearance</p>
                 <p><strong>Could change:</strong> final declared value, restricted items, or warehouse re-weigh variance.</p>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
