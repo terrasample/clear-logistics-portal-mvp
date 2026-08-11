@@ -1344,6 +1344,8 @@ function App() {
   const [selectedAdminItem, setSelectedAdminItem] = useState(null);
   const [adminShipmentStatusDraft, setAdminShipmentStatusDraft] = useState('Order Received');
   const [adminShipmentStatusNote, setAdminShipmentStatusNote] = useState('');
+  const [adminShipmentViewFilter, setAdminShipmentViewFilter] = useState('all');
+  const [adminShipmentSearchQuery, setAdminShipmentSearchQuery] = useState('');
   const [shopAccessMode, setShopAccessMode] = useState('');
   const [shopStoreInputMode, setShopStoreInputMode] = useState('catalog');
   const [customStoreName, setCustomStoreName] = useState('');
@@ -7270,6 +7272,26 @@ function App() {
 
       return groups;
     }, [adminOverview?.shipments]);
+    const shipmentSearchQueryNormalized = String(adminShipmentSearchQuery || '').trim().toLowerCase();
+    const shipmentMatchesSearch = (shipment) => {
+      if (!shipmentSearchQueryNormalized) return true;
+      const searchable = [
+        shipment?.shipmentId,
+        shipment?.fullName,
+        shipment?.email,
+        shipment?.phone,
+        shipment?.pickupCity,
+        shipment?.status,
+      ]
+        .map((value) => String(value || '').toLowerCase())
+        .join(' ');
+      return searchable.includes(shipmentSearchQueryNormalized);
+    };
+    const filteredShipmentGroups = useMemo(() => ({
+      upcoming: shipmentGroups.upcoming.filter(shipmentMatchesSearch),
+      active: shipmentGroups.active.filter(shipmentMatchesSearch),
+      past: shipmentGroups.past.filter(shipmentMatchesSearch),
+    }), [shipmentGroups, shipmentSearchQueryNormalized]);
 
     const sectionMap = {
       rfqs: { key: 'rfqs', label: 'RFQs' },
@@ -7581,11 +7603,57 @@ function App() {
           </div>
         </section>
 
+        <section className="card" style={{ marginBottom: '1rem' }}>
+          <h2>Shipment Views</h2>
+          <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
+            Use filters and search to quickly find upcoming, active, or past shipments.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              className={adminShipmentViewFilter === 'all' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => setAdminShipmentViewFilter('all')}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={adminShipmentViewFilter === 'upcoming' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => setAdminShipmentViewFilter('upcoming')}
+            >
+              Upcoming
+            </button>
+            <button
+              type="button"
+              className={adminShipmentViewFilter === 'active' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => setAdminShipmentViewFilter('active')}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              className={adminShipmentViewFilter === 'past' ? 'btn btn--solid' : 'btn btn--ghost'}
+              onClick={() => setAdminShipmentViewFilter('past')}
+            >
+              Past
+            </button>
+          </div>
+          <label className="inline-label" style={{ marginBottom: 0 }}>
+            Search Shipments
+            <input
+              value={adminShipmentSearchQuery}
+              onChange={(event) => setAdminShipmentSearchQuery(event.target.value)}
+              placeholder="Search by shipment ID, customer, email, phone, city, or status"
+            />
+          </label>
+        </section>
+
+        {(adminShipmentViewFilter === 'all' || adminShipmentViewFilter === 'upcoming') ? (
         <section className="card card--split">
           <div>
-            <h2>Upcoming Shipments ({shipmentGroups.upcoming.length})</h2>
+            <h2>Upcoming Shipments ({filteredShipmentGroups.upcoming.length})</h2>
             <div className="admin-list">
-              {shipmentGroups.upcoming.map((shipment) => (
+              {filteredShipmentGroups.upcoming.map((shipment) => (
                 <button
                   type="button"
                   key={`upcoming-${shipment.shipmentId}`}
@@ -7601,14 +7669,15 @@ function App() {
                   <p><strong>Pickup:</strong> {shipment.pickupDate || 'TBD'} {shipment.pickupCity ? `(${shipment.pickupCity})` : ''}</p>
                 </button>
               ))}
-              {!shipmentGroups.upcoming.length && <p className="section-intro">No upcoming shipments.</p>}
+              {!filteredShipmentGroups.upcoming.length && <p className="section-intro">No upcoming shipments.</p>}
             </div>
           </div>
 
+          {(adminShipmentViewFilter === 'all' || adminShipmentViewFilter === 'active') ? (
           <div>
-            <h2>Active Shipments ({shipmentGroups.active.length})</h2>
+            <h2>Active Shipments ({filteredShipmentGroups.active.length})</h2>
             <div className="admin-list">
-              {shipmentGroups.active.map((shipment) => (
+              {filteredShipmentGroups.active.map((shipment) => (
                 <button
                   type="button"
                   key={`active-${shipment.shipmentId}`}
@@ -7624,15 +7693,18 @@ function App() {
                   <p><strong>Cargo:</strong> {shipment.quantity || '1'} {shipment.cargoType || shipment.unitType || 'Shipment'}</p>
                 </button>
               ))}
-              {!shipmentGroups.active.length && <p className="section-intro">No active shipments.</p>}
+              {!filteredShipmentGroups.active.length && <p className="section-intro">No active shipments.</p>}
             </div>
           </div>
+          ) : null}
         </section>
+        ) : null}
 
+        {(adminShipmentViewFilter === 'all' || adminShipmentViewFilter === 'past') ? (
         <section className="card">
-          <h2>Past Shipments ({shipmentGroups.past.length})</h2>
+          <h2>Past Shipments ({filteredShipmentGroups.past.length})</h2>
           <div className="admin-list">
-            {shipmentGroups.past.map((shipment) => (
+            {filteredShipmentGroups.past.map((shipment) => (
               <button
                 type="button"
                 key={`past-${shipment.shipmentId}`}
@@ -7648,9 +7720,10 @@ function App() {
                 <p><strong>Last Updated:</strong> {shipment.lastStatusUpdatedAt ? new Date(shipment.lastStatusUpdatedAt).toLocaleString() : 'N/A'}</p>
               </button>
             ))}
-            {!shipmentGroups.past.length && <p className="section-intro">No past shipments.</p>}
+            {!filteredShipmentGroups.past.length && <p className="section-intro">No past shipments.</p>}
           </div>
         </section>
+        ) : null}
 
         <section className="card">
           <h2>Recent Barcode Scans</h2>
