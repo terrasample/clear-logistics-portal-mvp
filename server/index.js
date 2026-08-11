@@ -4160,6 +4160,74 @@ app.get('/api/shipments/:shipmentId', async (req, res) => {
   });
 });
 
+function toPositiveNumber(value) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolveFreightReceivedLocation(statusText) {
+  const normalized = String(statusText || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized.includes('customs') || normalized.includes('kingston') || normalized.includes('jamaica')) {
+    return 'Jamaica Customs';
+  }
+  return 'Miami Warehouse';
+}
+
+function buildPublicScanSummary(data, shipmentId, shipment) {
+  const safeShipmentId = String(shipmentId || shipment?.shipmentId || '').trim();
+  const booking = Array.isArray(data?.bookings)
+    ? data.bookings.find((b) => String(b?.shipmentId || '').trim() === safeShipmentId)
+    : null;
+  const scanEvents = Array.isArray(data?.scanEvents) ? data.scanEvents : [];
+  const latestAcceptedScan = scanEvents
+    .filter((event) => (
+      String(event?.shipmentId || '').trim() === safeShipmentId
+      && String(event?.status || '').trim().toLowerCase() === 'accepted'
+      && String(event?.createdAt || '').trim()
+    ))
+    .sort((a, b) => {
+      const aMs = toMillis(a?.createdAt) || 0;
+      const bMs = toMillis(b?.createdAt) || 0;
+      return bMs - aMs;
+    })[0] || null;
+
+  const quantityValue = toPositiveNumber(shipment?.quantity ?? booking?.quantity);
+  const weightPerUnit = toPositiveNumber(
+    booking?.weightPerUnit
+    ?? shipment?.weightPerUnit
+    ?? shipment?.weight
+    ?? booking?.weight
+  );
+  const totalWeightLbs = weightPerUnit && quantityValue
+    ? Number((weightPerUnit * quantityValue).toFixed(2))
+    : weightPerUnit
+      ? Number(weightPerUnit.toFixed(2))
+      : null;
+
+  const status = String(shipment?.status || '').trim();
+  const receivedAt = String(booking?.lastScannedAt || latestAcceptedScan?.createdAt || '').trim() || null;
+  const receivedBy = String(booking?.lastScannedBy || latestAcceptedScan?.driverName || '').trim() || null;
+  const receivedSource = String(booking?.lastScanSource || latestAcceptedScan?.source || '').trim() || null;
+
+  return {
+    shipmentId: shipment?.shipmentId,
+    status: shipment?.status,
+    cargoType: shipment?.cargoType,
+    quantity: shipment?.quantity,
+    unitType: shipment?.unitType || booking?.unitType || shipment?.cargoType,
+    weightPerUnitLbs: weightPerUnit,
+    totalWeightLbs,
+    receivedLocation: resolveFreightReceivedLocation(status),
+    receivedAt,
+    receivedBy,
+    receivedSource,
+    milestones: Array.isArray(shipment?.milestones)
+      ? shipment.milestones
+      : DEFAULT_MILESTONES.map((step) => ({ ...step })),
+  };
+}
+
 app.get('/api/public/shipments/:shipmentId/scan', async (req, res) => {
   const shipmentId = String(req.params.shipmentId || '').trim();
   if (!shipmentId) {
@@ -4168,19 +4236,18 @@ app.get('/api/public/shipments/:shipmentId/scan', async (req, res) => {
 
   const data = await readData();
   if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
   const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
   if (!shipment) {
     return res.status(404).json({ error: 'Shipment not found.' });
   }
 
+  const scanSummary = buildPublicScanSummary(data, shipmentId, shipment);
+
   return res.json({
-    shipment: {
-      shipmentId: shipment.shipmentId,
-      status: shipment.status,
-      cargoType: shipment.cargoType,
-      quantity: shipment.quantity,
-      milestones: Array.isArray(shipment.milestones) ? shipment.milestones : DEFAULT_MILESTONES.map((step) => ({ ...step })),
-    },
+    shipment: scanSummary,
+    scanSummary,
   });
 });
 
@@ -4243,10 +4310,13 @@ app.post('/api/public/shipments/:shipmentId/freight-received', async (req, res) 
     })
     : { delivered: false, reason: 'booking-not-available' };
 
+  const scanSummary = buildPublicScanSummary(data, shipmentId, shipment);
+
   return res.json({
     ok: true,
     message: `Shipment ${shipmentId} marked as Freight Received.`,
-    shipment,
+    shipment: scanSummary,
+    scanSummary,
     trackingUpdateNotification,
   });
 });

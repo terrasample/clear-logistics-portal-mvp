@@ -6599,45 +6599,6 @@ function App() {
             </div>
           )}
 
-          {trackingInsights && (
-            <section className={`tracking-intel tracking-intel--${trackingInsights.risk}`} aria-live="polite">
-              <div className="tracking-intel__head">
-                <p className="tracking-intel__eyebrow">Proactive Update Center</p>
-                <span className={`tracking-risk-badge tracking-risk-badge--${trackingInsights.risk}`}>
-                  {trackingInsights.risk === 'high' ? 'High Attention' : trackingInsights.risk === 'medium' ? 'Watch Closely' : 'Stable'}
-                </span>
-              </div>
-              <h3>{trackingInsights.headline}</h3>
-              <p className="section-intro" style={{ marginBottom: '0.55rem' }}>
-                Next milestone: <strong>{trackingInsights.nextMilestone}</strong>
-              </p>
-              <div className="tracking-intel__grid">
-                <article>
-                  <p>ETA Window</p>
-                  <strong>{trackingInsights.etaWindow || 'Calculating...'}</strong>
-                </article>
-                <article>
-                  <p>Delivery Confidence</p>
-                  <strong>{trackingInsights.confidence}%</strong>
-                </article>
-              </div>
-              <p style={{ marginBottom: '0.25rem' }}><strong>Recommended Action:</strong> {trackingInsights.actionLabel}</p>
-              <p className="section-intro" style={{ marginBottom: '0.65rem' }}>{trackingInsights.actionDetail}</p>
-              {trackingInsights.risk === 'high' && slaRemainingMs !== null ? (
-                <div className="tracking-sla">
-                  <p><strong>Escalation SLA:</strong> Live agent response target in</p>
-                  <strong>{formatCountdown(slaRemainingMs)}</strong>
-                </div>
-              ) : null}
-              <div className="tracking-intel__actions">
-                <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Escalate via WhatsApp</button>
-                <button type="button" className="btn btn--ghost" onClick={handleEscalateTrackingIssue} disabled={escalationBusy}>
-                  {escalationBusy ? 'Submitting Escalation...' : 'Open Support Ticket'}
-                </button>
-              </div>
-            </section>
-          )}
-
           {trackingResult && (
             <section className="tracking-self-service" aria-label="Delivery preferences">
               <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Delivery Preferences</h3>
@@ -6791,6 +6752,18 @@ function App() {
       }
     }
 
+    const quantityValue = Number.parseFloat(scanSummary?.quantity);
+    const hasQuantity = Number.isFinite(quantityValue) && quantityValue > 0;
+    const weightPerUnitValue = Number.parseFloat(scanSummary?.weightPerUnitLbs);
+    const totalWeightValue = Number.parseFloat(scanSummary?.totalWeightLbs);
+    const hasWeightPerUnit = Number.isFinite(weightPerUnitValue) && weightPerUnitValue > 0;
+    const hasTotalWeight = Number.isFinite(totalWeightValue) && totalWeightValue > 0;
+    const itemLabel = String(scanSummary?.unitType || scanSummary?.cargoType || 'item').trim();
+    const itemLabelPlural = hasQuantity && quantityValue === 1 ? itemLabel : `${itemLabel}s`;
+    const cargoLine = hasQuantity
+      ? `${quantityValue} ${itemLabelPlural}`
+      : `1 ${itemLabel}`;
+
     return (
       <section className="card card--split">
         <div>
@@ -6801,7 +6774,15 @@ function App() {
           ) : scanSummary ? (
             <div className="booking-summary">
               <p><strong>Current Status:</strong> {scanSummary.status || 'Unknown'}</p>
-              <p><strong>Cargo:</strong> {scanSummary.quantity || 'N/A'} x {scanSummary.cargoType || 'Cargo'}</p>
+              <p>
+                <strong>Cargo:</strong> {cargoLine}
+                {hasTotalWeight ? `, total weight: ${totalWeightValue.toFixed(2)} lbs` : ''}
+                {!hasTotalWeight && hasWeightPerUnit ? `, weight: ${weightPerUnitValue.toFixed(2)} lbs` : ''}
+              </p>
+              <p><strong>Freight Received At:</strong> {scanSummary.receivedLocation || 'Miami Warehouse'}</p>
+              {scanSummary.receivedAt ? (
+                <p><strong>Received Time:</strong> {new Date(scanSummary.receivedAt).toLocaleString()}</p>
+              ) : null}
             </div>
           ) : (
             <p className="section-intro">No shipment details available for this QR scan.</p>
