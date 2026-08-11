@@ -1240,12 +1240,6 @@ function App() {
   });
   const [showAdvancedQuoteOptions, setShowAdvancedQuoteOptions] = useState(false);
   const [latestQuoteResult, setLatestQuoteResult] = useState(null);
-  const [assistantRequirements, setAssistantRequirements] = useState({
-    pickupRequirements: '',
-    deliveryRequirements: '',
-  });
-  const [aiAssistantResult, setAiAssistantResult] = useState(null);
-  const [aiAssistantLoading, setAiAssistantLoading] = useState(false);
 
   const [bookingForm, setBookingForm] = useState({
     fullName: '',
@@ -1329,11 +1323,6 @@ function App() {
     idUrl: { uploading: false, fileName: '', error: '' },
     importPermitUrl: { uploading: false, fileName: '', error: '' },
   });
-  const [estimatorLinks, setEstimatorLinks] = useState('');
-  const [estimatorSubtotalInput, setEstimatorSubtotalInput] = useState('');
-  const [estimatorProductPricesInput, setEstimatorProductPricesInput] = useState('');
-  const [estimatorResult, setEstimatorResult] = useState(null);
-
   const [instantQuoteForm, setInstantQuoteForm] = useState({
     origin: 'Miami, FL',
     destination: 'Kingston, Jamaica',
@@ -1797,8 +1786,7 @@ function App() {
   }
 
   function handleAssistantRequirementsChange(event) {
-    const { name, value } = event.target;
-    setAssistantRequirements((prev) => ({ ...prev, [name]: value }));
+    // removed - no longer needed
   }
 
   function downloadBase64Pdf(base64Content, fileName) {
@@ -1817,67 +1805,6 @@ function App() {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-  }
-
-  async function handleGenerateAiQuotePack(event) {
-    event.preventDefault();
-    setAiAssistantLoading(true);
-    setAiAssistantResult(null);
-    setStatusMessage('Generating AI freight quote pack...');
-
-    const controller = new AbortController();
-    const timeoutMs = 25000;
-    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const payload = {
-        customerName: quoteForm.fullName,
-        email: quoteForm.email,
-        phone: quoteForm.phone,
-        origin: quoteForm.origin,
-        destination: quoteForm.destination,
-        deliveryParish: quoteForm.deliveryParish,
-        itemType: quoteForm.cargoType,
-        cargoType: quoteForm.cargoType,
-        itemCategory: quoteForm.itemCategory,
-        serviceLevel: quoteForm.serviceLevel,
-        declaredValueUsd: quoteForm.declaredValueUsd,
-        weight: quoteForm.dontKnowWeight ? '' : quoteForm.weight,
-        quantity: quoteForm.quantity,
-        dimensionsLength: quoteForm.dimensionsLength,
-        dimensionsWidth: quoteForm.dimensionsWidth,
-        dimensionsHeight: quoteForm.dimensionsHeight,
-        pickupRequirements: assistantRequirements.pickupRequirements,
-        deliveryRequirements: assistantRequirements.deliveryRequirements,
-      };
-
-      const response = await fetchWithApiFallback('/ai-freight-assistant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
-        signal: controller.signal,
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || 'Unable to generate AI freight quote pack.');
-      }
-
-      setAiAssistantResult(result);
-      setStatusMessage('AI freight quote pack is ready.');
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        setStatusMessage('AI quote request timed out. Please try again.');
-      } else {
-        setStatusMessage(error.message || 'Unable to generate AI freight quote pack right now.');
-      }
-    } finally {
-      window.clearTimeout(timeoutId);
-      setAiAssistantLoading(false);
-    }
   }
 
   function parseCityFromLocation(value, fallback = '') {
@@ -2324,140 +2251,6 @@ function App() {
     }
   }
 
-  function runLinkEstimator() {
-    const links = estimatorLinks
-      .split('\n')
-      .map((line) => normalizeWebUrl(line.trim()))
-      .filter(Boolean);
-
-    if (!links.length) {
-      setStatusMessage('Paste at least one product or cart link to estimate landed cost.');
-      return;
-    }
-
-    const cartLinks = links.filter((link) => isCartStyleUrl(link));
-    const productLinks = links.filter((link) => !isCartStyleUrl(link));
-    const hasCartLink = cartLinks.length > 0;
-    const manualSubtotal = Number(estimatorSubtotalInput);
-    const hasValidManualSubtotal = Number.isFinite(manualSubtotal) && manualSubtotal > 0;
-    const productPriceLines = estimatorProductPricesInput
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const parsedProductPrices = productPriceLines.map((line) => Number(line.replace(/[$,]/g, '')));
-    const hasValidProductPrices = parsedProductPrices.length === productLinks.length
-      && parsedProductPrices.every((price) => Number.isFinite(price) && price > 0);
-
-    if (hasCartLink && !hasValidManualSubtotal) {
-      setStatusMessage('Cart links detected. Enter the actual store subtotal to improve accuracy.');
-      return;
-    }
-
-    if (productLinks.length > 0 && !hasValidProductPrices) {
-      setStatusMessage('Product links detected. Enter exact item prices (USD), one per product link, in the same order.');
-      return;
-    }
-
-    const inferredItems = productLinks.map((link, index) => {
-      const category = inferCategoryFromUrl(link);
-      const store = getStoreNameFromUrl(link);
-      const extractedName = extractProductNameFromUrl(link);
-      const name = extractedName || `${category} item` || `Item ${index + 1}`;
-
-      return {
-        name,
-        link,
-        quantity: 1,
-        unitPriceUsd: Number(parsedProductPrices[index].toFixed(2)),
-        category,
-        store,
-        sourceType: 'manual-product-price',
-      };
-    });
-
-    const cartItems = hasCartLink && hasValidManualSubtotal
-      ? [
-          {
-            name: `${getStoreNameFromUrl(cartLinks[0])} cart subtotal`,
-            link: normalizeWebUrl(cartLinks[0]),
-            quantity: 1,
-            unitPriceUsd: Number(manualSubtotal.toFixed(2)),
-            category: 'General',
-            store: getStoreNameFromUrl(cartLinks[0]),
-            sourceType: 'cart-subtotal',
-          },
-        ]
-      : [];
-
-    const estimatedItems = [...cartItems, ...inferredItems];
-
-    const subtotal = estimatedItems.reduce((sum, item) => sum + item.unitPriceUsd * item.quantity, 0);
-    const hasLuxury = estimatedItems.some((item) => LUXURY_STORE_KEYWORDS.some((k) => `${item.store} ${item.link}`.toLowerCase().includes(k)));
-    const customs = subtotal * (hasLuxury ? 0.24 : 0.16);
-    const brokerage = subtotal > 0 ? 35 : 0;
-    const processing = subtotal * 0.05;
-    const shipping = subtotal * 0.09;
-    const total = subtotal + customs + brokerage + processing + shipping;
-    const unknownCount = inferredItems.filter((item) => item.category === 'General').length;
-    const confidence = Math.max(72, Math.min(95, Math.round(93 - unknownCount * 5 - (hasLuxury ? 8 : 0))));
-    const confidenceLabel = confidence >= 82 ? 'High' : confidence >= 68 ? 'Medium' : 'Low';
-
-    const missing = [];
-    if (unknownCount > 0) missing.push('Add exact product category for more accurate duty estimation.');
-    if (hasCartLink && productLinks.length === 0) missing.push('Paste key product links too if you want better duty-category precision.');
-    if (estimatedItems.some((item) => item.unitPriceUsd >= 300)) missing.push('Confirm actual store cart totals for high-value items.');
-    if (hasLuxury) missing.push('Luxury goods may require additional customs review and supporting invoice details.');
-
-    setEstimatorResult({
-      estimatedItems,
-      subtotal,
-      customs,
-      brokerage,
-      processing,
-      shipping,
-      total,
-      confidence,
-      confidenceLabel,
-      missing,
-      hasLuxury,
-      inputSummary: {
-        totalLinks: links.length,
-        cartLinks: cartLinks.length,
-        productLinks: productLinks.length,
-        manualSubtotalUsed: hasCartLink && hasValidManualSubtotal,
-        exactProductPricesUsed: productLinks.length > 0,
-      },
-      rateSummary: {
-        customsRate: hasLuxury ? 0.24 : 0.16,
-        processingRate: 0.05,
-        shippingRate: 0.09,
-        brokerageFlat: brokerage,
-      },
-    });
-    setStatusMessage(`Estimate generated with ${confidenceLabel} confidence.`);
-  }
-
-  function applyEstimatorToCart() {
-    if (!estimatorResult?.estimatedItems?.length) {
-      setStatusMessage('Run estimator first to create cart items.');
-      return false;
-    }
-
-    const items = estimatorResult.estimatedItems.map((item) => ({
-      name: item.name,
-      link: item.link,
-      quantity: String(item.quantity),
-      unitPriceUsd: String(item.unitPriceUsd),
-      selectedForBooking: true,
-    }));
-    setShopItems(items);
-    if (estimatorResult.estimatedItems[0]?.store) {
-      setPurchaseForm((prev) => ({ ...prev, storeName: estimatorResult.estimatedItems[0].store }));
-    }
-    setStatusMessage('Estimated cart imported. Review values before checkout.');
-    return true;
-  }
-
   const normalizedShopItems = useMemo(() => (
     shopItems
       .map((item) => ({
@@ -2776,7 +2569,7 @@ function App() {
       }
 
       const amountCents = Math.round(landedTotalUsd * 100);
-      const needsAdminReview = hasLuxuryBrand || landedTotalUsd >= 1500 || (estimatorResult && estimatorResult.confidence < 70);
+      const needsAdminReview = hasLuxuryBrand || landedTotalUsd >= 1500;
 
       const response = await fetch(`${API_BASE}/purchase-requests`, {
         method: 'POST',
@@ -2857,10 +2650,6 @@ function App() {
         idUrl: { uploading: false, fileName: '', error: '' },
         importPermitUrl: { uploading: false, fileName: '', error: '' },
       });
-      setEstimatorLinks('');
-      setEstimatorSubtotalInput('');
-      setEstimatorProductPricesInput('');
-      setEstimatorResult(null);
       window.location.assign(checkoutResult.url);
     } catch (error) {
       setStatusMessage(error.message);
@@ -4475,17 +4264,7 @@ function App() {
     const quoteSupplyAddons = useMemo(() => getSupplyAddons(quoteForm), [quoteForm]);
     const quoteSupplyAddonsTotalUsd = useMemo(() => calculateSupplyAddonsTotal(quoteForm), [quoteForm]);
     const quoteBreakdown = latestQuoteResult?.quote?.pricingBreakdown || null;
-    const assistantConfidence = Number(aiAssistantResult?.freightEstimate?.confidence || 0);
-    const assistantEmailPresentation = aiAssistantResult?.emailStatus?.customer
-      ? getQuoteDeliveryPresentation(aiAssistantResult.emailStatus.customer)
-      : null;
     const quoteSubmitted = Boolean(latestQuoteResult?.quote);
-    const assistantIntakeReady = Boolean(
-      String(quoteForm.origin || '').trim()
-      && String(quoteForm.destination || '').trim()
-      && String(quoteForm.cargoType || '').trim()
-      && (Number(quoteForm.weight || 0) > 0 || quoteForm.dontKnowWeight)
-    );
 
     return (
       <section className="card card--split">
@@ -5915,166 +5694,6 @@ function App() {
           )}
         </div>
       </section>
-    );
-  }
-
-  function CartEstimatorPage() {
-    const handleImportAndGoToShop = () => {
-      const imported = applyEstimatorToCart();
-      if (imported) {
-        navigate('/shop');
-      }
-    };
-
-    const estimatorMetrics = estimatorResult
-      ? [
-          { label: 'Confidence', value: `${estimatorResult.confidenceLabel} (${estimatorResult.confidence}%)` },
-          { label: 'Items Total', value: `$${estimatorResult.subtotal.toFixed(2)}` },
-          { label: 'Shipping', value: `$${estimatorResult.shipping.toFixed(2)}` },
-          { label: 'Estimated Duty', value: `$${estimatorResult.customs.toFixed(2)}` },
-          { label: 'Landed Total', value: `$${estimatorResult.total.toFixed(2)}` },
-        ]
-      : [];
-
-    return (
-      <>
-        <section className="card estimator-hero">
-          <div style={{ maxWidth: '700px' }}>
-            <p className="estimator-page__eyebrow">✨ Signature Feature</p>
-            <h1 style={{ fontSize: '2.2rem', marginBottom: '1rem' }}>Smart Shipping Estimator</h1>
-            <p className="section-intro" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
-              Paste an Amazon, Walmart, eBay, Gucci, or any US store product/cart link. 
-              Get an instant landed-cost estimate including shipping, duties, and processing fees—all in seconds.
-            </p>
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(11, 107, 97, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--brand)' }}>
-              <p style={{ margin: '0', fontSize: '0.95rem', fontWeight: '500' }}>
-                💡 <strong>Pro Tip:</strong> For cart links (like Amazon), paste your actual cart subtotal below. 
-                For product links, add the exact item price list so your estimate is precise.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="card estimator-page">
-          <div className="estimator-page__lead">
-            <h2>Estimate Your Shipping</h2>
-
-            <div className="shop-estimator estimator-panel">
-              <label className="estimator-field">
-                Product/Cart Links (one per line)
-                <textarea
-                  rows="6"
-                  value={estimatorLinks}
-                  onChange={(event) => setEstimatorLinks(event.target.value)}
-                  placeholder="https://www.sephora.com/...&#10;https://www.gucci.com/...&#10;https://www.amazon.com/gp/cart/view.html?ref_=nav_cart"
-                />
-              </label>
-              <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
-                Store Cart Subtotal (USD) - Required for cart links
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={estimatorSubtotalInput}
-                  onChange={(event) => setEstimatorSubtotalInput(event.target.value)}
-                  placeholder="e.g. 224.40"
-                />
-              </label>
-              <label className="estimator-field" style={{ marginTop: '0.55rem' }}>
-                Exact Product Prices (USD) - Required for product links (one per line, same order)
-                <textarea
-                  rows="4"
-                  value={estimatorProductPricesInput}
-                  onChange={(event) => setEstimatorProductPricesInput(event.target.value)}
-                  placeholder="799.99&#10;1299.00"
-                />
-              </label>
-              <div className="estimator-panel__actions">
-                <button type="button" className="btn btn--solid" onClick={runLinkEstimator}>
-                  🚀 Get Instant Estimate
-                </button>
-              </div>
-
-              {estimatorResult && (
-                <div className="estimator-results">
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: 'var(--brand)' }}>Your Estimate</h3>
-                  <div className="estimator-metrics">
-                    {estimatorMetrics.map((metric) => (
-                      <article key={metric.label} className="estimator-metric">
-                        <span>{metric.label}</span>
-                        <strong>{metric.value}</strong>
-                      </article>
-                    ))}
-                  </div>
-                  {estimatorResult.missing.length > 0 && (
-                    <div className="estimator-notes">
-                      <p><strong>Improve Accuracy</strong></p>
-                      <ul className="type-list">
-                        {estimatorResult.missing.map((msg) => (
-                          <li key={msg}>{msg}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="estimator-notes" style={{ marginTop: '1rem' }}>
-                    <p><strong>How Your Links Were Interpreted</strong></p>
-                    <p style={{ marginBottom: '0.45rem' }}>
-                      Links parsed: {estimatorResult.inputSummary.totalLinks}. Cart links: {estimatorResult.inputSummary.cartLinks}. Product links: {estimatorResult.inputSummary.productLinks}.
-                    </p>
-                    <ul className="type-list">
-                      {estimatorResult.estimatedItems.map((item, idx) => (
-                        <li key={`${item.link}-${idx}`}>
-                          {item.sourceType === 'cart-subtotal'
-                            ? `${item.store} cart subtotal: $${item.unitPriceUsd.toFixed(2)} (from your manual subtotal)`
-                            : `${item.store} product link: ${item.name} -> $${item.unitPriceUsd.toFixed(2)} (from your exact product price input)`}
-                        </li>
-                      ))}
-                    </ul>
-                    <p style={{ marginTop: '0.55rem', marginBottom: '0.2rem' }}>
-                      Formula used: subtotal + customs + brokerage + processing + shipping
-                    </p>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--muted)' }}>
-                      Rates: customs {(estimatorResult.rateSummary.customsRate * 100).toFixed(0)}%, processing {(estimatorResult.rateSummary.processingRate * 100).toFixed(0)}%, shipping {(estimatorResult.rateSummary.shippingRate * 100).toFixed(0)}%, brokerage ${estimatorResult.rateSummary.brokerageFlat.toFixed(2)} flat.
-                    </p>
-                  </div>
-
-                  <button type="button" className="btn btn--solid" onClick={handleImportAndGoToShop} style={{ marginTop: '1.5rem', width: '100%' }}>
-                    📦 Add to Shop & Ship Cart
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="estimator-page__guide">
-            <div className="estimator-guide-card">
-              <h3>📋 How To Use</h3>
-              <ul className="type-list">
-                <li><strong>Paste Links:</strong> One per line from US stores</li>
-                <li><strong>Enter Subtotal:</strong> Required for cart URLs only</li>
-                <li><strong>Enter Product Prices:</strong> Required for product URLs</li>
-                <li><strong>Get Estimate:</strong> Instant landed-cost breakdown</li>
-                <li><strong>Import & Ship:</strong> Add to Shop & Ship and checkout</li>
-              </ul>
-            </div>
-
-            <div className="estimator-guide-card estimator-guide-card--accent">
-              <h3>⭐ For Best Results</h3>
-              <ul className="type-list">
-                <li>Use exact product page URLs</li>
-                <li>Mix product + cart links as needed</li>
-                <li>Confirm totals in Shop & Ship</li>
-                <li>Custom items? Use "Get a Quote"</li>
-              </ul>
-              <button type="button" className="btn btn--solid" onClick={() => navigate('/shop')}>
-                Go to Shop & Ship
-              </button>
-            </div>
-          </div>
-        </section>
-
-      </>
     );
   }
 
@@ -9214,7 +8833,6 @@ function App() {
           <Route path="/catalog/:sectionKey" element={<CatalogSectionPage />} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
-          <Route path="/cart-estimator" element={<Navigate to="/" replace />} />
           <Route path="/scan" element={PublicScanPage()} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route
