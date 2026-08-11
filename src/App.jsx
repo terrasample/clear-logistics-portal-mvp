@@ -90,7 +90,7 @@ const NAV_ITEMS = [
   },
   {
     key: 'pricing',
-    label: 'Get a Quote',
+    label: 'Get A Quote',
     targetPath: '/quote',
     activePaths: ['quote'],
   },
@@ -379,7 +379,7 @@ const SITE_MAP = [
   'Shipping Information',
   'Service Policy',
   'Track Shipment',
-  'Get a Quote',
+  'Get A Quote',
   'Shop & Ship',
   'Book Pickup',
   'Contact Support',
@@ -1184,6 +1184,8 @@ function App() {
     weight: '',
     dontKnowWeight: false,
     quantity: '1',
+    hasMixedBoxWeights: false,
+    boxWeightsCsv: '',
     dimensionsLength: '',
     dimensionsWidth: '',
     dimensionsHeight: '',
@@ -1712,7 +1714,26 @@ function App() {
 
   function handleQuoteChange(event) {
     const { name, value, type, checked } = event.target;
-    setQuoteForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    const nextValue = type === 'checkbox' ? checked : value;
+    setQuoteForm((prev) => {
+      const next = { ...prev, [name]: nextValue };
+      if (name === 'cargoType') {
+        const cargoKey = String(nextValue || '').trim().toLowerCase();
+        if (cargoKey === 'barrel') {
+          next.dontKnowWeight = false;
+          next.weight = '';
+          next.hasMixedBoxWeights = false;
+          next.boxWeightsCsv = '';
+        } else if (cargoKey !== 'box') {
+          next.hasMixedBoxWeights = false;
+          next.boxWeightsCsv = '';
+        }
+      }
+      if (name === 'hasMixedBoxWeights' && checked) {
+        next.weight = '';
+      }
+      return next;
+    });
     setLatestQuoteResult((prev) => (prev?.quote ? null : prev));
   }
 
@@ -2582,11 +2603,37 @@ function App() {
     setStatusMessage('');
     setLatestQuoteResult(null);
     try {
+      const cargoKey = String(quoteForm.cargoType || '').trim().toLowerCase();
+      const isBarrelShipment = cargoKey === 'barrel';
+      const isBoxShipment = cargoKey === 'box';
+      const quantity = Math.max(1, Math.ceil(Number(quoteForm.quantity || 1)));
+      const usesMixedBoxWeights = isBoxShipment && !quoteForm.dontKnowWeight && Boolean(quoteForm.hasMixedBoxWeights);
+      let resolvedWeight = quoteForm.dontKnowWeight || isBarrelShipment ? '' : quoteForm.weight;
+      let weightEntryMode = 'per-unit';
+
+      if (usesMixedBoxWeights) {
+        const parsedWeights = String(quoteForm.boxWeightsCsv || '')
+          .split(/[\n,]+/)
+          .map((value) => Number(String(value || '').trim()))
+          .filter((value) => Number.isFinite(value) && value > 0);
+
+        if (parsedWeights.length !== quantity) {
+          throw new Error(`Please enter exactly ${quantity} box weight${quantity > 1 ? 's' : ''}.`);
+        }
+
+        const totalWeight = parsedWeights.reduce((sum, current) => sum + current, 0);
+        resolvedWeight = String(Number(totalWeight.toFixed(2)));
+        weightEntryMode = 'total';
+      }
+
       const quoteSupplyAddons = getSupplyAddons(quoteForm);
       const quoteSupplyAddonsTotalUsd = calculateSupplyAddonsTotal(quoteForm);
       const payload = {
         ...quoteForm,
-        weight: quoteForm.dontKnowWeight ? '' : quoteForm.weight,
+        dontKnowWeight: isBarrelShipment ? false : quoteForm.dontKnowWeight,
+        quantity: String(quantity),
+        weight: resolvedWeight,
+        weightEntryMode,
         supplyAddons: quoteSupplyAddons,
         supplyAddonsTotalUsd: quoteSupplyAddonsTotalUsd,
         barrelPurchaseQty: String(Math.max(0, Number(quoteForm.addonBarrels || 0))),
@@ -4046,7 +4093,8 @@ function App() {
                     value={instantQuoteForm.weight}
                     onChange={handleInstantQuoteChange}
                     placeholder="e.g., 25"
-                    min="1"
+                    min="0.01"
+                    step="0.01"
                   />
                 )}
               </div>
@@ -4487,36 +4535,65 @@ function App() {
               Declared Value (USD)
               <input id="quote-declaredValueUsd" type="number" name="declaredValueUsd" value={quoteForm.declaredValueUsd} onChange={handleQuoteChange} min="0" placeholder="Optional but recommended" />
             </label>
+            <label htmlFor="quote-quantity">
+              {String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Barrel Quantity' : 'Package Quantity'}
+              <input id="quote-quantity" type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
+            </label>
             <label htmlFor="quote-weight-form">
-              Weight (lbs)
+              {String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Weight (not required for barrels)' : 'Weight (lbs)'}
               <input
                 id="quote-weight-form"
                 type="number"
                 name="weight"
                 value={quoteForm.weight}
                 onChange={handleQuoteChange}
-                min="1"
-                required={!quoteForm.dontKnowWeight}
-                disabled={quoteForm.dontKnowWeight}
-                placeholder={quoteForm.dontKnowWeight ? 'Skip when unknown' : ''}
+                min="0.01"
+                step="0.01"
+                required={String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && !quoteForm.dontKnowWeight && !quoteForm.hasMixedBoxWeights}
+                disabled={String(quoteForm.cargoType || '').toLowerCase() === 'barrel' || quoteForm.dontKnowWeight || quoteForm.hasMixedBoxWeights}
+                placeholder={String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Skipped for barrel pricing' : (quoteForm.dontKnowWeight ? 'Skip when unknown' : '')}
               />
             </label>
-            <label htmlFor="quote-dontKnowWeight" className="checkbox-label">
-              <input
-                id="quote-dontKnowWeight"
-                type="checkbox"
-                name="dontKnowWeight"
-                checked={quoteForm.dontKnowWeight}
-                onChange={handleQuoteChange}
-              />
-              I do not know the exact weight
-            </label>
-            {quoteForm.dontKnowWeight && (
+            {String(quoteForm.cargoType || '').toLowerCase() === 'box' && !quoteForm.dontKnowWeight && (
+              <label htmlFor="quote-hasMixedBoxWeights" className="checkbox-label">
+                <input
+                  id="quote-hasMixedBoxWeights"
+                  type="checkbox"
+                  name="hasMixedBoxWeights"
+                  checked={quoteForm.hasMixedBoxWeights}
+                  onChange={handleQuoteChange}
+                />
+                Boxes have different weights
+              </label>
+            )}
+            {String(quoteForm.cargoType || '').toLowerCase() === 'box' && quoteForm.hasMixedBoxWeights && !quoteForm.dontKnowWeight && (
+              <label htmlFor="quote-boxWeightsCsv">
+                Box Weights (lbs, comma-separated)
+                <textarea
+                  id="quote-boxWeightsCsv"
+                  name="boxWeightsCsv"
+                  value={quoteForm.boxWeightsCsv}
+                  onChange={handleQuoteChange}
+                  placeholder="e.g. 4.25, 6.5"
+                  rows={3}
+                  required
+                />
+              </label>
+            )}
+            {String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && (
+              <label htmlFor="quote-dontKnowWeight" className="checkbox-label">
+                <input
+                  id="quote-dontKnowWeight"
+                  type="checkbox"
+                  name="dontKnowWeight"
+                  checked={quoteForm.dontKnowWeight}
+                  onChange={handleQuoteChange}
+                />
+                I do not know the exact weight
+              </label>
+            )}
+            {quoteForm.dontKnowWeight && String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && (
               <>
-                <label htmlFor="quote-quantity">
-                  Quantity
-                  <input id="quote-quantity" type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
-                </label>
                 <label htmlFor="quote-dimensionsLength">
                   Dimensions (L x W x H in inches)
                   <div className="input-row">

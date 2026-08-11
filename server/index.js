@@ -554,6 +554,9 @@ const DEFAULT_SPACE_CUBIC_FEET_BY_CARGO = {
 };
 
 const MINIMUM_SHIPMENT_FEE_USD = 48;
+const SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD = 240;
+const SINGLE_BARREL_PICKUP_AND_HANDLING_USD = 100;
+const BARREL_ADDITIONAL_DISCOUNT_RATE = 0.03;
 
 function normalizeCargoKey(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
@@ -561,6 +564,11 @@ function normalizeCargoKey(value) {
 
 function normalizeParishKey(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function isDropOffHandoff(payload) {
+  const handoffType = String(payload?.handoffType || '').trim().toLowerCase();
+  return handoffType === 'dropoff' || handoffType === 'drop-off' || handoffType === 'drop_off';
 }
 
 function getServiceMultiplier(serviceLevel) {
@@ -610,11 +618,80 @@ function calculateHybridQuotePricing(payload, { estimateOnly = false } = {}) {
   const provisionalCubicFeet = dimensionalCubicFeet > 0 ? dimensionalCubicFeet : defaultCubicFeet;
   const selectedTier = resolveSpaceTier(payload, provisionalCubicFeet);
   const billableCubicFeet = Math.max(provisionalCubicFeet, selectedTier.minCubicFeet || 0);
+  const isBarrelShipment = cargoKey === 'barrel' && quantity >= 1;
 
   const explicitWeight = Math.max(0, normalizeNumber(payload.weight, 0));
-  const computedWeight = explicitWeight > 0 ? explicitWeight * quantity : billableCubicFeet * density;
+  const weightEntryMode = String(payload?.weightEntryMode || 'per-unit').trim().toLowerCase();
+  const explicitWeightIsTotal = weightEntryMode === 'total';
+  const computedWeight = explicitWeight > 0
+    ? (explicitWeightIsTotal ? explicitWeight : explicitWeight * quantity)
+    : billableCubicFeet * density;
   const declaredValueUsd = Math.max(0, normalizeNumber(payload.declaredValueUsd, 0));
   const valueFeeUsd = declaredValueUsd > 0 ? declaredValueUsd * 0.02 : 0;
+
+  if (isBarrelShipment) {
+    const pickupAndHandlingUsd = isDropOffHandoff(payload) ? 0 : SINGLE_BARREL_PICKUP_AND_HANDLING_USD;
+    const firstBarrelFreightAndCustomsUsd = SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD;
+    const additionalBarrelFreightAndCustomsUsd = Math.max(0, quantity - 1)
+      * SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD
+      * (1 - BARREL_ADDITIONAL_DISCOUNT_RATE);
+    const freightAndCustomsUsd = firstBarrelFreightAndCustomsUsd + additionalBarrelFreightAndCustomsUsd;
+    const totalUsd = Math.max(
+      MINIMUM_SHIPMENT_FEE_USD,
+      freightAndCustomsUsd + pickupAndHandlingUsd + Math.max(0, normalizeNumber(payload.supplyAddonsTotalUsd, 0))
+    );
+
+    const breakdown = {
+      strategy: 'barrel-quantity-rate',
+      spaceTierKey: selectedTier.key,
+      spaceTierLabel: selectedTier.label,
+      barrelQuantity: quantity,
+      chargesUsd: {
+        perBarrelFreightAndCustoms: Number(SINGLE_BARREL_FREIGHT_AND_CUSTOMS_USD.toFixed(2)),
+        additionalBarrelDiscountRate: BARREL_ADDITIONAL_DISCOUNT_RATE,
+        additionalBarrelFreightAndCustoms: Number(additionalBarrelFreightAndCustomsUsd.toFixed(2)),
+        freightAndCustoms: Number(freightAndCustomsUsd.toFixed(2)),
+        pickupAndHandling: Number(pickupAndHandlingUsd.toFixed(2)),
+        minimumShipmentFee: Number(MINIMUM_SHIPMENT_FEE_USD.toFixed(2)),
+      },
+      freightMode: 'sea-freight',
+      handoffType: isDropOffHandoff(payload) ? 'dropoff' : 'pickup',
+      deliveryZone: {
+        key: deliveryZone.key,
+        label: deliveryZone.label,
+      },
+    };
+
+    if (estimateOnly) {
+      const low = Math.max(MINIMUM_SHIPMENT_FEE_USD, Math.round(totalUsd * 0.95));
+      const high = Math.max(low + 5, Math.round(totalUsd * 1.05));
+      return {
+        pricingMode: 'barrel-flat-rate',
+        estimatedRangeUsd: { low, high },
+        quotedPriceUsd: null,
+        spaceTierKey: selectedTier.key,
+        spaceTierLabel: selectedTier.label,
+        deliveryZone,
+        pricingBreakdown: {
+          ...breakdown,
+          estimatedRangeUsd: { low, high },
+        },
+      };
+    }
+
+    return {
+      pricingMode: 'barrel-flat-rate',
+      quotedPriceUsd: Number(totalUsd.toFixed(2)),
+      estimatedRangeUsd: null,
+      spaceTierKey: selectedTier.key,
+      spaceTierLabel: selectedTier.label,
+      deliveryZone,
+      pricingBreakdown: {
+        ...breakdown,
+        finalPriceUsd: Number(totalUsd.toFixed(2)),
+      },
+    };
+  }
 
   const weightChargeUsd = (computedWeight * perLbRate * serviceMultiplier) + valueFeeUsd;
   const spaceChargeUsd = selectedTier.basePriceUsd * serviceMultiplier;
@@ -3290,6 +3367,8 @@ app.post('/api/admin/bookings/:bookingId/payment', requireAuth, async (req, res)
 app.post('/api/quotes', async (req, res) => {
   const payload = req.body || {};
   const authUser = getOptionalAuthUser(req);
+  const cargoKey = normalizeCargoKey(payload.cargoType);
+  const isBarrelQuote = cargoKey === 'barrel';
   const required = ['fullName', 'email', 'phone', 'cargoType', 'origin', 'destination', 'deliveryParish', 'itemCategory'];
   const missing = required.filter((k) => !payload[k]);
 
@@ -3297,9 +3376,16 @@ app.post('/api/quotes', async (req, res) => {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
-  const weightUnknown = Boolean(payload.dontKnowWeight);
-  if (!weightUnknown && !payload.weight) {
+  const weightUnknown = !isBarrelQuote && Boolean(payload.dontKnowWeight);
+  if (!isBarrelQuote && !weightUnknown && !payload.weight) {
     return res.status(400).json({ error: 'weight is required unless dontKnowWeight is true.' });
+  }
+
+  if (isBarrelQuote) {
+    const quantity = Math.max(1, normalizeNumber(payload.quantity, 1));
+    payload.quantity = String(quantity);
+    payload.dontKnowWeight = false;
+    payload.weight = '';
   }
 
   if (weightUnknown) {
