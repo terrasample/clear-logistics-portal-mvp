@@ -2006,7 +2006,7 @@ function App() {
       if (Array.isArray(parsed?.bookingBoxItems)) {
         setBookingBoxItems(parsed.bookingBoxItems);
       }
-      if (parsed?.bookingStep && Number(parsed.bookingStep) >= 1 && Number(parsed.bookingStep) <= 5) {
+      if (parsed?.bookingStep && Number(parsed.bookingStep) >= 1 && Number(parsed.bookingStep) <= 4) {
         setBookingStep(Number(parsed.bookingStep));
       }
     } catch {
@@ -2018,7 +2018,7 @@ function App() {
     const payload = {
       bookingForm,
       bookingBoxItems,
-      bookingStep: Math.min(5, bookingStep),
+      bookingStep: Math.min(4, bookingStep),
       savedAt: new Date().toISOString(),
     };
     try {
@@ -2817,8 +2817,9 @@ function App() {
   }
 
   function generateQrCode(text) {
-    // Simple QR-like placeholder using data URL (in production, use a QR library)
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
+    const shipmentId = String(text || '').trim();
+    const scanUrl = `${window.location.origin}/scan?shipmentId=${encodeURIComponent(shipmentId)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(scanUrl)}`;
   }
 
   function focusFirstInvalidField(fieldNames) {
@@ -2846,8 +2847,7 @@ function App() {
       1: ['fullName', 'email', 'phone', 'pickupAddress', 'pickupCity', 'pickupZip', 'pickupDate'],
       2: ['cargoType', 'quantity', 'weightPerUnit'],
       3: ['jamaicaRecipient', 'jamaicaAddress', 'jamaicaLocation', 'deliveryParish'],
-      4: ['serviceLevel'],
-      5: ['packingDeclaration', 'agreementAccepted'],
+      4: ['packingDeclaration', 'agreementAccepted'],
     };
 
     if (step === 1) {
@@ -2864,19 +2864,6 @@ function App() {
         setStatusMessage('Please provide valid shipment details before continuing.');
         return false;
       }
-
-      if (bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed') {
-        const hasInvalidBox = bookingBoxItems.some((box) => {
-          const hasWeight = Number(box.weight || 0) > 0;
-          const dimsBlank = !box.length && !box.width && !box.height;
-          const hasPartialDims = [box.length, box.width, box.height].some(Boolean) && ![box.length, box.width, box.height].every(Boolean);
-          return !hasWeight || hasPartialDims || dimsBlank;
-        });
-        if (hasInvalidBox) {
-          setStatusMessage('For mixed boxes, add weight for each box and either fill all dimensions or leave all dimensions blank.');
-          return false;
-        }
-      }
     }
 
     if (step === 3) {
@@ -2888,16 +2875,8 @@ function App() {
     }
 
     if (step === 4) {
-      if (!bookingForm.serviceLevel) {
-        focusFirstInvalidField(stepFieldMap[4]);
-        setStatusMessage('Please select a service level before continuing.');
-        return false;
-      }
-    }
-
-    if (step === 5) {
       if (!bookingForm.packingDeclaration || !bookingForm.agreementAccepted) {
-        focusFirstInvalidField(stepFieldMap[5]);
+        focusFirstInvalidField(stepFieldMap[4]);
         setStatusMessage('Please accept both declarations before creating your shipment.');
         return false;
       }
@@ -2907,7 +2886,7 @@ function App() {
   }
 
   function handleBookingStepNext() {
-    if (bookingStep < 5 && validateBookingStep(bookingStep)) {
+    if (bookingStep < 4 && validateBookingStep(bookingStep)) {
       setStatusMessage('');
       setBookingStep(bookingStep + 1);
     }
@@ -2921,7 +2900,7 @@ function App() {
 
   async function handleBookingSubmit(event) {
     event.preventDefault();
-    if (!validateBookingStep(5)) {
+    if (!validateBookingStep(4)) {
       return;
     }
 
@@ -2965,7 +2944,7 @@ function App() {
       setTrackingId(createdShipmentId);
       setBookingQrCode(qrUrl);
       setStatusMessage(`Shipment ${createdShipmentId} created. Review the QR code, then continue to payment.`);
-      setBookingStep(6); // Confirmation/payment step
+      setBookingStep(5); // Confirmation/payment step
     } catch (error) {
       if (String(error.message || '').toLowerCase().includes('expired') || String(error.message || '').toLowerCase().includes('authentication')) {
         setIsAuthenticated(false);
@@ -3578,8 +3557,33 @@ function App() {
     }
   }
 
+  function extractShipmentIdFromScanInput(rawValue) {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return '';
+
+    const exactMatch = raw.match(/\bCLF-\d+\b/i);
+    if (exactMatch?.[0]) {
+      return exactMatch[0].toUpperCase();
+    }
+
+    try {
+      const parsed = new URL(raw);
+      const fromQuery = String(parsed.searchParams.get('shipmentId') || '').trim();
+      if (fromQuery) {
+        const fromQueryMatch = fromQuery.match(/\bCLF-\d+\b/i);
+        if (fromQueryMatch?.[0]) {
+          return fromQueryMatch[0].toUpperCase();
+        }
+      }
+    } catch {
+      // Ignore non-URL scan payloads.
+    }
+
+    return raw.toUpperCase();
+  }
+
   async function openPickupFromScan(rawShipmentId, source = 'manual-input') {
-    const cleanedShipmentId = String(rawShipmentId || '').trim();
+    const cleanedShipmentId = extractShipmentIdFromScanInput(rawShipmentId);
     if (!cleanedShipmentId) {
       setStatusMessage('Enter or scan a shipment ID first.');
       return;
@@ -6024,7 +6028,7 @@ function App() {
     const bookingCheckoutTotalUsd = useMemo(() => estimatedPrice + bookingSupplyAddonsTotalUsd, [estimatedPrice, bookingSupplyAddonsTotalUsd]);
     const bookingTotalWeightLbs = useMemo(() => getBookingTotalWeight(bookingForm, bookingBoxItems), [bookingForm, bookingBoxItems]);
 
-    const stepLabels = ['Pickup Info', 'Shipment Details', 'Jamaica Delivery', 'Choose Service', 'Confirm & Pay'];
+    const stepLabels = ['Pickup Info', 'Shipment Details', 'Jamaica Delivery', 'Confirm & Pay'];
     const bookingStepGuides = {
       1: {
         title: 'Pickup Info Guide',
@@ -6041,10 +6045,10 @@ function App() {
         summary: 'Tell us what you are shipping so we can prepare your quote correctly.',
         points: [
           ['Cargo type', 'Select the item type and quantity.'],
-          ['Weight and size', 'Add best-known weights and dimensions.'],
+          ['Weight per unit', 'Add a realistic per-pound weight for each item.'],
           ['Add-on supplies', 'Add barrels, boxes, or kits if needed.'],
         ],
-        note: 'Tip: better measurements usually mean a more accurate quote.',
+        note: 'Tip: pricing is calculated by weight, so box size is not required.',
       },
       3: {
         title: 'Jamaica Delivery Guide',
@@ -6057,26 +6061,16 @@ function App() {
         note: 'Tip: landmarks can help with smoother delivery.',
       },
       4: {
-        title: 'Service Selection Guide',
-        summary: 'Choose the delivery speed that fits your timeline.',
-        points: [
-          ['Economy', 'Great for lower cost and flexible timing.'],
-          ['Standard', 'Balanced speed and value for most shipments.'],
-          ['Premium', 'Priority handling when you need it faster.'],
-        ],
-        note: 'Tip: your service choice affects delivery timing.',
-      },
-      5: {
         title: 'Confirm And Pay Guide',
         summary: 'Review everything one last time before creating your shipment.',
         points: [
           ['Review details', 'Check pickup, shipment, and delivery info.'],
-          ['Review total', 'Confirm service and add-on costs.'],
+          ['Review total', 'Confirm freight, customs, and add-on costs.'],
           ['Accept terms', 'Check declarations and continue.'],
         ],
         note: 'Tip: if something is wrong, go back and update it first.',
       },
-      6: {
+      5: {
         title: 'Shipment Created',
         summary: 'Your shipment is created. You are ready for the final payment step.',
         points: [
@@ -6094,7 +6088,7 @@ function App() {
         <div>
           <p className="section-context-label" aria-label={`${BOOKING_TAB_LABEL} - ${BOOKING_PAGE_LABEL}`}>You are viewing: {BOOKING_TAB_LABEL} &gt; {BOOKING_PAGE_LABEL}</p>
           <h2>{BOOKING_PAGE_LABEL}</h2>
-          <p className="section-intro">Complete the booking in 5 steps. No hidden fees.</p>
+          <p className="section-intro">Complete the booking in 4 steps. No hidden fees.</p>
           <div className="booking-steps">
             {stepLabels.map((label, idx) => (
               <div key={label} className={`booking-step ${bookingStep > idx + 1 ? 'done' : ''} ${bookingStep === idx + 1 ? 'active' : ''}`}>
@@ -6159,84 +6153,10 @@ function App() {
                   Quantity
                   <input id="book-quantity" type="number" name="quantity" value={bookingForm.quantity} onChange={handleBookingChange} min="1" required />
                 </label>
-                {bookingForm.cargoType === 'Box' && (
-                  <>
-                    <label htmlFor="book-boxMode">
-                      Box Details Mode
-                      <select id="book-boxMode" name="boxMode" value={bookingForm.boxMode} onChange={handleBookingChange}>
-                        <option value="standardized">All boxes same size/weight</option>
-                        <option value="mixed">Each box is different</option>
-                      </select>
-                    </label>
-                    {bookingForm.boxMode === 'standardized' && (
-                      <label htmlFor="book-boxPreset">
-                        Box Size Preset
-                        <select id="book-boxPreset" name="boxPreset" value={bookingForm.boxPreset} onChange={handleBookingChange}>
-                          {BOX_PRESETS.map((preset) => (
-                            <option key={preset.key} value={preset.key}>{preset.label}</option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                  </>
-                )}
                 <label htmlFor="book-weightPerUnit">
-                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' ? 'Default Weight per Box (lbs)' : 'Weight per Unit (lbs)'}
+                  Weight per Unit (lbs)
                   <input id="book-weightPerUnit" type="number" name="weightPerUnit" value={bookingForm.weightPerUnit} onChange={handleBookingChange} min="1" required />
                 </label>
-                <label htmlFor="book-dimensionsLength">
-                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed'
-                    ? 'Default Dimensions (L x W x H in inches) — optional'
-                    : 'Dimensions (L x W x H in inches) — optional'}
-                  <div className="input-row">
-                    <input id="book-dimensionsLength" type="number" name="dimensionsLength" placeholder="Length" value={bookingForm.dimensionsLength} onChange={handleBookingChange} min="1" />
-                    <input id="book-dimensionsWidth" type="number" name="dimensionsWidth" placeholder="Width" value={bookingForm.dimensionsWidth} onChange={handleBookingChange} min="1" />
-                    <input id="book-dimensionsHeight" type="number" name="dimensionsHeight" placeholder="Height" value={bookingForm.dimensionsHeight} onChange={handleBookingChange} min="1" />
-                  </div>
-                </label>
-                {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' && (
-                  <div className="booking-summary" style={{ padding: '0.75rem', border: '1px solid #d9e5df', background: '#f7fbf9' }}>
-                    <p style={{ marginBottom: '0.5rem' }}><strong>Per-Box Details</strong></p>
-                    {bookingBoxItems.map((box, index) => (
-                      <div key={`box-item-${index}`} style={{ marginBottom: '0.65rem', borderBottom: '1px dashed #d9e5df', paddingBottom: '0.65rem' }}>
-                        <p style={{ marginBottom: '0.35rem' }}><strong>{box.label || `Box ${index + 1}`}</strong></p>
-                        <div className="input-row">
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Weight (lbs)"
-                            value={box.weight}
-                            onChange={(event) => handleBookingBoxItemChange(index, 'weight', event.target.value)}
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Length"
-                            value={box.length}
-                            onChange={(event) => handleBookingBoxItemChange(index, 'length', event.target.value)}
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Width"
-                            value={box.width}
-                            onChange={(event) => handleBookingBoxItemChange(index, 'width', event.target.value)}
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Height"
-                            value={box.height}
-                            onChange={(event) => handleBookingBoxItemChange(index, 'height', event.target.value)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <p className="section-intro" style={{ marginBottom: 0 }}>
-                      Tip: leave all 3 dimensions blank for a box if only actual weight is known.
-                    </p>
-                  </div>
-                )}
                 <label htmlFor="book-estimatedValue">
                   Estimated Value (USD)
                   <input id="book-estimatedValue" type="number" name="estimatedValue" value={bookingForm.estimatedValue} onChange={handleBookingChange} min="0" />
@@ -6301,38 +6221,17 @@ function App() {
               </>
             )}
 
-            {/* Step 4: Choose Service */}
+            {/* Step 4: Confirm & Pay */}
             {bookingStep === 4 && (
-              <>
-                <h3>Choose Your Service Level</h3>
-                <div className="service-tiers">
-                  {SERVICE_TIERS.map(tier => (
-                    <label key={tier.name} className="service-option">
-                      <input type="radio" name="serviceLevel" value={tier.name} checked={bookingForm.serviceLevel === tier.name} onChange={handleBookingChange} />
-                      <div className="service-details">
-                        <strong>{tier.name}</strong>
-                        <p>{tier.label}</p>
-                        <small>{tier.days} business days</small>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Step 5: Confirm & Pay */}
-            {bookingStep === 5 && (
               <>
                 <h3>Confirm Your Shipment</h3>
                 <div className="booking-summary">
                   <p><strong>Pickup:</strong> {bookingForm.pickupDate} at {bookingForm.pickupAddress}, {bookingForm.pickupCity}</p>
-                  <p><strong>Shipment:</strong> {bookingForm.quantity} {bookingForm.cargoType}(s){bookingForm.boxMode === 'mixed' && bookingForm.cargoType === 'Box' ? '' : `, ~${bookingForm.weightPerUnit} lbs each`}</p>
-                  {bookingForm.cargoType === 'Box' && bookingForm.boxMode === 'mixed' && (
-                    <p><strong>Box Breakdown:</strong> {bookingBoxItems.map((box, idx) => `Box ${idx + 1}: ${box.weight || '?'} lbs`).join(' | ')}</p>
-                  )}
+                  <p><strong>Shipment:</strong> {bookingForm.quantity} {bookingForm.cargoType}(s), ~{bookingForm.weightPerUnit} lbs each</p>
                   <p><strong>Total Weight:</strong> {bookingTotalWeightLbs.toFixed(1)} lbs</p>
                   <p><strong>Delivery:</strong> {bookingForm.jamaicaRecipient}, {bookingForm.jamaicaLocation}, Jamaica</p>
-                  <p><strong>Service:</strong> {bookingForm.serviceLevel} — ${estimatedPrice}</p>
+                  <p><strong>Freight + Customs Clearance:</strong> Included in shipping total</p>
+                  <p><strong>Shipping Total:</strong> ${estimatedPrice}</p>
                   {bookingSupplyAddons.length > 0 && (
                     <p><strong>Supplies:</strong> {bookingSupplyAddons.map((item) => `${item.quantity} ${item.label}`).join(', ')} — ${bookingSupplyAddonsTotalUsd.toFixed(2)}</p>
                   )}
@@ -6349,14 +6248,14 @@ function App() {
               </>
             )}
 
-            {/* Step 6: Shipment Created */}
-            {bookingStep === 6 && (
+            {/* Step 5: Shipment Created */}
+            {bookingStep === 5 && (
               <>
                 <h3>🎉 Shipment Created!</h3>
                 <div className="shipment-confirmation">
                   <p className="shipment-id">Shipment ID: <strong>{shipmentId}</strong></p>
                   {bookingQrCode && <img src={bookingQrCode} alt="QR Code" style={{ width: '150px', margin: '1rem 0' }} />}
-                  <p className="section-intro">Your driver will scan this QR code at pickup.</p>
+                  <p className="section-intro">Anyone can scan this QR code with a camera and confirm freight received.</p>
                   <button type="button" className="btn btn--solid" onClick={handlePayment} disabled={isLoading}>
                     Proceed to Payment
                   </button>
@@ -6365,7 +6264,7 @@ function App() {
             )}
 
             {/* Navigation */}
-            {bookingStep < 6 && (
+            {bookingStep < 5 && (
               <div className="booking-nav">
                 {bookingStep > 1 && (
                   <button type="button" className="btn btn--ghost" onClick={handleBookingStepBack} disabled={isLoading}>
@@ -6375,19 +6274,19 @@ function App() {
                 <button type="button" className="btn btn--ghost" onClick={handleSaveQuoteFromBooking} disabled={isLoading}>
                   Save Quote
                 </button>
-                {bookingStep < 5 && (
+                {bookingStep < 4 && (
                   <button type="button" className="btn btn--solid" onClick={handleBookingStepNext} disabled={isLoading}>
                     Next
                   </button>
                 )}
-                {bookingStep === 5 && (
+                {bookingStep === 4 && (
                   <button type="submit" className="btn btn--solid" disabled={isLoading}>
                     Create Shipment
                   </button>
                 )}
               </div>
             )}
-            {lastSavedQuoteId && bookingStep < 6 && (
+            {lastSavedQuoteId && bookingStep < 5 && (
               <p className="section-intro" style={{ marginTop: '0.5rem' }}>
                 Latest saved quote ID: {lastSavedQuoteId}
               </p>
@@ -6813,6 +6712,129 @@ function App() {
         </div>
       </section>
       </>
+    );
+  }
+
+  function PublicScanPage() {
+    const params = new URLSearchParams(location.search);
+    const shipmentIdFromQuery = String(params.get('shipmentId') || '').trim().toUpperCase();
+    const [scanSummary, setScanSummary] = useState(null);
+    const [scanLoading, setScanLoading] = useState(false);
+    const [confirmLoading, setConfirmLoading] = useState(false);
+    const [scanMessage, setScanMessage] = useState('');
+
+    useEffect(() => {
+      if (!shipmentIdFromQuery) {
+        setScanSummary(null);
+        setScanMessage('Shipment ID is missing from this QR link.');
+        return;
+      }
+
+      let cancelled = false;
+      setScanLoading(true);
+      setScanMessage('');
+
+      fetchWithApiFallback(`/public/shipments/${shipmentIdFromQuery}/scan`)
+        .then(async (response) => {
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.error || 'Unable to load shipment from this QR code.');
+          }
+          if (!cancelled) {
+            setScanSummary(result.shipment || null);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setScanSummary(null);
+            setScanMessage(error.message || 'Unable to load shipment from this QR code.');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setScanLoading(false);
+          }
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [shipmentIdFromQuery]);
+
+    async function handleConfirmFreightReceived() {
+      if (!shipmentIdFromQuery) {
+        setScanMessage('Shipment ID is missing from this QR link.');
+        return;
+      }
+
+      setConfirmLoading(true);
+      setScanMessage('');
+      try {
+        const response = await fetchWithApiFallback(`/public/shipments/${shipmentIdFromQuery}/freight-received`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ confirmed: true }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || 'Unable to confirm freight received.');
+        }
+
+        setScanSummary(result.shipment || null);
+        setScanMessage(result.message || `Shipment ${shipmentIdFromQuery} marked as Freight Received.`);
+      } catch (error) {
+        setScanMessage(error.message || 'Unable to confirm freight received.');
+      } finally {
+        setConfirmLoading(false);
+      }
+    }
+
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Freight Scan Confirmation</h2>
+          <p className="section-intro">Shipment ID: {shipmentIdFromQuery || 'Not found in QR code'}</p>
+          {scanLoading ? (
+            <p className="section-intro">Loading shipment details...</p>
+          ) : scanSummary ? (
+            <div className="booking-summary">
+              <p><strong>Current Status:</strong> {scanSummary.status || 'Unknown'}</p>
+              <p><strong>Cargo:</strong> {scanSummary.quantity || 'N/A'} x {scanSummary.cargoType || 'Cargo'}</p>
+            </div>
+          ) : (
+            <p className="section-intro">No shipment details available for this QR scan.</p>
+          )}
+
+          <div className="booking-nav" style={{ marginTop: '0.9rem' }}>
+            <button
+              type="button"
+              className="btn btn--solid"
+              onClick={handleConfirmFreightReceived}
+              disabled={confirmLoading || scanLoading || !shipmentIdFromQuery}
+            >
+              {confirmLoading ? 'Confirming...' : 'Freight Received? Confirm'}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => navigate('/tracking')}>
+              Track Shipment
+            </button>
+          </div>
+
+          {scanMessage ? (
+            <p className="section-intro" style={{ marginTop: '0.75rem' }}>{scanMessage}</p>
+          ) : null}
+        </div>
+
+        <div>
+          <h2>What Happens Next</h2>
+          <ul className="status-list">
+            <li className="done"><span>•</span> Confirming this scan updates shipment status to Freight Received.</li>
+            <li className="done"><span>•</span> Customer tracking updates right away.</li>
+            <li className="done"><span>•</span> Dispatch can continue normal processing.</li>
+          </ul>
+        </div>
+      </section>
     );
   }
 
@@ -8773,6 +8795,7 @@ function App() {
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/cart-estimator" element={<Navigate to="/" replace />} />
+          <Route path="/scan" element={PublicScanPage()} />
           <Route path="/tracking" element={TrackingPage()} />
           <Route
             path="/dashboard"

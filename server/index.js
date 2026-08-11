@@ -14,9 +14,10 @@ import PDFDocument from 'pdfkit';
 dotenv.config();
 
 const DEFAULT_MILESTONES = [
-  { label: 'Pickup Scheduled', done: true },
+  { label: 'Order Received', done: true },
+  { label: 'Pickup Scheduled', done: false },
   { label: 'Picked Up', done: false },
-  { label: 'At Miami Warehouse', done: false },
+  { label: 'Freight Received', done: false },
   { label: 'Loaded on Vessel', done: false },
   { label: 'Arrived in Kingston', done: false },
   { label: 'Customs Clearance', done: false },
@@ -25,7 +26,10 @@ const DEFAULT_MILESTONES = [
 ];
 const SHIPMENT_STATUS_MILESTONE_SEQUENCE = DEFAULT_MILESTONES.map((step) => String(step.label || '').trim());
 const MANUAL_SHIPMENT_STATUS_OPTIONS = [
-  'At Miami Warehouse',
+  'Order Received',
+  'Pickup Scheduled',
+  'Picked Up',
+  'Freight Received',
   'Loaded on Vessel',
   'Arrived in Kingston',
   'Customs Clearance',
@@ -210,11 +214,11 @@ function createInitialDataPayload() {
         {
           shipmentId: 'CLF-10025',
           fullName: 'John',
-          status: 'At Miami Warehouse',
+          status: 'Order Received',
           cargoType: 'Box',
           quantity: '3',
           unitType: 'Box',
-          milestones: DEFAULT_MILESTONES
+          milestones: DEFAULT_MILESTONES.map((step) => ({ ...step }))
         }
       ]
     : [];
@@ -2408,50 +2412,53 @@ function normalizeAlertChannel(value) {
   return 'whatsapp';
 }
 
-function resolveShipmentContact(booking, shipment) {
-  function statusToMilestoneLabel(status) {
-    const normalized = String(status || '').trim().toLowerCase();
-    if (!normalized) return '';
-    if (normalized === 'pickup scheduled') return 'Pickup Scheduled';
-    if (normalized === 'picked up') return 'Picked Up';
-    if (normalized === 'at miami warehouse') return 'At Miami Warehouse';
-    if (normalized === 'loaded on vessel') return 'Loaded on Vessel';
-    if (normalized === 'arrived in kingston') return 'Arrived in Kingston';
-    if (normalized === 'customs clearance') return 'Customs Clearance';
-    if (normalized === 'out for delivery') return 'Out for Delivery';
-    if (normalized === 'delivered') return 'Delivered';
-    return '';
-  }
+function statusToMilestoneLabel(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized === 'order received') return 'Order Received';
+  if (normalized === 'pickup scheduled') return 'Pickup Scheduled';
+  if (normalized === 'picked up') return 'Picked Up';
+  if (normalized === 'freight received') return 'Freight Received';
+  if (normalized === 'at miami warehouse') return 'Freight Received';
+  if (normalized === 'loaded on vessel') return 'Loaded on Vessel';
+  if (normalized === 'arrived in kingston') return 'Arrived in Kingston';
+  if (normalized === 'customs clearance') return 'Customs Clearance';
+  if (normalized === 'out for delivery') return 'Out for Delivery';
+  if (normalized === 'delivered') return 'Delivered';
+  return '';
+}
 
-  function applyShipmentStatusProgress(shipment, nextStatus) {
-    if (!shipment) return { milestoneLabel: '' };
+function applyShipmentStatusProgress(shipment, nextStatus) {
+  if (!shipment) return { milestoneLabel: '' };
 
-    shipment.status = String(nextStatus || '').trim() || shipment.status;
-    const milestoneLabel = statusToMilestoneLabel(shipment.status);
-    if (!milestoneLabel || !Array.isArray(shipment.milestones)) {
-      return { milestoneLabel };
-    }
-
-    const targetIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(milestoneLabel);
-    if (targetIndex < 0) {
-      return { milestoneLabel };
-    }
-
-    shipment.milestones = shipment.milestones.map((step) => {
-      const currentLabel = String(step?.label || '').trim();
-      const currentIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(currentLabel);
-      if (currentIndex < 0) {
-        return step;
-      }
-
-      return {
-        ...step,
-        done: currentIndex <= targetIndex,
-      };
-    });
-
+  shipment.status = String(nextStatus || '').trim() || shipment.status;
+  const milestoneLabel = statusToMilestoneLabel(shipment.status);
+  if (!milestoneLabel || !Array.isArray(shipment.milestones)) {
     return { milestoneLabel };
   }
+
+  const targetIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(milestoneLabel);
+  if (targetIndex < 0) {
+    return { milestoneLabel };
+  }
+
+  shipment.milestones = shipment.milestones.map((step) => {
+    const currentLabel = String(step?.label || '').trim();
+    const currentIndex = SHIPMENT_STATUS_MILESTONE_SEQUENCE.indexOf(currentLabel);
+    if (currentIndex < 0) {
+      return step;
+    }
+
+    return {
+      ...step,
+      done: currentIndex <= targetIndex,
+    };
+  });
+
+  return { milestoneLabel };
+}
+
+function resolveShipmentContact(booking, shipment) {
   const fullName = String(booking?.fullName || shipment?.fullName || '').trim();
   const email = String(booking?.email || shipment?.email || '').trim();
   const phone = String(booking?.phone || shipment?.phone || '').trim();
@@ -2643,7 +2650,7 @@ function buildDemoPickup(index) {
     shipment: {
       shipmentId,
       fullName,
-      status: 'Pickup Scheduled',
+      status: 'Order Received',
       cargoType,
       quantity: String((index % 4) + 1),
       unitType: cargoType,
@@ -4079,12 +4086,12 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
   data.shipments.push({
     shipmentId,
     fullName: payload.fullName,
-    status: 'Pickup Scheduled',
+    status: 'Order Received',
     cargoType: payload.cargoType,
     quantity: payload.quantity,
     unitType,
     paymentStatus: 'pending',
-    milestones: DEFAULT_MILESTONES
+    milestones: DEFAULT_MILESTONES.map((step) => ({ ...step }))
   });
 
   const assignment = autoAssignUnassignedBookings(data);
@@ -4102,7 +4109,7 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
       assignedDriverName: savedBooking.assignedDriverName,
       autoAssignedInBatch: assignment.assignedCount,
     },
-    message: 'Pickup scheduled successfully.'
+    message: 'Shipment order received successfully.'
   });
 });
 
@@ -4120,6 +4127,97 @@ app.get('/api/shipments/:shipmentId', async (req, res) => {
       trackingPreferences,
       escalationSlaMinutes: proactiveSlaMinutes,
     },
+  });
+});
+
+app.get('/api/public/shipments/:shipmentId/scan', async (req, res) => {
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  return res.json({
+    shipment: {
+      shipmentId: shipment.shipmentId,
+      status: shipment.status,
+      cargoType: shipment.cargoType,
+      quantity: shipment.quantity,
+      milestones: Array.isArray(shipment.milestones) ? shipment.milestones : DEFAULT_MILESTONES.map((step) => ({ ...step })),
+    },
+  });
+});
+
+app.post('/api/public/shipments/:shipmentId/freight-received', async (req, res) => {
+  const shipmentId = String(req.params.shipmentId || '').trim();
+  if (!shipmentId) {
+    return res.status(400).json({ error: 'shipmentId is required.' });
+  }
+
+  const data = await readData();
+  if (!Array.isArray(data.shipments)) data.shipments = [];
+  if (!Array.isArray(data.bookings)) data.bookings = [];
+  if (!Array.isArray(data.scanEvents)) data.scanEvents = [];
+
+  const shipment = data.shipments.find((s) => String(s?.shipmentId || '').trim() === shipmentId);
+  if (!shipment) {
+    return res.status(404).json({ error: 'Shipment not found.' });
+  }
+
+  const booking = data.bookings.find((b) => String(b?.shipmentId || '').trim() === shipmentId) || null;
+  const nowIso = new Date().toISOString();
+
+  if (!Array.isArray(shipment.milestones) || shipment.milestones.length === 0) {
+    shipment.milestones = DEFAULT_MILESTONES.map((step) => ({ ...step }));
+  }
+
+  const previousStatus = String(shipment.status || '').trim();
+  const { milestoneLabel } = applyShipmentStatusProgress(shipment, 'Freight Received');
+
+  data.scanEvents.push({
+    scanId: randomUUID(),
+    shipmentId,
+    bookingId: booking?.bookingId || null,
+    driverId: null,
+    driverName: 'Public Camera Scan',
+    source: 'public-camera-confirmation',
+    status: 'accepted',
+    reason: null,
+    createdAt: nowIso,
+  });
+
+  if (booking) {
+    booking.lastScannedAt = nowIso;
+    booking.lastScannedBy = 'Public Camera Scan';
+    booking.lastScanSource = 'public-camera-confirmation';
+  }
+
+  await writeData(data);
+  await sendNotification('Freight Received Confirmed', `Shipment ${shipmentId} marked Freight Received via public camera scan.`);
+
+  const trackingUpdateNotification = booking
+    ? await sendShipmentTrackingPhoneUpdate({
+      shipmentId,
+      shipment,
+      booking,
+      event: 'freight_received',
+      status: shipment.status,
+      milestoneLabel: milestoneLabel || 'Freight Received',
+      previousStatus,
+    })
+    : { delivered: false, reason: 'booking-not-available' };
+
+  return res.json({
+    ok: true,
+    message: `Shipment ${shipmentId} marked as Freight Received.`,
+    shipment,
+    trackingUpdateNotification,
   });
 });
 
@@ -4376,7 +4474,7 @@ app.get('/api/customer/dashboard', requireAuth, async (req, res) => {
     .map((booking) => {
       const shipmentId = String(booking?.shipmentId || '').trim();
       const shipment = shipmentById.get(shipmentId) || null;
-      const status = String(shipment?.status || (booking?.pickedUp ? 'Picked Up' : 'Pickup Scheduled'));
+      const status = String(shipment?.status || (booking?.pickedUp ? 'Picked Up' : 'Order Received'));
       const cargoLabel = String(booking?.unitType || booking?.cargoType || shipment?.unitType || shipment?.cargoType || 'Shipment');
       const serviceLabel = booking?.serviceLevel ? ` (${booking.serviceLevel})` : '';
 
@@ -4752,7 +4850,7 @@ app.post('/api/payments/confirm', async (req, res) => {
 
   if (shipment) {
     shipment.paymentStatus = 'paid';
-    if (shipment.status === 'Pickup Scheduled') {
+    if (shipment.status === 'Pickup Scheduled' || shipment.status === 'Order Received') {
       shipment.status = 'Payment Received';
     }
   }
@@ -5021,7 +5119,7 @@ app.get('/api/drivers/dashboard', requireAuth, async (req, res) => {
         assignedDriverName: b.assignedDriverName,
         assignedAt: b.assignedAt,
         assignmentMode: b.assignmentMode,
-        status: shipment?.status || 'Pickup Scheduled',
+        status: shipment?.status || 'Order Received',
         createdAt: b.createdAt
       };
     })
@@ -5083,7 +5181,7 @@ app.post('/api/drivers/scans', requireAuth, async (req, res) => {
     serviceLevel: booking.serviceLevel,
     assignedDriverId: booking.assignedDriverId,
     assignedDriverName: booking.assignedDriverName,
-    status: shipment?.status || 'Pickup Scheduled',
+    status: shipment?.status || 'Order Received',
     createdAt: booking.createdAt,
   };
 
