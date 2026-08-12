@@ -1050,6 +1050,96 @@
       "createdAt": "2026-07-23T04:35:09.523Z",
       "status": "Received",
       "paymentStatus": "pending"
+    },
+    {
+      "requestId": "PR-1786551034861",
+      "fullName": "Personal Buyer",
+      "email": "buyer@example.com",
+      "phone": "876-555-0122",
+      "storeName": "Supplier Direct",
+      "productLinks": [
+        "https://www.amazon.com/"
+      ],
+      "items": [
+        {
+          "name": "Furniture item",
+          "link": "https://www.amazon.com/",
+          "quantity": 1,
+          "unitPriceUsd": 120,
+          "selectedForBooking": true
+        }
+      ],
+      "sizeColorSpecs": "Category: Furniture",
+      "budgetUsd": 191,
+      "cartSubtotalUsd": 120,
+      "customsDutyUsd": 19.2,
+      "brokerageFeeUsd": 35,
+      "serviceFeeUsd": 0,
+      "processingFeeUsd": 6,
+      "totalUsd": 191,
+      "docsRequired": false,
+      "customsReady": true,
+      "customsReadyScore": 100,
+      "needsAdminReview": false,
+      "notificationPreferences": {
+        "whatsapp": true,
+        "sms": false
+      },
+      "documents": {
+        "invoiceUrl": "",
+        "idUrl": "",
+        "importPermitUrl": "",
+        "declarationAccepted": true
+      },
+      "notes": "Order With Clear | Product: Luxury Round Dining Set | Supplier Price USD: 1899 | Estimated Landed USD: 2503.7",
+      "createdAt": "2026-08-12T16:10:34.861Z",
+      "status": "Received",
+      "paymentStatus": "pending"
+    },
+    {
+      "requestId": "PR-1786551036061",
+      "fullName": "Business Buyer",
+      "email": "business@example.com",
+      "phone": "876-555-0177",
+      "storeName": "Supplier Direct",
+      "productLinks": [
+        "https://www.amazon.com/"
+      ],
+      "items": [
+        {
+          "name": "Business Equipment item",
+          "link": "https://www.amazon.com/",
+          "quantity": 1,
+          "unitPriceUsd": 150,
+          "selectedForBooking": true
+        }
+      ],
+      "sizeColorSpecs": "Category: Business Equipment",
+      "budgetUsd": 230,
+      "cartSubtotalUsd": 150,
+      "customsDutyUsd": 24,
+      "brokerageFeeUsd": 35,
+      "serviceFeeUsd": 0,
+      "processingFeeUsd": 7.5,
+      "totalUsd": 230,
+      "docsRequired": false,
+      "customsReady": true,
+      "customsReadyScore": 100,
+      "needsAdminReview": false,
+      "notificationPreferences": {
+        "whatsapp": true,
+        "sms": false
+      },
+      "documents": {
+        "invoiceUrl": "",
+        "idUrl": "",
+        "importPermitUrl": "",
+        "declarationAccepted": true
+      },
+      "notes": "Business request\nSmoke Business\nBusiness request\nSmoke Business",
+      "createdAt": "2026-08-12T16:10:36.061Z",
+      "status": "Received",
+      "paymentStatus": "pending"
     }
   ],
   "supportTickets": [
@@ -2442,5 +2532,6 @@
       "status": "accepted",
       "reason": null
     }
-  ]
+  ],
+  "aiQuotePacks": []
 }
