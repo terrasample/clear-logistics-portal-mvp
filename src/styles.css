@@ -1,13 +1,13 @@
 :root {
-  --ink: #173022;
-  --muted: #5c6d63;
+  --ink: #0f172a;
+  --muted: #4b5563;
   --bg: #ffffff;
   --surface: #ffffff;
-  --line: #dfe7e1;
-  --brand: #0e5d59;
-  --brand-dark: #113330;
-  --accent: #f8fbf9;
-  --soft-panel: #f3fbf9;
+  --line: #dbe6e3;
+  --brand: #0b6b61;
+  --brand-dark: #084841;
+  --accent: #f2b84b;
+  --soft-panel: #f0f7f6;
 }
 
 * {
@@ -18,15 +18,12 @@ body {
   margin: 0;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   color: var(--ink);
-  background: #ffffff;
+  background: var(--bg);
 }
 
 .page-shell {
   min-height: 100vh;
-  background:
-    radial-gradient(40rem 25rem at 12% 18%, rgba(239, 247, 244, 0.85) 0%, transparent 60%),
-    radial-gradient(36rem 20rem at 85% 15%, rgba(240, 245, 255, 0.6) 0%, transparent 50%),
-    #ffffff;
+  background: var(--bg);
 }
 
 .site-header {
@@ -65,6 +62,8 @@ body {
   max-height: 54px;
   object-fit: contain;
   display: block;
+  transform: scale(2.05);
+  transform-origin: left center;
 }
 
 .site-header__nav {
@@ -2992,6 +2991,7 @@ body {
   .site-header__logo {
     height: 46px;
     max-height: 46px;
+    transform: scale(1.75);
   }
 
   .site-header__nav {
