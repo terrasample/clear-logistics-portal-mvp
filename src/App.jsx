@@ -84,42 +84,177 @@ async function fetchWithApiFallback(pathname, options = {}) {
 
 const NAV_ITEMS = [
   {
-    key: 'services',
-    label: 'Services',
+    key: 'home',
+    label: 'Home',
+    targetPath: '/',
+    activePaths: ['home'],
+  },
+  {
+    key: 'shop',
+    label: 'Shop',
+    targetPath: '/shop',
+    activePaths: ['shop', 'catalog'],
+  },
+  {
+    key: 'sell-on-clear',
+    label: 'Sell on Clear',
+    targetPath: '/sell-on-clear',
+    activePaths: ['sell-on-clear'],
+  },
+  {
+    key: 'ship',
+    label: 'Ship with Clear',
     isPrimary: true,
-    targetPath: '/book-pickup',
-    activePaths: ['book-pickup', 'booking'],
+    targetPath: '/ship',
+    activePaths: ['ship'],
   },
   {
-    key: 'pricing',
-    label: 'Get A Quote',
-    targetPath: '/quote',
-    activePaths: ['quote'],
-  },
-  {
-    key: 'catalog',
-    label: 'Catalog',
-    targetPath: '/catalog',
-    activePaths: ['catalog'],
+    key: 'business',
+    label: 'Business',
+    targetPath: '/business',
+    activePaths: ['business'],
   },
   {
     key: 'track',
     label: 'Track',
-    targetPath: '/tracking',
-    activePaths: ['tracking'],
+    targetPath: '/track',
+    activePaths: ['track'],
   },
   {
-    key: 'shop',
-    label: 'Shop & Ship',
-    targetPath: '/shop',
-    activePaths: ['shop'],
+    key: 'pricing',
+    label: 'Pricing',
+    targetPath: '/pricing',
+    activePaths: ['pricing'],
   },
   {
-    key: 'driver-login',
-    label: 'Driver Login',
-    targetPath: '/driver/login',
-    activePaths: ['driver', 'driver/login', 'driver/register', 'driver/dashboard'],
+    key: 'my-clear',
+    label: 'My Clear',
+    targetPath: '/my-clear',
+    activePaths: ['my-clear'],
   },
+];
+
+const SHOP_CATEGORY_CARDS = [
+  'Furniture',
+  'Bedroom Sets',
+  'Dining Sets',
+  'Living Room',
+  'Accent Chairs',
+  'Hospitality Furnishing',
+  'Storage & Wardrobes',
+];
+
+const SHOP_CURATED_PRODUCTS = [
+  {
+    name: 'Luxury Round Dining Set',
+    category: 'Furniture',
+    supplierPriceUsd: 1899,
+    image: '/catalog/section_pages/cat1-p082-i5.jpeg',
+    productUrl: 'https://www.amazon.com/',
+  },
+  {
+    name: 'Classic Tufted Dining Arm Chair',
+    category: 'Furniture',
+    supplierPriceUsd: 689,
+    image: '/catalog/section_pages/orig-p055-i3.jpeg',
+    productUrl: 'https://www.alibaba.com/',
+  },
+  {
+    name: 'Signature Tufted Bedroom Set',
+    category: 'Home & Living',
+    supplierPriceUsd: 2440,
+    image: '/catalog/section_pages/orig-p068-i4.jpeg',
+    productUrl: 'https://www.webstaurantstore.com/',
+  },
+  {
+    name: 'Modern Upholstered Bedroom Set',
+    category: 'Home & Living',
+    supplierPriceUsd: 3290,
+    image: '/catalog/section_pages/living-room-p081.jpeg',
+    productUrl: 'https://www.wayfair.com/',
+  },
+];
+
+const SELL_ON_CLEAR_SELLER_TYPES = [
+  {
+    key: 'us',
+    label: 'U.S. Seller',
+    summary: 'Inventory is stored in the U.S. and sent to Clear for Jamaica fulfillment.',
+  },
+  {
+    key: 'international',
+    label: 'International Seller',
+    summary: 'Inventory ships from outside the U.S. through Clear-managed freight and customs.',
+  },
+  {
+    key: 'jamaican',
+    label: 'Jamaican Seller',
+    summary: 'Products are sold from Jamaica to buyers overseas through Clear handling export shipping.',
+  },
+];
+
+const SELL_ON_CLEAR_SAMPLE_LISTINGS = [
+  {
+    id: 'luxury-dining-set',
+    title: 'Luxury Round Dining Set',
+    priceUsd: 1899,
+    sellerName: 'Heritage Home Gallery',
+    sellerType: 'Jamaican Seller',
+    origin: 'Jacksonville, FL',
+    description: 'Ornate six-seat dining set for premium home interiors.',
+    image: '/catalog/section_pages/cat1-p082-i5.jpeg',
+    inventory: 18,
+    verified: true,
+    shippingNote: 'Ships from Jacksonville with white-glove Jamaica delivery options.',
+  },
+  {
+    id: 'dining-arm-chair',
+    title: 'Classic Tufted Dining Arm Chair',
+    priceUsd: 689,
+    sellerName: 'Pro Patio Supply',
+    sellerType: 'U.S. Seller',
+    origin: 'Jacksonville, FL',
+    description: 'Statement dining chair with carved frame and tufted upholstery.',
+    image: '/catalog/section_pages/orig-p055-i3.jpeg',
+    inventory: 24,
+    verified: true,
+    shippingNote: 'Ships from Jacksonville and can be fulfilled through Clear.',
+  },
+  {
+    id: 'signature-bedroom-set',
+    title: 'Signature Tufted Bedroom Set',
+    priceUsd: 2440,
+    sellerName: 'Display Works',
+    sellerType: 'International Seller',
+    origin: 'Guangzhou, China',
+    description: 'Luxury tufted bed package with matching side tables and finish options.',
+    image: '/catalog/section_pages/orig-p068-i4.jpeg',
+    inventory: 23,
+    verified: true,
+    shippingNote: 'Imported through Clear with freight and customs coordination.',
+  },
+];
+
+const SELL_ON_CLEAR_IMAGE_PRESETS = [
+  { label: 'Round Dining Set', value: '/catalog/section_pages/cat1-p082-i5.jpeg' },
+  { label: 'Dining Arm Chair', value: '/catalog/section_pages/orig-p055-i3.jpeg' },
+  { label: 'Tufted Bedroom Set', value: '/catalog/section_pages/orig-p068-i4.jpeg' },
+  { label: 'Upholstered Bedroom Suite', value: '/catalog/section_pages/living-room-p081.jpeg' },
+  { label: 'Bedroom Dresser', value: '/catalog/section_pages/catalog1-p061.jpeg' },
+];
+
+function buildSellerListingId(title) {
+  return String(title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || `listing-${Date.now()}`;
+}
+
+const BUSINESS_PROJECT_PRESETS = [
+  'I am opening a restaurant.',
+  'I need to furnish 10 Airbnb units.',
+  'I need to source materials for a construction project.',
 ];
 
 const JAMAICA_LOCATIONS_WITH_PARISHES = [
@@ -1305,6 +1440,11 @@ function App() {
     fullName: '',
     email: '',
     phone: '',
+    businessIntent: 'personal',
+    businessUnits: '',
+    businessDeliveryLocation: '',
+    needsInstallation: false,
+    needsMultipleProducts: false,
     storeName: 'Amazon',
     sizeColorSpecs: '',
     notes: '',
@@ -1396,6 +1536,51 @@ function App() {
   });
   const [catalogSetInquiryLoading, setCatalogSetInquiryLoading] = useState(false);
   const [catalogSetInquiryMessage, setCatalogSetInquiryMessage] = useState('');
+  const [sellerApplication, setSellerApplication] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem('clf_seller_application') || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [sellerForm, setSellerForm] = useState({
+    businessName: '',
+    contactName: '',
+    email: '',
+    sellerType: 'us',
+    category: '',
+    title: '',
+    productName: '',
+    description: '',
+    priceUsd: '',
+    inventory: '',
+    origin: 'Jacksonville, FL',
+    shippingOrigin: '',
+    verifiedSeller: false,
+    weightLbs: '',
+    lengthIn: '',
+    widthIn: '',
+    heightIn: '',
+    imageUrl: '/catalog/section_pages/cat1-p082-i5.jpeg',
+  });
+  const [sellerListings, setSellerListings] = useState(SELL_ON_CLEAR_SAMPLE_LISTINGS);
+  const [sellerFormStatus, setSellerFormStatus] = useState('');
+
+  useEffect(() => {
+    if (!sellerApplication) {
+      return;
+    }
+
+    setSellerListings((prev) => [sellerApplication, ...prev.filter((item) => item.id !== sellerApplication.id)]);
+  }, [sellerApplication]);
+
+  useEffect(() => {
+    if (sellerApplication) {
+      window.localStorage.setItem('clf_seller_application', JSON.stringify(sellerApplication));
+    } else {
+      window.localStorage.removeItem('clf_seller_application');
+    }
+  }, [sellerApplication]);
 
   // Phase 2: Driver app state
   const [driverAuthToken, setDriverAuthToken] = useState(localStorage.getItem('driverAuthToken') || null);
@@ -1408,6 +1593,132 @@ function App() {
   const [driverLoginForm, setDriverLoginForm] = useState({ email: '', password: '' });
   const [driverRegisterForm, setDriverRegisterForm] = useState({ fullName: '', email: '', password: '', phone: '', vehicle: '' });
   const [driverMode, setDriverMode] = useState('login');
+
+  function openShopFlow({
+    category = '',
+    audience = '',
+    notes = '',
+    directTo = 'purchase',
+    productName = '',
+    productUrl = '',
+    supplierPriceUsd = '',
+    storeName = '',
+    quantity = '',
+  } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (audience) params.set('audience', audience);
+    if (notes) params.set('notes', notes);
+    if (directTo) params.set('directTo', directTo);
+    if (productName) params.set('productName', productName);
+    if (productUrl) params.set('productUrl', productUrl);
+    if (supplierPriceUsd !== '' && supplierPriceUsd !== null && supplierPriceUsd !== undefined) {
+      params.set('supplierPriceUsd', String(supplierPriceUsd));
+    }
+    if (storeName) params.set('storeName', storeName);
+    if (quantity !== '' && quantity !== null && quantity !== undefined) {
+      params.set('quantity', String(quantity));
+    }
+    navigate(`/shop?${params.toString()}`);
+  }
+
+  function openQuoteFlow({
+    category = '',
+    audience = '',
+    notes = '',
+  } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (audience) params.set('audience', audience);
+    if (notes) params.set('notes', notes);
+    navigate(`/pricing?${params.toString()}`);
+  }
+
+  function handleSellerFormChange(event) {
+    const { name, value, type, checked } = event.target;
+    setSellerForm((prev) => {
+      const next = { ...prev, [name]: type === 'checkbox' ? checked : value };
+
+      if (name === 'title') {
+        next.productName = value;
+      }
+
+      if (name === 'productName') {
+        next.title = value;
+      }
+
+      if (name === 'shippingOrigin') {
+        next.origin = value;
+      }
+
+      if (name === 'origin') {
+        next.shippingOrigin = value;
+      }
+
+      return next;
+    });
+  }
+
+  function handleSellerApplicationSubmit(event) {
+    event.preventDefault();
+
+    const businessName = String(sellerForm.businessName || '').trim();
+    const contactName = String(sellerForm.contactName || '').trim();
+    const email = String(sellerForm.email || '').trim().toLowerCase();
+    const productName = String(sellerForm.title || sellerForm.productName || '').trim();
+    const category = String(sellerForm.category || '').trim();
+    const description = String(sellerForm.description || '').trim();
+    const priceUsd = Math.max(0, Number(sellerForm.priceUsd || 0));
+    const inventory = Math.max(0, Number(sellerForm.inventory || 0));
+    const weightLbs = Math.max(0, Number(sellerForm.weightLbs || 0));
+    const lengthIn = Math.max(0, Number(sellerForm.lengthIn || 0));
+    const widthIn = Math.max(0, Number(sellerForm.widthIn || 0));
+    const heightIn = Math.max(0, Number(sellerForm.heightIn || 0));
+    const shippingOrigin = String(sellerForm.shippingOrigin || sellerForm.origin || '').trim();
+
+    if (!businessName || !contactName || !email || !productName || !description || !priceUsd) {
+      setSellerFormStatus('Please complete the seller profile, product name, description, and price before submitting.');
+      return;
+    }
+
+    const sellerTypeLabel = SELL_ON_CLEAR_SELLER_TYPES.find((item) => item.key === sellerForm.sellerType)?.label || 'U.S. Seller';
+    const listing = {
+      id: buildSellerListingId(productName),
+      title: productName,
+      priceUsd: Number(priceUsd.toFixed(2)),
+      sellerName: businessName,
+      sellerType: sellerTypeLabel,
+      category: category || 'General',
+      origin: shippingOrigin || 'Jacksonville, FL',
+      description,
+      imageUrl: String(sellerForm.imageUrl || '').trim() || '/catalog/section_pages/cat1-p082-i5.jpeg',
+      fulfillment: 'Fulfilled by Clear',
+      inventory,
+      verified: Boolean(sellerForm.verifiedSeller),
+      shippingNote: 'Pending Clear Verified™ review.',
+      dimensions: {
+        lengthIn,
+        widthIn,
+        heightIn,
+      },
+      weightLbs,
+    };
+
+    const application = {
+      ...listing,
+      contactName,
+      email,
+      submittedAt: new Date().toISOString(),
+      verified: true,
+      fulfillment: 'Verified by Clear onboarding review.',
+      shippingNote: 'Verified by Clear onboarding review.',
+    };
+
+    setSellerApplication(application);
+    setSellerListings((prev) => [application, ...prev.filter((item) => item.id !== application.id)]);
+    window.localStorage.setItem('clf_seller_application', JSON.stringify(application));
+    setSellerFormStatus(`Seller profile received for ${businessName}. Clear Verified™ review started for ${productName}.`);
+  }
 
   useEffect(() => {
     const lower = String(statusMessage || '').toLowerCase();
@@ -1629,6 +1940,138 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (location.pathname !== '/shop') {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const category = String(params.get('category') || '').trim();
+    const audience = String(params.get('audience') || '').trim().toLowerCase();
+    const notes = String(params.get('notes') || '').trim();
+    const directTo = String(params.get('directTo') || '').trim().toLowerCase();
+    const productName = String(params.get('productName') || '').trim();
+    const productUrl = String(params.get('productUrl') || '').trim();
+    const storeName = String(params.get('storeName') || '').trim();
+    const quantityRaw = Number(params.get('quantity') || 1);
+    const supplierPriceRaw = Number(params.get('supplierPriceUsd') || 0);
+    const normalizedQuantity = Number.isFinite(quantityRaw) ? Math.max(1, Math.ceil(quantityRaw)) : 1;
+    const normalizedSupplierPrice = Number.isFinite(supplierPriceRaw) ? Math.max(0, supplierPriceRaw) : 0;
+
+    if (!category && !audience && !notes && !directTo && !productName && !productUrl && !storeName && !normalizedSupplierPrice) {
+      return;
+    }
+
+    if (!isAuthenticated && shopAccessMode !== 'guest') {
+      setShopAccessMode('guest');
+    }
+
+    if (category) {
+      setPurchaseForm((prev) => ({
+        ...prev,
+        sizeColorSpecs: prev.sizeColorSpecs || `Category: ${category}`,
+      }));
+
+      setShopItems((prev) => {
+        const first = prev[0] || createEmptyShopItem();
+        const firstEmpty = !String(first.name || '').trim() && !String(first.link || '').trim();
+        if (firstEmpty) {
+          return [
+            {
+              ...first,
+              name: `${category} item`,
+              link: 'https://www.amazon.com/',
+              quantity: Number(first.quantity || 1),
+              selectedForBooking: true,
+            },
+          ];
+        }
+        return prev;
+      });
+    }
+
+    if (productName || productUrl || normalizedSupplierPrice > 0 || storeName) {
+      setPurchaseForm((prev) => ({
+        ...prev,
+        storeName: storeName || prev.storeName || 'Amazon',
+      }));
+
+      setShopItems((prev) => {
+        const first = prev[0] || createEmptyShopItem();
+        const firstEmpty = !String(first.name || '').trim() && !String(first.link || '').trim();
+        if (firstEmpty) {
+          return [
+            {
+              ...first,
+              name: productName || first.name || `${category || 'General'} item`,
+              link: productUrl || first.link || 'https://www.amazon.com/',
+              quantity: normalizedQuantity,
+              unitPriceUsd: normalizedSupplierPrice > 0 ? String(normalizedSupplierPrice) : first.unitPriceUsd,
+              selectedForBooking: true,
+            },
+          ];
+        }
+        return prev;
+      });
+    }
+
+    if (audience === 'business') {
+      setPurchaseForm((prev) => ({
+        ...prev,
+        businessIntent: 'business',
+        notes: [prev.notes, 'Business request'].filter(Boolean).join('\n'),
+      }));
+    }
+
+    if (notes) {
+      setPurchaseForm((prev) => ({
+        ...prev,
+        notes: prev.notes ? `${prev.notes}\n${notes}` : notes,
+      }));
+    }
+
+    if (directTo === 'quote') {
+      setStatusMessage('Flow prepared. Continue in Pricing to generate a landed estimate, then complete checkout from Shop.');
+      navigate('/pricing');
+      return;
+    }
+
+    if (productName || normalizedSupplierPrice > 0) {
+      setStatusMessage('Product prefilled from discovery. Confirm details and continue to checkout.');
+      return;
+    }
+
+    setStatusMessage('Shop flow is prefilled. Complete customer details and continue to checkout.');
+  }, [location.pathname, location.search, isAuthenticated, shopAccessMode, navigate]);
+
+  useEffect(() => {
+    if (location.pathname !== '/pricing') {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const category = String(params.get('category') || '').trim();
+    const audience = String(params.get('audience') || '').trim().toLowerCase();
+    const notes = String(params.get('notes') || '').trim();
+
+    if (!category && !audience && !notes) {
+      return;
+    }
+
+    setQuoteForm((prev) => ({
+      ...prev,
+      itemCategory: category || prev.itemCategory,
+      cargoType: category ? 'Commercial Freight' : prev.cargoType,
+      fullName: currentUser?.fullName || prev.fullName,
+      email: currentUser?.email || prev.email,
+      phone: currentUser?.phone || prev.phone,
+    }));
+
+    if (audience === 'business' || notes) {
+      setStatusMessage('Pricing form prefilled for a business landed-cost request. Submit quote to continue.');
+    }
+  }, [location.pathname, location.search, currentUser]);
+
+  useEffect(() => {
     if (!chatOpen || !chatMessagesRef.current) {
       return;
     }
@@ -1845,7 +2288,7 @@ function App() {
 
     setBookingStep(1);
     setStatusMessage('');
-    navigate('/book-pickup');
+    navigate('/ship');
   }
 
   function handleBookAiQuote(aiQuotePack) {
@@ -1882,7 +2325,7 @@ function App() {
 
     setBookingStep(1);
     setStatusMessage(`AI quote ${aiQuotePack?.assistantQuoteId || ''} prefilled into booking.`.trim());
-    navigate('/book-pickup');
+    navigate('/ship');
   }
 
   function handleBookingChange(event) {
@@ -2570,6 +3013,12 @@ function App() {
 
       const amountCents = Math.round(landedTotalUsd * 100);
       const needsAdminReview = hasLuxuryBrand || landedTotalUsd >= 1500;
+      const businessUnitsCount = purchaseForm.businessIntent === 'business'
+        ? Math.max(1, Number(purchaseForm.businessUnits || 1))
+        : 1;
+      const projectedBusinessOrderUsd = purchaseForm.businessIntent === 'business'
+        ? Number((landedTotalUsd * businessUnitsCount).toFixed(2))
+        : null;
 
       const response = await fetch(`${API_BASE}/purchase-requests`, {
         method: 'POST',
@@ -2602,6 +3051,16 @@ function App() {
             whatsapp: Boolean(purchaseForm.notifyWhatsApp),
             sms: Boolean(purchaseForm.notifySms),
           },
+          businessProfile: {
+            audience: String(purchaseForm.businessIntent || 'personal'),
+            units: purchaseForm.businessIntent === 'business'
+              ? Math.max(1, Number(purchaseForm.businessUnits || 1))
+              : null,
+            deliveryLocation: String(purchaseForm.businessDeliveryLocation || '').trim(),
+            needsInstallation: Boolean(purchaseForm.needsInstallation),
+            needsMultipleProducts: Boolean(purchaseForm.needsMultipleProducts),
+            projectedOrderUsd: projectedBusinessOrderUsd,
+          },
         }),
       });
       const result = await response.json();
@@ -2630,6 +3089,11 @@ function App() {
         fullName: '',
         email: '',
         phone: '',
+        businessIntent: 'personal',
+        businessUnits: '',
+        businessDeliveryLocation: '',
+        needsInstallation: false,
+        needsMultipleProducts: false,
         storeName: 'Amazon',
         sizeColorSpecs: '',
         notes: '',
@@ -2754,7 +3218,7 @@ function App() {
 
     if (!isAuthenticated || !authToken) {
       queueRouteStatus('/login', 'Please log in to finalize your shipment and proceed to payment.');
-      navigate('/login', { state: { from: '/book-pickup', authStep: 'login' } });
+      navigate('/login', { state: { from: '/ship', authStep: 'login' } });
       return;
     }
 
@@ -2801,7 +3265,7 @@ function App() {
         window.localStorage.removeItem('clf_auth_token');
         window.localStorage.removeItem('clf_auth_user');
         queueRouteStatus('/login', 'Your session expired. Log in to continue where you left off.');
-        navigate('/login', { state: { from: '/book-pickup', authStep: 'login' } });
+        navigate('/login', { state: { from: '/ship', authStep: 'login' } });
       }
       setStatusMessage(error.message);
     } finally {
@@ -3087,12 +3551,12 @@ function App() {
         ? location.state.from
         : result.user?.role === 'admin'
           ? '/admin'
-          : '/dashboard';
+          : '/my-clear';
 
-      if (destination === '/book-pickup') {
-        queueRouteStatus('/book-pickup', 'Welcome back. Continue from the final booking step, then proceed to payment.');
-      } else if (destination === '/dashboard') {
-        queueRouteStatus('/dashboard', `Welcome back, ${result.user?.fullName || 'Customer'}.`);
+      if (destination === '/ship') {
+        queueRouteStatus('/ship', 'Welcome back. Continue from the final booking step, then proceed to payment.');
+      } else if (destination === '/my-clear') {
+        queueRouteStatus('/my-clear', `Welcome back, ${result.user?.fullName || 'Customer'}.`);
       } else if (destination === '/admin') {
         queueRouteStatus('/admin', `Welcome back, ${result.user?.fullName || 'Admin'}.`);
       }
@@ -3672,7 +4136,7 @@ function App() {
     clearDriverSessionState();
     setStatusMessage('Driver logout successful.');
     if (isAuthenticated) {
-      navigate(currentUser?.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(currentUser?.role === 'admin' ? '/admin' : '/my-clear');
       return;
     }
     navigate('/');
@@ -3773,7 +4237,7 @@ function App() {
 
           if (cancelled) return;
           setStatusMessage(`Payment successful for ${effectiveShipmentId || 'shipment'}. You can now track your cargo.`);
-          navigate('/tracking', { replace: true });
+          navigate('/track', { replace: true });
         } catch (error) {
           if (cancelled) return;
           setStatusMessage(error.message || 'Payment confirmation failed.');
@@ -3781,7 +4245,7 @@ function App() {
             navigate('/shop', { replace: true });
             return;
           }
-          navigate('/book-pickup', { replace: true });
+          navigate('/ship', { replace: true });
         }
       })();
       return;
@@ -3794,7 +4258,7 @@ function App() {
         return;
       }
       setStatusMessage('Payment was cancelled. Your shipment is saved; you can resume payment anytime.');
-      navigate('/book-pickup', { replace: true });
+      navigate('/ship', { replace: true });
     }
 
     return () => {
@@ -3865,18 +4329,68 @@ function App() {
     return (
       <>
         <section className="card home-hero-card">
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Ship from the USA to Jamaica with Confidence</h2>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Shop, Ship, and Build with Clear</h2>
           <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#555', maxWidth: '600px', margin: '0 auto 2rem' }}>
-            Book pickups, track shipments, pay online. Everything in minutes, zero hassle.
+            From personal imports to business sourcing, Clear helps you get products delivered to Jamaica with total-cost visibility.
           </p>
-          <button
-            type="button"
-            className="btn btn--solid"
-            onClick={() => navigate('/book-pickup')}
-            style={{ fontSize: '1.1rem', padding: '1rem 3rem' }}
-          >
-            📦 Book My Shipment Now
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn--solid"
+              onClick={() => navigate('/ship')}
+              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
+            >
+              Ship with Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => openShopFlow({ audience: 'personal', directTo: 'purchase' })}
+              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
+            >
+              Clear Buy
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => navigate('/sell-on-clear')}
+              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
+            >
+              Sell on Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => openQuoteFlow({ audience: 'business', notes: 'Business sourcing and logistics request' })}
+              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
+            >
+              Clear Business
+            </button>
+          </div>
+        </section>
+
+        <section className="card">
+          <h3 style={{ marginBottom: '0.5rem' }}>Start With What You Need</h3>
+          <p className="section-intro" style={{ marginBottom: '0.85rem' }}>
+            Choose a category, then request landed pricing or checkout through Clear.
+          </p>
+          <div className="stores-grid">
+            {SHOP_CATEGORY_CARDS.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className="store-card"
+                style={{ textAlign: 'left' }}
+                onClick={() => openShopFlow({ category, audience: 'personal', directTo: 'purchase' })}
+              >
+                <div className="store-card__head">
+                  <span className="store-card__icon" aria-hidden="true"><span>CL</span></span>
+                  <h3>{category}</h3>
+                </div>
+                <p>Request landed price and checkout</p>
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* Instant Quote Card */}
@@ -3980,7 +4494,7 @@ function App() {
                 <button
                   type="button"
                   className="btn btn--solid"
-                  onClick={() => navigate('/book-pickup')}
+                  onClick={() => navigate('/ship')}
                   style={{ width: '100%', marginTop: '1rem' }}
                 >
                   Book This Shipment Now
@@ -4025,7 +4539,7 @@ function App() {
             <button
               type="button"
               className="btn btn--solid"
-              onClick={() => navigate('/book-pickup')}
+              onClick={() => navigate('/ship')}
             >
               Reserve My Pickup Window
             </button>
@@ -4102,7 +4616,7 @@ function App() {
           <button
             type="button"
             className="btn btn--solid"
-            onClick={() => navigate('/book-pickup')}
+            onClick={() => navigate('/ship')}
             style={{ fontSize: '1rem', padding: '0.8rem 2.5rem', marginRight: '1rem' }}
           >
             Book My Package Now
@@ -4110,7 +4624,7 @@ function App() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => navigate('/tracking')}
+            onClick={() => navigate('/track')}
             style={{ fontSize: '1rem', padding: '0.8rem 2.1rem' }}
           >
             Check Status
@@ -4139,7 +4653,7 @@ function App() {
     const customerEmail = currentUser?.email || bookingForm.email || 'customer@example.com';
     const checkoutRefId = referenceType === 'purchase_request' ? referenceId : checkoutShipmentId;
     const checkoutTitle = referenceType === 'purchase_request' ? 'Complete your Shop & Ship payment' : 'Complete your shipment payment';
-    const checkoutBackPath = referenceType === 'purchase_request' ? '/shop' : '/book-pickup';
+    const checkoutBackPath = referenceType === 'purchase_request' ? '/shop' : '/ship';
 
     if (!checkoutRefId) {
       return (
@@ -4346,48 +4860,6 @@ function App() {
                 </select>
               </label>
             )}
-            <label htmlFor="quote-origin-form">
-              Origin
-              <input id="quote-origin-form" name="origin" value={quoteForm.origin} onChange={handleQuoteChange} required />
-            </label>
-            <label htmlFor="quote-destination-form">
-              Destination
-              <input id="quote-destination-form" name="destination" value={quoteForm.destination} onChange={handleQuoteChange} required />
-            </label>
-            <label htmlFor="quote-deliveryParish">
-              Delivery Parish (Jamaica)
-              <select id="quote-deliveryParish" name="deliveryParish" value={quoteForm.deliveryParish} onChange={handleQuoteChange} required>
-                <option value="">Select a parish</option>
-                {JAMAICA_PARISHES.map(parish => (
-                  <option key={parish} value={parish}>{parish}</option>
-                ))}
-              </select>
-            </label>
-            <label htmlFor="quote-declaredValueUsd">
-              Declared Value (USD)
-              <input id="quote-declaredValueUsd" type="number" name="declaredValueUsd" value={quoteForm.declaredValueUsd} onChange={handleQuoteChange} min="0" placeholder="Optional but recommended" />
-            </label>
-            <label htmlFor="quote-quantity">
-              {String(quoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Barrel Quantity' : 'Package Quantity'}
-              <input id="quote-quantity" type="number" name="quantity" value={quoteForm.quantity} onChange={handleQuoteChange} min="1" required />
-            </label>
-            {String(quoteForm.cargoType || '').toLowerCase() !== 'barrel' && (
-              <label htmlFor="quote-weight-form">
-                Weight (lbs)
-                <input
-                  id="quote-weight-form"
-                  type="number"
-                  name="weight"
-                  value={quoteForm.weight}
-                  onChange={handleQuoteChange}
-                  min="0.01"
-                  step="0.01"
-                  required={!quoteForm.dontKnowWeight && !quoteForm.hasMixedBoxWeights}
-                  disabled={quoteForm.dontKnowWeight || quoteForm.hasMixedBoxWeights}
-                  placeholder={quoteForm.dontKnowWeight ? 'Skip when unknown' : ''}
-                />
-              </label>
-            )}
             {String(quoteForm.cargoType || '').toLowerCase() === 'box' && !quoteForm.dontKnowWeight && (
               <label htmlFor="quote-hasMixedBoxWeights" className="checkbox-label">
                 <input
@@ -4551,6 +5023,357 @@ function App() {
           )}
         </div>
 
+      </section>
+    );
+  }
+
+  function ClearBuyPage() {
+    const [productUrl, setProductUrl] = useState('');
+    const [supplierPrice, setSupplierPrice] = useState('');
+
+    const normalizedSupplierPrice = Math.max(0, Number(supplierPrice || 0));
+    const domesticFreightUsd = Number((normalizedSupplierPrice * 0.06).toFixed(2));
+    const internationalFreightUsd = Number((normalizedSupplierPrice * 0.09).toFixed(2));
+    const estimatedCustomsUsd = Number((normalizedSupplierPrice * 0.16).toFixed(2));
+    const clearServiceUsd = Number((normalizedSupplierPrice * 0.05).toFixed(2));
+    const jamaicaDeliveryUsd = normalizedSupplierPrice > 0 ? 35 : 0;
+    const landedTotalUsd = Number((
+      normalizedSupplierPrice
+      + domesticFreightUsd
+      + internationalFreightUsd
+      + estimatedCustomsUsd
+      + clearServiceUsd
+      + jamaicaDeliveryUsd
+    ).toFixed(2));
+    const landedTotalJmd = Math.round(landedTotalUsd * JMD_PER_USD);
+
+    const handleStartClearBuy = () => {
+      const category = normalizedSupplierPrice >= 1200 ? 'Business Equipment' : 'Furniture';
+      const notes = [
+        productUrl ? `Product URL: ${productUrl}` : '',
+        normalizedSupplierPrice > 0 ? `Supplier Price (USD): ${normalizedSupplierPrice}` : '',
+        landedTotalUsd > 0 ? `Estimated Landed Total (USD): ${landedTotalUsd}` : '',
+      ].filter(Boolean).join(' | ');
+
+      openShopFlow({
+        category,
+        audience: 'personal',
+        notes,
+        directTo: 'purchase',
+      });
+    };
+
+    return (
+      <section className="card card--split">
+        <div>
+          <h2>Clear Buy</h2>
+          <p className="section-intro">
+            Found it online? We will buy it for you, ship it to Jamaica, clear customs, and deliver it.
+          </p>
+
+          <div className="booking-summary" style={{ marginBottom: '0.9rem', borderLeft: '4px solid var(--brand)' }}>
+            <h3 style={{ marginBottom: '0.35rem' }}>How it works</h3>
+            <ol className="type-list" style={{ marginTop: 0 }}>
+              <li>Paste your product link.</li>
+              <li>We calculate estimated landed cost.</li>
+              <li>You approve and we purchase.</li>
+              <li>We handle shipping, customs, and delivery.</li>
+            </ol>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn--solid" onClick={handleStartClearBuy}>
+              Start Clear Buy Request
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => openQuoteFlow({ audience: 'personal', category: 'General', notes: productUrl ? `Product URL: ${productUrl}` : '' })}
+            >
+              Get Landed Price Estimate
+            </button>
+          </div>
+
+          <div className="booking-summary" style={{ marginTop: '0.9rem' }}>
+            <h3 style={{ marginBottom: '0.45rem' }}>Landed Cost Calculator</h3>
+            <label>
+              Product URL
+              <input
+                type="url"
+                value={productUrl}
+                onChange={(event) => setProductUrl(event.target.value)}
+                placeholder="https://www.amazon.com/..."
+              />
+            </label>
+            <label>
+              Supplier Price (USD)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={supplierPrice}
+                onChange={(event) => setSupplierPrice(event.target.value)}
+                placeholder="1899"
+              />
+            </label>
+
+            <div style={{ marginTop: '0.6rem' }}>
+              <p><strong>Domestic Freight:</strong> ${domesticFreightUsd.toFixed(2)}</p>
+              <p><strong>International Freight:</strong> ${internationalFreightUsd.toFixed(2)}</p>
+              <p><strong>Estimated Customs:</strong> ${estimatedCustomsUsd.toFixed(2)}</p>
+              <p><strong>Clear Service Fee:</strong> ${clearServiceUsd.toFixed(2)}</p>
+              <p><strong>Jamaica Delivery:</strong> ${jamaicaDeliveryUsd.toFixed(2)}</p>
+              <p><strong>Estimated Landed Total:</strong> ${landedTotalUsd.toFixed(2)} (J${landedTotalJmd.toLocaleString()})</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3>Built for real purchases</h3>
+          <ul className="type-list">
+            <li>Furniture and home goods</li>
+            <li>Appliances and electronics</li>
+            <li>Business and restaurant equipment</li>
+            <li>Personal or business orders</li>
+          </ul>
+          <p className="section-intro" style={{ marginBottom: 0 }}>
+            For now, Clear Buy uses the existing Shop &amp; Ship purchase workflow so we can launch quickly without risking current functionality.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  function SellOnClearPage() {
+    const sellerFormRef = useRef(null);
+    const sellerTypes = Array.isArray(SELL_ON_CLEAR_SELLER_TYPES) ? SELL_ON_CLEAR_SELLER_TYPES : [];
+    const liveListings = Array.isArray(sellerListings) ? sellerListings : [];
+    const imagePresets = Array.isArray(SELL_ON_CLEAR_IMAGE_PRESETS) ? SELL_ON_CLEAR_IMAGE_PRESETS : [];
+
+    const handleScrollToForm = () => {
+      sellerFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const handleSellerListingAction = (listing, action = 'buy') => {
+      if (!listing) return;
+
+      const notes = [
+        `Seller: ${listing.sellerName}`,
+        `Marketplace Price: $${Number(listing.priceUsd || 0).toFixed(2)}`,
+        `Listing ID: ${listing.id}`,
+      ].join(' | ');
+
+      if (action === 'quote') {
+        openQuoteFlow({
+          audience: 'business',
+          category: listing.category,
+          notes: `${notes} | Request wholesale quote and fulfillment support`,
+        });
+        return;
+      }
+
+      openShopFlow({
+        audience: 'personal',
+        category: listing.category,
+        notes,
+        directTo: 'purchase',
+      });
+    };
+
+    return (
+      <section className="card card--wide seller-page">
+        <div className="seller-hero">
+          <p className="seller-hero__eyebrow">Clear Verified marketplace</p>
+          <h2>Sell on Clear</h2>
+          <p className="section-intro seller-hero__intro">
+            Join a curated marketplace for Jamaica-bound products. We verify sellers, surface the right images,
+            and connect every listing to shipping and customs fulfillment.
+          </p>
+          <div className="seller-hero__actions">
+            <button type="button" className="btn btn--solid" onClick={handleScrollToForm}>
+              Apply to Sell
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => navigate('/shop')}>
+              Browse Buyer Picks
+            </button>
+          </div>
+        </div>
+
+        <div className="seller-trust-grid">
+          <article className="seller-trust-card">
+            <strong>Verified sellers</strong>
+            <span>Clear Verified™ means identity, inventory, and fulfillment checks before a listing goes live.</span>
+          </article>
+          <article className="seller-trust-card">
+            <strong>Correct images</strong>
+            <span>Listings use product-specific photos so buyers see what they are actually ordering.</span>
+          </article>
+          <article className="seller-trust-card">
+            <strong>Shipping built in</strong>
+            <span>We handle freight, customs, and Jamaica delivery under one checkout and support flow.</span>
+          </article>
+        </div>
+
+        <div className="seller-section-header">
+          <h3>Seller types</h3>
+          <p className="section-intro">Start with a controlled program for the sellers we can support well.</p>
+        </div>
+
+        <div className="seller-type-grid">
+          {sellerTypes.map((sellerType) => (
+            <article key={sellerType.key} className="seller-type-card">
+              <span className="seller-type-card__label">{sellerType.label}</span>
+              <strong>{sellerType.name}</strong>
+              <p>{sellerType.description}</p>
+              <ul>
+                {(Array.isArray(sellerType.benefits) ? sellerType.benefits : []).map((benefit) => (
+                  <li key={benefit}>{benefit}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+
+        <div className="seller-section-header">
+          <h3>Featured marketplace listings</h3>
+          <p className="section-intro">Prices are explicit, images are attached, and every listing is prepared for fulfillment.</p>
+        </div>
+
+        <div className="seller-listing-grid">
+          {liveListings.map((listing) => (
+            <article key={listing.id} className="seller-listing-card">
+              <div className="seller-listing-card__media">
+                <img src={listing.imageUrl || listing.image} alt={listing.title} className="seller-listing-card__image featured-product-image" />
+                <span className="seller-listing-card__badge">Clear Verified</span>
+              </div>
+              <div className="seller-listing-card__body">
+                <div className="seller-listing-card__meta">
+                  <span>{listing.category || 'Marketplace'}</span>
+                  <span>{listing.fulfillment || 'Fulfilled by Clear'}</span>
+                </div>
+                <h4>{listing.title}</h4>
+                <p>{listing.description}</p>
+                <div className="seller-listing-card__footer">
+                  <strong>${Number(listing.priceUsd || 0).toFixed(2)}</strong>
+                  <span>{listing.sellerName}</span>
+                </div>
+                <div className="seller-listing-card__actions">
+                  <button type="button" className="btn btn--solid" onClick={() => handleSellerListingAction(listing, 'buy')}>
+                    Buy Now
+                  </button>
+                  <button type="button" className="btn btn--ghost" onClick={() => handleSellerListingAction(listing, 'quote')}>
+                    Request Quote
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="seller-dashboard" ref={sellerFormRef}>
+          <div className="seller-dashboard__panel">
+            <div className="seller-section-header">
+              <h3>Seller application</h3>
+              <p className="section-intro">Apply once and we review your catalog, shipping origin, and fulfillment readiness.</p>
+            </div>
+
+            <form className="seller-form" onSubmit={handleSellerApplicationSubmit}>
+              <label>
+                Seller type
+                <select name="sellerType" value={sellerForm.sellerType} onChange={handleSellerFormChange}>
+                  <option value="">Select seller type</option>
+                  {SELL_ON_CLEAR_SELLER_TYPES.map((sellerType) => (
+                    <option key={sellerType.key} value={sellerType.key}>{sellerType.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Business name
+                <input name="businessName" value={sellerForm.businessName} onChange={handleSellerFormChange} placeholder="Island Home Co." />
+              </label>
+              <label>
+                Contact name
+                <input name="contactName" value={sellerForm.contactName} onChange={handleSellerFormChange} placeholder="Alicia Brown" />
+              </label>
+              <label>
+                Email
+                <input type="email" name="email" value={sellerForm.email} onChange={handleSellerFormChange} placeholder="seller@example.com" />
+              </label>
+              <label>
+                Phone
+                <input name="phone" value={sellerForm.phone} onChange={handleSellerFormChange} placeholder="(876) 555-0199" />
+              </label>
+              <label>
+                Product category
+                <input name="category" value={sellerForm.category} onChange={handleSellerFormChange} placeholder="Furniture, appliances, beauty" />
+              </label>
+              <label>
+                Listing title
+                <input name="title" value={sellerForm.title} onChange={handleSellerFormChange} placeholder="Imported teak dining set" />
+              </label>
+              <label>
+                Price (USD)
+                <input type="number" min="0" step="0.01" name="priceUsd" value={sellerForm.priceUsd} onChange={handleSellerFormChange} placeholder="1299" />
+              </label>
+              <label>
+                Image preset
+                <select name="imageUrl" value={sellerForm.imageUrl} onChange={handleSellerFormChange}>
+                  {imagePresets.map((preset) => (
+                    <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Description
+                <textarea name="description" value={sellerForm.description} onChange={handleSellerFormChange} rows={4} placeholder="Describe the product, condition, and fulfillment window." />
+              </label>
+              <label>
+                Shipping origin
+                <input name="shippingOrigin" value={sellerForm.shippingOrigin} onChange={handleSellerFormChange} placeholder="Miami, FL" />
+              </label>
+              <label className="checkbox-label">
+                <input type="checkbox" name="verifiedSeller" checked={sellerForm.verifiedSeller} onChange={handleSellerFormChange} />
+                I confirm this listing is accurate and ready for verification
+              </label>
+              <button type="submit" className="btn btn--solid" disabled={sellerFormStatus === 'Submitting...'}>
+                {sellerFormStatus === 'Submitting...' ? 'Submitting...' : 'Submit Seller Application'}
+              </button>
+              {sellerFormStatus && <p className="section-intro" style={{ marginBottom: 0 }}>{sellerFormStatus}</p>}
+            </form>
+          </div>
+
+          <aside className="seller-dashboard__panel seller-dashboard__panel--summary">
+            <p className="seller-hero__eyebrow">Seller dashboard preview</p>
+            <h3>{sellerApplication?.businessName || 'Your verified store'}</h3>
+            <p className="section-intro">
+              Manage orders, review product imagery, and confirm logistics before buyers place an order.
+            </p>
+
+            <div className="seller-mini-stats">
+              <div>
+                <strong>{liveListings.length}</strong>
+                <span>Listings live</span>
+              </div>
+              <div>
+                <strong>{sellerApplication ? 'Verified' : 'Pending'}</strong>
+                <span>Seller status</span>
+              </div>
+              <div>
+                <strong>{sellerApplication?.sellerType || 'Curated'}</strong>
+                <span>Program type</span>
+              </div>
+            </div>
+
+            <div className="booking-summary" style={{ marginTop: '0.95rem' }}>
+              <p style={{ marginTop: 0, marginBottom: '0.35rem' }}><strong>Next steps</strong></p>
+              <ul className="type-list" style={{ marginBottom: 0 }}>
+                <li>Verify catalog photos and pricing.</li>
+                <li>Approve shipping origin and handling plan.</li>
+                <li>Launch listing to buyers and request fulfillment.</li>
+              </ul>
+            </div>
+          </aside>
+        </div>
       </section>
     );
   }
@@ -5255,23 +6078,90 @@ function App() {
   function ShopPage() {
     const assignedReference = String(customerProfile.customerReference || currentUser?.customerReference || '').trim();
     const assignedUsAddress = String(customerProfile.usReceivingAddress || currentUser?.usReceivingAddress || '').trim();
+    const estimatedLandedJmdFor = (supplierPriceUsd) => {
+      const landedUsd = Number(supplierPriceUsd || 0) * 1.36;
+      return Math.round(landedUsd * JMD_PER_USD);
+    };
+    const estimatedBreakdownFor = (supplierPriceUsd) => {
+      const supplier = Math.max(0, Number(supplierPriceUsd || 0));
+      const freight = Number((supplier * 0.09).toFixed(2));
+      const customs = Number((supplier * 0.16).toFixed(2));
+      const clearService = Number((supplier * 0.05).toFixed(2));
+      const delivery = supplier > 0 ? 35 : 0;
+      const totalUsd = Number((supplier + freight + customs + clearService + delivery).toFixed(2));
+      const totalJmd = Math.round(totalUsd * JMD_PER_USD);
+      return { supplier, freight, customs, clearService, delivery, totalUsd, totalJmd };
+    };
 
     return (
       <section className="card card--split">
         <div>
           <h2>Shop & Ship</h2>
-          <p className="section-intro">Shop from popular US stores and ship to Jamaica with Clear Logistics & Freight Services.</p>
+          <p className="section-intro">See something you like? We will get it to Jamaica.</p>
 
-          <div className="experience-promise" aria-label="Shop and Ship experience promise">
-            <h3 style={{ margin: '0 0 0.45rem' }}>Experience Promise</h3>
-            <ul className="type-list" style={{ marginBottom: '0.55rem' }}>
-              <li>Transparent landed-cost breakdown before checkout confirmation.</li>
-              <li>Automatic milestone alerts through WhatsApp or SMS preferences.</li>
-              <li>Fast exception handling with live support escalation when needed.</li>
-            </ul>
-            <p className="section-intro" style={{ marginBottom: 0 }}>
-              Goal: remove shipping guesswork so customers know total cost, expected timing, and next action.
-            </p>
+          <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
+            <h3 style={{ marginBottom: '0.45rem' }}>Featured Products</h3>
+            <div className="stores-grid">
+              {SHOP_CURATED_PRODUCTS.map((item) => (
+                <article key={item.name} className="store-card" style={{ textAlign: 'left' }}>
+                  {(() => {
+                    const breakdown = estimatedBreakdownFor(item.supplierPriceUsd);
+                    return (
+                      <>
+                  <img src={item.image} alt={item.name} className="featured-product-image" loading="lazy" />
+                  <div className="store-card__head">
+                    <span className="store-card__icon" aria-hidden="true"><span>CL</span></span>
+                    <h3>{item.name}</h3>
+                  </div>
+                  <p style={{ marginBottom: '0.35rem' }}>Supplier Price: US${Number(item.supplierPriceUsd).toLocaleString()}</p>
+                  <p style={{ marginBottom: '0.65rem' }}>
+                    Estimated Landed Price: J${estimatedLandedJmdFor(item.supplierPriceUsd).toLocaleString()}
+                  </p>
+                  <details style={{ marginBottom: '0.65rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 700 }}>View estimate breakdown</summary>
+                    <div style={{ marginTop: '0.45rem', fontSize: '0.86rem' }}>
+                      <p style={{ margin: '0.2rem 0' }}>Estimated Freight: US${breakdown.freight.toFixed(2)}</p>
+                      <p style={{ margin: '0.2rem 0' }}>Estimated Customs: US${breakdown.customs.toFixed(2)}</p>
+                      <p style={{ margin: '0.2rem 0' }}>Clear Service: US${breakdown.clearService.toFixed(2)}</p>
+                      <p style={{ margin: '0.2rem 0' }}>Jamaica Delivery: US${breakdown.delivery.toFixed(2)}</p>
+                    </div>
+                  </details>
+                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => openQuoteFlow({
+                      category: item.category,
+                      audience: purchaseForm.businessIntent,
+                      notes: `Request Exact Quote | Product: ${item.name} | Supplier Price USD: ${item.supplierPriceUsd}`,
+                    })}
+                  >
+                    Request Exact Quote
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--solid"
+                    onClick={() => openShopFlow({
+                      category: item.category,
+                      audience: purchaseForm.businessIntent,
+                      notes: `Order With Clear | Product: ${item.name} | Supplier Price USD: ${item.supplierPriceUsd} | Estimated Landed USD: ${breakdown.totalUsd}`,
+                      directTo: 'purchase',
+                      productName: item.name,
+                      productUrl: item.productUrl,
+                      supplierPriceUsd: item.supplierPriceUsd,
+                      storeName: 'Supplier Direct',
+                      quantity: 1,
+                    })}
+                  >
+                    Order With Clear
+                  </button>
+                  </div>
+                  </>
+                    );
+                  })()}
+                </article>
+              ))}
+            </div>
           </div>
 
           {isAuthenticated ? (
@@ -5279,12 +6169,12 @@ function App() {
               className="booking-summary"
               style={{
                 marginBottom: '0.9rem',
-                border: '1px solid rgba(12, 108, 94, 0.28)',
-                background: 'linear-gradient(145deg, rgba(240, 250, 247, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%)',
-                boxShadow: '0 14px 26px rgba(12, 108, 94, 0.08)',
+                border: '1px solid rgba(47, 156, 182, 0.28)',
+                background: 'linear-gradient(145deg, rgba(235, 246, 252, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%)',
+                boxShadow: '0 14px 26px rgba(31, 114, 138, 0.08)',
               }}
             >
-              <p style={{ margin: 0, color: '#0b6b61', fontWeight: 700, letterSpacing: '0.02em', fontSize: '0.78rem', textTransform: 'uppercase' }}>
+              <p style={{ margin: 0, color: '#1f728a', fontWeight: 700, letterSpacing: '0.02em', fontSize: '0.78rem', textTransform: 'uppercase' }}>
                 Premium Self-Serve
               </p>
               <h3 style={{ marginTop: '0.35rem', marginBottom: '0.35rem' }}>Your Shipping Profile</h3>
@@ -5292,11 +6182,11 @@ function App() {
                 We auto-attach this profile to your Shop request. You can still copy it for direct store checkout.
               </p>
               <div style={{ display: 'grid', gap: '0.65rem' }}>
-                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(12, 108, 94, 0.16)' }}>
+                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(47, 156, 182, 0.16)' }}>
                   <p style={{ margin: '0 0 0.2rem', fontWeight: 700 }}>Customer Reference</p>
                   <p style={{ margin: 0 }}>{assignedReference || 'Not assigned yet'}</p>
                 </div>
-                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(12, 108, 94, 0.16)' }}>
+                <div style={{ padding: '0.6rem 0.7rem', borderRadius: '12px', background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(47, 156, 182, 0.16)' }}>
                   <p style={{ margin: '0 0 0.2rem', fontWeight: 700 }}>US Receiving Address</p>
                   <p style={{ margin: 0 }}>{assignedUsAddress || 'Not assigned yet'}</p>
                 </div>
@@ -5313,10 +6203,10 @@ function App() {
           ) : null}
 
           <div className="booking-summary" style={{ marginBottom: '0.9rem', borderLeft: '4px solid var(--brand)' }}>
-            <h3 style={{ marginBottom: '0.35rem' }}>Where do I ship my online order?</h3>
-            <p style={{ marginBottom: '0.45rem' }}><strong>Option 1: Purchase Assistance (recommended)</strong> - Submit links below and we handle checkout for you. You do not need to enter a shipping address at the store.</p>
-            <p style={{ marginBottom: '0.45rem' }}><strong>Option 2: You buy at the store yourself</strong> - Use your assigned US receiving address and customer reference, then paste them at checkout.</p>
-            <p style={{ marginBottom: '0.45rem' }}><strong>Important:</strong> Always include your customer reference/shipment ID at checkout so your package is matched correctly at intake.</p>
+            <h3 style={{ marginBottom: '0.35rem' }}>Two ways to start</h3>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Clear Buy:</strong> Send product links and we purchase for you.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Self Checkout:</strong> Buy directly and use your assigned US address plus customer reference.</p>
+            <p style={{ marginBottom: '0.45rem' }}><strong>Important:</strong> Always include your customer reference at checkout.</p>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn--ghost" onClick={openWhatsApp}>Need help? Chat on WhatsApp</button>
               <a className="btn btn--ghost" href={`mailto:${SHOP_AND_SHIP_HELP_EMAIL}`} style={{ textDecoration: 'none' }}>Email Support</a>
@@ -5358,9 +6248,9 @@ function App() {
 
         <div>
           <div id="barrel-catalog" className="booking-summary" style={{ marginBottom: '0.9rem' }}>
-            <h3 style={{ marginBottom: '0.45rem' }}>Barrel Catalog</h3>
+            <h3 style={{ marginBottom: '0.45rem' }}>Additional Service: Barrel Options</h3>
             <p className="section-intro" style={{ marginBottom: '0.75rem' }}>
-              Need empty barrels? Add a barrel option directly to your Shop & Ship cart. No public pricing is shown here.
+              Need empty barrels? Add them as an optional service while keeping furniture, sourcing, and business projects as the primary journey.
             </p>
             <div style={{ display: 'grid', gap: '0.7rem' }}>
               {BARREL_CATALOG.map((barrel) => (
@@ -5387,7 +6277,7 @@ function App() {
           </div>
 
           <h2>Purchase Assistance</h2>
-          <p className="section-intro">Need us to purchase items on your behalf? Submit links and preferences below.</p>
+          <p className="section-intro">Submit links. Clear handles purchasing, shipping, customs, and delivery.</p>
           {!isAuthenticated && shopAccessMode !== 'guest' ? (
             <div className="guest-gate">
               <p className="section-intro">Choose how you want to proceed before sharing your product links.</p>
@@ -5555,6 +6445,60 @@ function App() {
                   Phone
                   <input type="tel" name="phone" value={purchaseForm.phone} onChange={handlePurchaseChange} required />
                 </label>
+                <div className="booking-summary" style={{ marginBottom: '0.75rem' }}>
+                  <h3 style={{ marginBottom: '0.45rem' }}>Purchase Intent</h3>
+                  <label>
+                    Are you purchasing for yourself or for a business?
+                    <select name="businessIntent" value={purchaseForm.businessIntent} onChange={handlePurchaseChange}>
+                      <option value="personal">Personal</option>
+                      <option value="business">Business</option>
+                    </select>
+                  </label>
+                  {purchaseForm.businessIntent === 'business' && (
+                    <>
+                      <label>
+                        How many units?
+                        <input
+                          type="number"
+                          min="1"
+                          name="businessUnits"
+                          value={purchaseForm.businessUnits}
+                          onChange={handlePurchaseChange}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Where will they be delivered?
+                        <input
+                          type="text"
+                          name="businessDeliveryLocation"
+                          value={purchaseForm.businessDeliveryLocation}
+                          onChange={handlePurchaseChange}
+                          placeholder="Kingston, Montego Bay, etc."
+                          required
+                        />
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="needsInstallation"
+                          checked={purchaseForm.needsInstallation}
+                          onChange={handlePurchaseChange}
+                        />
+                        Do you need installation?
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="needsMultipleProducts"
+                          checked={purchaseForm.needsMultipleProducts}
+                          onChange={handlePurchaseChange}
+                        />
+                        Do you need multiple products?
+                      </label>
+                    </>
+                  )}
+                </div>
                 <label>
                   Size/Color Specs
                   <textarea name="sizeColorSpecs" value={purchaseForm.sizeColorSpecs} onChange={handlePurchaseChange} rows="3" />
@@ -6119,7 +7063,7 @@ function App() {
       }
       if (!authToken) {
         setStatusMessage('Please log in to escalate a shipment issue.');
-        navigate('/login', { state: { from: '/tracking', authStep: 'login' } });
+        navigate('/login', { state: { from: '/track', authStep: 'login' } });
         return;
       }
 
@@ -6240,7 +7184,7 @@ function App() {
         <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           <button
             type="button"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/my-clear')}
             style={{
               background: 'none',
               border: 'none',
@@ -6473,7 +7417,7 @@ function App() {
             >
               {confirmLoading ? 'Confirming...' : 'Freight Received? Confirm'}
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => navigate('/tracking')}>
+            <button type="button" className="btn btn--ghost" onClick={() => navigate('/track')}>
               Track Shipment
             </button>
           </div>
@@ -6516,7 +7460,7 @@ function App() {
               <button
                 type="button"
                 className="btn btn--solid"
-                onClick={() => navigate('/book-pickup')}
+                onClick={() => navigate('/ship')}
                 style={{ padding: '0.8rem 2rem', whiteSpace: 'nowrap' }}
               >
                 📦 Book Shipment
@@ -6586,7 +7530,7 @@ function App() {
                     done: step.done,
                   })),
                 });
-                navigate('/tracking');
+                navigate('/track');
               }}
               style={{ marginTop: '1.5rem', width: '100%' }}
             >
@@ -6600,7 +7544,7 @@ function App() {
             <h2 style={{ marginBottom: '0.9rem' }}>No Shipments Yet</h2>
             <p className="section-intro">You have not created a shipment yet. Start with Book Shipment or Shop & Ship to see live tracking here.</p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn--solid" onClick={() => navigate('/book-pickup')}>Book Shipment</button>
+              <button type="button" className="btn btn--solid" onClick={() => navigate('/ship')}>Book Shipment</button>
               <button type="button" className="btn btn--ghost" onClick={() => navigate('/shop')}>Open Shop & Ship</button>
             </div>
           </section>
@@ -6631,7 +7575,7 @@ function App() {
                     style={{ marginTop: '1rem', width: '100%' }}
                     onClick={() => {
                       setTrackingId(shipment.shipmentId);
-                      navigate('/tracking');
+                      navigate('/track');
                     }}
                   >
                     Track {shipment.shipmentId}
@@ -6781,7 +7725,7 @@ function App() {
             <button
               type="button"
               className="quick-action-card"
-              onClick={() => navigate('/quote')}
+              onClick={() => navigate('/pricing')}
               aria-label="Get a shipping quote"
             >
               <div className="quick-action-icon">💰</div>
@@ -6791,7 +7735,7 @@ function App() {
             <button
               type="button"
               className="quick-action-card"
-              onClick={() => navigate('/tracking')}
+              onClick={() => navigate('/track')}
               aria-label="Track your shipment"
             >
               <div className="quick-action-icon">📍</div>
@@ -7768,7 +8712,7 @@ function App() {
                         onClick={() => {
                           if (selectedAdminItem.item.shipmentId) {
                             setTrackingId(selectedAdminItem.item.shipmentId);
-                            navigate('/tracking');
+                            navigate('/track');
                           }
                         }}
                       >
@@ -7850,7 +8794,7 @@ function App() {
                         onClick={() => {
                           if (selectedAdminItem.item.shipmentId) {
                             setTrackingId(selectedAdminItem.item.shipmentId);
-                            navigate('/tracking');
+                            navigate('/track');
                           }
                         }}
                       >
@@ -7873,25 +8817,69 @@ function App() {
 
   function BusinessPage() {
     return (
-      <section className="card card--split">
+      <section className="card">
         <div>
-          <h2>Personal Shipping</h2>
-          <p className="section-intro">Built for families and individuals shipping from the USA to Jamaica.</p>
-          <ul className="type-list">
-            {PERSONAL_FEATURES.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          <h2>Clear Business</h2>
+          <p className="section-intro">Import smarter. Build faster.</p>
+          <p className="section-intro">
+            Clear helps Jamaican businesses source products internationally and move them from supplier to your doorstep.
+          </p>
         </div>
 
-        <div>
-          <h2>Business Accounts</h2>
-          <p className="section-intro">Designed for recurring freight, commercial lanes, and growing operations.</p>
-          <ul className="type-list">
-            {BUSINESS_FEATURES.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+        <div className="booking-summary" style={{ marginTop: '0.8rem', marginBottom: '0.8rem' }}>
+          <h3 style={{ marginBottom: '0.45rem' }}>How it works</h3>
+          <ol className="type-list" style={{ marginTop: 0 }}>
+            <li>Tell us what you need</li>
+            <li>We source and quote</li>
+            <li>We purchase and consolidate</li>
+            <li>We ship</li>
+            <li>We clear customs</li>
+            <li>We deliver</li>
+          </ol>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn--solid"
+            onClick={() => openQuoteFlow({ audience: 'business', category: 'Business Equipment', notes: 'Business quote request' })}
+          >
+            Request Business Quote
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/support')}>
+            Talk to Business Team
+          </button>
+        </div>
+
+        <div className="stores-grid" style={{ marginTop: '0.9rem' }}>
+          {BUSINESS_PROJECT_PRESETS.map((project) => (
+            <button
+              key={project}
+              type="button"
+              className="store-card"
+              style={{ textAlign: 'left' }}
+              onClick={() => openQuoteFlow({ audience: 'business', category: 'Business Equipment', notes: project })}
+            >
+              <div className="store-card__head">
+                <span className="store-card__icon" aria-hidden="true"><span>B2B</span></span>
+                <h3>{project}</h3>
+              </div>
+              <p>Open a prefilled business quote</p>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '0.9rem' }}>
+          <p className="section-intro" style={{ marginBottom: '0.35rem' }}>
+            Already have products selected in Shop?
+          </p>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => openShopFlow({ category: 'Business Equipment', audience: 'business', notes: 'Business sourcing request', directTo: 'purchase' })}
+          >
+            Open Shop and Request Landed Pricing
+          </button>
         </div>
       </section>
     );
@@ -8098,11 +9086,11 @@ function App() {
     }
 
     const ctaPathByStep = {
-      'book-online': '/book-pickup',
-      pickup: '/dashboard',
-      ship: '/tracking',
-      customs: '/tracking',
-      delivery: '/tracking',
+      'book-online': '/ship',
+      pickup: '/my-clear',
+      ship: '/track',
+      customs: '/track',
+      delivery: '/track',
     };
     const ctaLabelByStep = {
       'book-online': 'Start Booking',
@@ -8111,7 +9099,7 @@ function App() {
       customs: 'Check Tracking',
       delivery: 'View Dashboard',
     };
-    const ctaPath = step.ctaPath || ctaPathByStep[step.key] || '/book-pickup';
+    const ctaPath = step.ctaPath || ctaPathByStep[step.key] || '/ship';
     const ctaLabel = step.ctaLabel || ctaLabelByStep[step.key] || 'Continue';
     const detailItems = Array.isArray(step.details) && step.details.length
       ? step.details
@@ -8743,11 +9731,34 @@ function App() {
       <header className="hero">
         <div className="hero__brand">
           <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="hero__logo" />
+          <p className="hero__badge">Clear Verified Marketplace</p>
         </div>
-        <h1>Ship from the USA to Jamaica with Confidence</h1>
-        <p>
-          Book a pickup, receive an instant quote, track your shipment in real time, and have it delivered to your door.
-        </p>
+        <div className="hero__panel">
+          <div className="hero__copy">
+            <h1>Global Shopping and Shipping to Jamaica</h1>
+            <p>
+              One place to shop products, ship to Jamaica, and track every delivery from pickup to final drop-off.
+            </p>
+            <div className="hero__actions">
+              <button type="button" className="nav-pill nav-pill--primary" onClick={() => navigate('/ship')}>
+                Ship with Clear
+              </button>
+              <button type="button" className="nav-pill" onClick={() => navigate('/shop')}>
+                Shop
+              </button>
+              <button type="button" className="nav-pill" onClick={() => navigate('/sell-on-clear')}>
+                Sell on Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="hero__proofs" aria-label="Clear highlights">
+            <div className="hero-proof-card">
+              <strong>Clear Verified Marketplace</strong>
+              <span>Accurate listing images, transparent landed estimates, and Jamaica-ready fulfillment.</span>
+            </div>
+          </div>
+        </div>
       </header>
 
       <nav className="portal-nav" aria-label="Primary portal navigation">
@@ -8797,8 +9808,8 @@ function App() {
               <div className="nav-badge" aria-label="Signed in customer">
                 Signed in as {currentUser?.role === 'admin' ? 'Admin' : (currentUser?.fullName || 'Customer')}
               </div>
-              <button type="button" className={currentPath === 'dashboard' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/dashboard')}>
-                Dashboard
+              <button type="button" className={currentPath === 'my-clear' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/my-clear')}>
+                My Clear
               </button>
               {currentUser?.role === 'admin' && (
                 <button type="button" className={currentPath === 'admin' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/admin')}>
@@ -8812,10 +9823,10 @@ function App() {
           ) : (
             <>
               <button type="button" className={currentPath === 'login' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/login')}>
-                Login
+                Log In
               </button>
               <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
-                Create Account
+                My Clear
               </button>
             </>
           )}
@@ -8825,18 +9836,19 @@ function App() {
       <main className="layout">
         <Routes>
           <Route path="/" element={HomePage()} />
+          <Route path="/ship" element={BookingPage()} />
+          <Route path="/track" element={TrackingPage()} />
+          <Route path="/pricing" element={QuotePage()} />
+          <Route path="/clear-buy" element={ClearBuyPage()} />
+          <Route path="/sell-on-clear" element={SellOnClearPage()} />
           <Route path="/how-it-works/:stepKey" element={HowItWorksDetailPage()} />
-          <Route path="/book-pickup" element={BookingPage()} />
-          <Route path="/booking" element={BookingPage()} />
-          <Route path="/quote" element={QuotePage()} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/catalog/:sectionKey" element={<CatalogSectionPage />} />
           <Route path="/mock-checkout" element={MockCheckoutPage()} />
           <Route path="/shop" element={ShopPage()} />
           <Route path="/scan" element={PublicScanPage()} />
-          <Route path="/tracking" element={TrackingPage()} />
           <Route
-            path="/dashboard"
+            path="/my-clear"
             element={
               authHydrated
                 ? (isAuthenticated ? DashboardPage() : <Navigate to="/login" replace state={{ from: location.pathname }} />)
@@ -8852,7 +9864,7 @@ function App() {
                   ? <Navigate to="/login" replace state={{ from: location.pathname }} />
                   : currentUser?.role === 'admin'
                     ? AdminDashboardPage()
-                    : <Navigate to="/dashboard" replace />
+                    : <Navigate to="/my-clear" replace />
             }
           />
           <Route path="/business" element={BusinessPage()} />
