@@ -60,11 +60,10 @@ body {
 }
 
 .site-header__logo {
-  width: min(230px, 32vw);
-  max-width: 100%;
-  height: auto;
+  height: 54px;
+  width: auto;
+  max-height: 54px;
   object-fit: contain;
-  object-position: left center;
   display: block;
 }
 
@@ -2991,7 +2990,8 @@ body {
   }
 
   .site-header__logo {
-    width: min(210px, 64vw);
+    height: 46px;
+    max-height: 46px;
   }
 
   .site-header__nav {

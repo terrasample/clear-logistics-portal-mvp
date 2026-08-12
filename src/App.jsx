@@ -4777,12 +4777,12 @@ function App() {
               </div>
 
               <div className="home-hero__floating-card home-hero__floating-card--top">
-                <strong>Premium clarity</strong>
-                <span>Live UI, real logo fit, and crisp catalog imagery.</span>
+                <strong>Verified Suppliers</strong>
+                <span>Sourced from trusted US wholesalers with real market pricing.</span>
               </div>
               <div className="home-hero__floating-card home-hero__floating-card--bottom">
-                <strong>Category-accurate products</strong>
-                <span>Furniture categories now map directly to the product cards, images, and visible prices.</span>
+                <strong>Delivered to Jamaica</strong>
+                <span>We handle shipping, customs clearance, and last-mile delivery to your door.</span>
               </div>
             </div>
           </div>
