@@ -303,6 +303,64 @@ const SHOP_CATEGORY_SHOWCASES = [
       },
     ],
   },
+  {
+    category: 'Appliances',
+    title: 'Appliances',
+    iconKind: 'appliances',
+    description: 'Major home appliances sourced and shipped to Jamaica with customs clearance.',
+    items: [
+      {
+        name: 'French Door Refrigerator (22 cu ft)',
+        category: 'Appliances',
+        iconKind: 'appliances',
+        supplierPriceUsd: 1149,
+        productUrl: 'https://www.bestbuy.com/',
+      },
+      {
+        name: 'Front-Load Washer & Dryer Set',
+        category: 'Appliances',
+        iconKind: 'appliances',
+        supplierPriceUsd: 1340,
+        productUrl: 'https://www.homedepot.com/',
+      },
+      {
+        name: 'Stainless Steel Dishwasher',
+        category: 'Appliances',
+        iconKind: 'appliances',
+        supplierPriceUsd: 549,
+        productUrl: 'https://www.lowes.com/',
+      },
+    ],
+  },
+  {
+    category: 'Auto & Parts',
+    title: 'Auto & Parts',
+    iconKind: 'auto',
+    description: 'Vehicle accessories, performance parts, and auto supplies shipped to Jamaica.',
+    items: [
+      {
+        name: 'All-Season Floor Mat Set (4-piece)',
+        category: 'Auto & Parts',
+        iconKind: 'auto',
+        supplierPriceUsd: 89,
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'LED Headlight Conversion Kit',
+        category: 'Auto & Parts',
+        iconKind: 'auto',
+        supplierPriceUsd: 165,
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Premium Car Audio System',
+        category: 'Auto & Parts',
+        iconKind: 'auto',
+        supplierPriceUsd: 420,
+        productUrl: 'https://www.bestbuy.com/',
+      },
+    ],
+  },
 ];
 
 const SHOP_CATEGORY_SHOWCASE_MAP = Object.fromEntries(
@@ -767,6 +825,20 @@ const HOME_CATEGORY_TILES = [
     description: 'Occasional tables and carved side pieces.',
     priceLabel: 'From US$430',
   },
+  {
+    title: 'Appliances',
+    iconKind: 'appliances',
+    category: 'Appliances',
+    description: 'Refrigerators, washers, dryers, and more.',
+    priceLabel: 'From US$549',
+  },
+  {
+    title: 'Auto & Parts',
+    iconKind: 'auto',
+    category: 'Auto & Parts',
+    description: 'Parts, accessories, and audio shipped to Jamaica.',
+    priceLabel: 'From US$89',
+  },
 ];
 
 const HOME_ADVANTAGE_CARDS = [
@@ -858,6 +930,10 @@ function HomeSymbol({ kind }) {
       return <svg {...common}><path d="M4 4v6h6" /><path d="M20 20v-6h-6" /><path d="M5.5 14A7 7 0 0 0 18 17" /><path d="M18.5 10A7 7 0 0 0 6 7" /></svg>;
     case 'whatsapp':
       return <svg {...common}><path d="M20 11.5A8.5 8.5 0 0 1 7.4 19l-3.4 1 1.1-3.2A8.5 8.5 0 1 1 20 11.5z" /><path d="M9 9.5c.4 2 2.1 3.9 4.2 4.8l1.3-1.3 2 1.2c-.7 1.3-2 2-3.4 1.8-3.3-.5-6-3.2-6.5-6.5-.2-1.4.5-2.7 1.8-3.4l1.2 2-1.3 1.4z" /></svg>;
+    case 'appliances':
+      return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M7 8h.01" /><path d="M11 8h.01" /><path d="M9 14h6" /><path d="M9 17h4" /></svg>;
+    case 'auto':
+      return <svg {...common}><path d="M5 17H3a2 2 0 0 1-2-2V9l2-4h14l2 4v6a2 2 0 0 1-2 2h-2" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /><path d="M9 17h6" /><path d="M5 9h14" /></svg>;
     default:
       return <svg {...common}><circle cx="12" cy="12" r="9" /></svg>;
   }
@@ -4747,8 +4823,10 @@ function App() {
                 className="home-category-card"
                 onClick={() => handleCategoryTileClick(tile.category)}
               >
-                <div className="home-category-card__media">
-                  <img src={tile.image} alt={tile.title} loading="lazy" />
+                <div className={tile.iconKind ? 'home-category-card__media home-category-card__media--icon' : 'home-category-card__media'}>
+                  {tile.iconKind
+                    ? <span className="home-category-card__icon-wrap" aria-hidden="true"><HomeSymbol kind={tile.iconKind} /></span>
+                    : <img src={tile.image} alt={tile.title} loading="lazy" />}
                 </div>
                 <div className="home-category-card__body">
                   <h3>{tile.title}</h3>
@@ -6303,7 +6381,9 @@ function App() {
                     const breakdown = estimatedBreakdownFor(item.supplierPriceUsd);
                     return (
                       <>
-                  <img src={item.image} alt={item.name} className="featured-product-image" loading="lazy" />
+                  {item.image
+                    ? <img src={item.image} alt={item.name} className="featured-product-image" loading="lazy" />
+                    : <div className="featured-product-icon-card" aria-hidden="true"><HomeSymbol kind={item.iconKind || 'shop'} /></div>}
                   <div className="store-card__head">
                     <span className="store-card__icon" aria-hidden="true"><span>CL</span></span>
                     <h3>{item.name}</h3>
