@@ -134,46 +134,180 @@ const NAV_ITEMS = [
   },
 ];
 
-const SHOP_CATEGORY_CARDS = [
-  'Furniture',
-  'Bedroom Sets',
-  'Dining Sets',
-  'Living Room',
-  'Accent Chairs',
-  'Hospitality Furnishing',
-  'Storage & Wardrobes',
+const SHOP_CATEGORY_SHOWCASES = [
+  {
+    category: 'Furniture',
+    title: 'Furniture',
+    description: 'Curated premium furniture collections sourced from the live showroom catalog.',
+    items: [
+      {
+        name: 'Luxury Round Dining Set',
+        category: 'Furniture',
+        supplierPriceUsd: 1899,
+        image: '/catalog/section_pages/cat1-p082-i5.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Grand Parlour Sofa Set',
+        category: 'Furniture',
+        supplierPriceUsd: 2290,
+        image: '/catalog/section_pages/orig-p019-i2.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+      {
+        name: 'Pearl Accent Table',
+        category: 'Furniture',
+        supplierPriceUsd: 430,
+        image: '/catalog/section_pages/orig-p009-i2.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+    ],
+  },
+  {
+    category: 'Living Room',
+    title: 'Living Room',
+    description: 'Sofas, occasional tables, and seating designed for statement living spaces.',
+    items: [
+      {
+        name: 'Grand Parlour Sofa Set',
+        category: 'Living Room',
+        supplierPriceUsd: 2290,
+        image: '/catalog/section_pages/orig-p019-i2.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+      {
+        name: 'Marble-Top Coffee Table',
+        category: 'Living Room',
+        supplierPriceUsd: 780,
+        image: '/catalog/section_pages/orig-p024-i5.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Formal Accent Table',
+        category: 'Living Room',
+        supplierPriceUsd: 430,
+        image: '/catalog/section_pages/orig-p009-i2.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+    ],
+  },
+  {
+    category: 'Bedroom Sets',
+    title: 'Bedroom Sets',
+    description: 'Bed frames and matching case goods drawn from the verified bedroom catalog.',
+    items: [
+      {
+        name: 'Signature Tufted Bedroom Set',
+        category: 'Bedroom Sets',
+        supplierPriceUsd: 2440,
+        image: '/catalog/section_pages/cat1-p046-i1.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Estate Vanity And Mirror',
+        category: 'Bedroom Sets',
+        supplierPriceUsd: 820,
+        image: '/catalog/section_pages/catalog1-p061.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+      {
+        name: 'Ornate Bedside Chest',
+        category: 'Bedroom Sets',
+        supplierPriceUsd: 560,
+        image: '/catalog/section_pages/cat1-p061-i1.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+    ],
+  },
+  {
+    category: 'Dining Sets',
+    title: 'Dining Sets',
+    description: 'Dining tables, arm chairs, and formal dining pieces matched to the images shown.',
+    items: [
+      {
+        name: 'Luxury Round Dining Set',
+        category: 'Dining Sets',
+        supplierPriceUsd: 1899,
+        image: '/catalog/section_pages/cat1-p082-i5.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Classic Tufted Dining Arm Chair',
+        category: 'Dining Sets',
+        supplierPriceUsd: 689,
+        image: '/catalog/section_pages/orig-p055-i3.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+      {
+        name: 'Formal Dining Sideboard',
+        category: 'Dining Sets',
+        supplierPriceUsd: 1290,
+        image: '/catalog/section_pages/catalog1-p061.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+    ],
+  },
+  {
+    category: 'Accent Chairs',
+    title: 'Accent Chairs',
+    description: 'Standalone statement seating with catalog-backed imagery and pricing.',
+    items: [
+      {
+        name: 'Classic Tufted Dining Arm Chair',
+        category: 'Accent Chairs',
+        supplierPriceUsd: 689,
+        image: '/catalog/section_pages/orig-p055-i3.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+      {
+        name: 'Gallery Lounge Chair',
+        category: 'Accent Chairs',
+        supplierPriceUsd: 845,
+        image: '/catalog/section_pages/orig-p024-i5.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+      {
+        name: 'Sculpted Occasional Chair',
+        category: 'Accent Chairs',
+        supplierPriceUsd: 795,
+        image: '/catalog/section_pages/orig-p019-i2.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+    ],
+  },
+  {
+    category: 'Accent Tables',
+    title: 'Accent Tables',
+    description: 'Console, side, and occasional tables matched to the images displayed.',
+    items: [
+      {
+        name: 'Pearl Accent Table',
+        category: 'Accent Tables',
+        supplierPriceUsd: 430,
+        image: '/catalog/section_pages/orig-p009-i2.jpeg',
+        productUrl: 'https://www.alibaba.com/',
+      },
+      {
+        name: 'Formal Accent Table',
+        category: 'Accent Tables',
+        supplierPriceUsd: 470,
+        image: '/catalog/section_pages/orig-p024-i5.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Carved Occasional Table',
+        category: 'Accent Tables',
+        supplierPriceUsd: 525,
+        image: '/catalog/section_pages/cat1-p061-i1.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+    ],
+  },
 ];
 
-const SHOP_CURATED_PRODUCTS = [
-  {
-    name: 'Luxury Round Dining Set',
-    category: 'Furniture',
-    supplierPriceUsd: 1899,
-    image: '/catalog/section_pages/cat1-p082-i5.jpeg',
-    productUrl: 'https://www.amazon.com/',
-  },
-  {
-    name: 'Classic Tufted Dining Arm Chair',
-    category: 'Furniture',
-    supplierPriceUsd: 689,
-    image: '/catalog/section_pages/orig-p055-i3.jpeg',
-    productUrl: 'https://www.alibaba.com/',
-  },
-  {
-    name: 'Signature Tufted Bedroom Set',
-    category: 'Home & Living',
-    supplierPriceUsd: 2440,
-    image: '/catalog/section_pages/orig-p068-i4.jpeg',
-    productUrl: 'https://www.webstaurantstore.com/',
-  },
-  {
-    name: 'Modern Upholstered Bedroom Set',
-    category: 'Home & Living',
-    supplierPriceUsd: 3290,
-    image: '/catalog/section_pages/living-room-p081.jpeg',
-    productUrl: 'https://www.wayfair.com/',
-  },
-];
+const SHOP_CATEGORY_SHOWCASE_MAP = Object.fromEntries(
+  SHOP_CATEGORY_SHOWCASES.map((showcase) => [showcase.category.toLowerCase(), showcase])
+);
 
 const SELL_ON_CLEAR_SELLER_TYPES = [
   {
@@ -561,6 +695,174 @@ const SITE_MAP = [
   'Contact Support',
 ];
 
+const HEADER_NAV_KEYS = new Set(['home', 'shop', 'sell-on-clear', 'ship', 'business', 'track', 'pricing']);
+
+const HOME_HIGHLIGHT_STRIP = [
+  {
+    icon: 'shop',
+    title: 'Shop Global Products',
+    summary: 'Buy quality products from our catalog. We handle the rest.',
+    action: 'shop',
+  },
+  {
+    icon: 'ship',
+    title: 'Ship With Clear',
+    summary: 'Ship packages, barrels, pallets, or freight to Jamaica.',
+    action: 'ship',
+  },
+  {
+    icon: 'link',
+    title: 'Clear Buy',
+    summary: 'Found it elsewhere? Send us the link and we will get it for you.',
+    action: 'clear-buy',
+  },
+  {
+    icon: 'business',
+    title: 'Business',
+    summary: 'We source, consolidate, and deliver for your business.',
+    action: 'business',
+  },
+];
+
+const HOME_CATEGORY_TILES = [
+  {
+    title: 'Furniture',
+    image: '/catalog/section_pages/cat1-p082-i5.jpeg',
+    category: 'Furniture',
+    description: 'Curated dining, living, and statement pieces.',
+    priceLabel: 'From US$430',
+  },
+  {
+    title: 'Living Room',
+    image: '/catalog/section_pages/orig-p024-i5.jpeg',
+    category: 'Living Room',
+    description: 'Sofas, coffee tables, and salon seating.',
+    priceLabel: 'From US$430',
+  },
+  {
+    title: 'Bedroom Sets',
+    image: '/catalog/section_pages/cat1-p046-i1.jpeg',
+    category: 'Bedroom Sets',
+    description: 'Beds and matching case goods with showroom detail.',
+    priceLabel: 'From US$560',
+  },
+  {
+    title: 'Dining Sets',
+    image: '/catalog/section_pages/orig-p055-i3.jpeg',
+    category: 'Dining Sets',
+    description: 'Dining sets and formal seating collections.',
+    priceLabel: 'From US$689',
+  },
+  {
+    title: 'Accent Chairs',
+    image: '/catalog/section_pages/orig-p019-i2.jpeg',
+    category: 'Accent Chairs',
+    description: 'Standalone statement seating with catalog pricing.',
+    priceLabel: 'From US$689',
+  },
+  {
+    title: 'Accent Tables',
+    image: '/catalog/section_pages/orig-p009-i2.jpeg',
+    category: 'Accent Tables',
+    description: 'Occasional tables and carved side pieces.',
+    priceLabel: 'From US$430',
+  },
+];
+
+const HOME_ADVANTAGE_CARDS = [
+  {
+    icon: 'verified',
+    title: 'Clear Verified',
+    summary: 'Trusted suppliers. Verified products.',
+  },
+  {
+    icon: 'pricing',
+    title: 'Transparent Pricing',
+    summary: 'All costs upfront. No hidden fees.',
+  },
+  {
+    icon: 'support',
+    title: 'Dedicated Support',
+    summary: 'We’re here to help every step of the way.',
+  },
+  {
+    icon: 'delivery',
+    title: 'Islandwide Delivery',
+    summary: 'Fast and reliable delivery across Jamaica.',
+  },
+];
+
+const FOOTER_VALUE_PROPS = [
+  {
+    icon: 'global',
+    title: 'Shop Globally.',
+    summary: 'Ship confidently. We deliver to Jamaica.',
+  },
+  {
+    icon: 'pricing',
+    title: 'Easy Ordering',
+    summary: 'Shop or send us a link. We do the rest.',
+  },
+  {
+    icon: 'secure',
+    title: 'Secure Payments',
+    summary: 'Safe, secure, and reliable transactions.',
+  },
+  {
+    icon: 'updates',
+    title: 'Real-Time Updates',
+    summary: 'Stay informed from pickup to delivery.',
+  },
+  {
+    icon: 'whatsapp',
+    title: 'Need help?',
+    summary: 'Chat with us on WhatsApp.',
+  },
+];
+
+function HomeSymbol({ kind }) {
+  const common = {
+    width: 24,
+    height: 24,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+  };
+
+  switch (kind) {
+    case 'verified':
+      return <svg {...common}><path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg>;
+    case 'shop':
+      return <svg {...common}><path d="M6 8l1-3h10l1 3" /><path d="M5 8h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" /><path d="M9 11a3 3 0 0 0 6 0" /></svg>;
+    case 'ship':
+      return <svg {...common}><path d="M3 7h11v10H3z" /><path d="M14 10h3l4 3v4h-7z" /><circle cx="8" cy="18" r="1.5" /><circle cx="18" cy="18" r="1.5" /></svg>;
+    case 'link':
+      return <svg {...common}><path d="M10 13a5 5 0 0 1 0-7l1.5-1.5a5 5 0 1 1 7 7L17 13" /><path d="M14 11a5 5 0 0 1 0 7L12.5 19.5a5 5 0 1 1-7-7L7 11" /></svg>;
+    case 'business':
+      return <svg {...common}><path d="M3 20h18" /><path d="M5 20V8l7-4 7 4v12" /><path d="M9 10h.01" /><path d="M15 10h.01" /><path d="M9 14h.01" /><path d="M15 14h.01" /><path d="M10 20v-4h4v4" /></svg>;
+    case 'pricing':
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M14.5 9.5c0-1.2-1-2-2.5-2s-2.5.8-2.5 2 1 1.8 2.5 2 2.5.8 2.5 2-1 2-2.5 2-2.5-.8-2.5-2" /><path d="M12 6v12" /></svg>;
+    case 'support':
+      return <svg {...common}><path d="M4 12a8 8 0 0 1 16 0" /><path d="M4 12v5a2 2 0 0 0 2 2h2v-6H4z" /><path d="M20 12v5a2 2 0 0 1-2 2h-2v-6h4z" /><path d="M12 19v2" /></svg>;
+    case 'delivery':
+      return <svg {...common}><path d="M2 15h11V8H2z" /><path d="M13 11h4l3 3v1h-7z" /><circle cx="7" cy="18" r="1.5" /><circle cx="18" cy="18" r="1.5" /><path d="M5 11h3" /><path d="M4 13h2" /></svg>;
+    case 'global':
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18" /><path d="M12 3a15 15 0 0 0 0 18" /></svg>;
+    case 'secure':
+      return <svg {...common}><path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" /><path d="M9 12h6" /><path d="M12 9v6" /></svg>;
+    case 'updates':
+      return <svg {...common}><path d="M4 4v6h6" /><path d="M20 20v-6h-6" /><path d="M5.5 14A7 7 0 0 0 18 17" /><path d="M18.5 10A7 7 0 0 0 6 7" /></svg>;
+    case 'whatsapp':
+      return <svg {...common}><path d="M20 11.5A8.5 8.5 0 0 1 7.4 19l-3.4 1 1.1-3.2A8.5 8.5 0 1 1 20 11.5z" /><path d="M9 9.5c.4 2 2.1 3.9 4.2 4.8l1.3-1.3 2 1.2c-.7 1.3-2 2-3.4 1.8-3.3-.5-6-3.2-6.5-6.5-.2-1.4.5-2.7 1.8-3.4l1.2 2-1.3 1.4z" /></svg>;
+    default:
+      return <svg {...common}><circle cx="12" cy="12" r="9" /></svg>;
+  }
+}
+
 const RAW_WHATSAPP_PHONE = String(import.meta.env.VITE_WHATSAPP_PHONE || '').trim();
 const WHATSAPP_PHONE = RAW_WHATSAPP_PHONE.replace(/\D/g, '');
 const WHATSAPP_PLACEHOLDER_NUMBERS = new Set(['13055550100', '15550100', '5550100']);
@@ -659,6 +961,19 @@ function inferDefaultPrice(category) {
   if (category === 'Beauty') return 85;
   if (category === 'Home') return 210;
   return 120;
+}
+
+function normalizeShopShowcaseCategory(value = '') {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) {
+    return '';
+  }
+
+  return SHOP_CATEGORY_SHOWCASE_MAP[normalized]?.category || '';
+}
+
+function resolveShopShowcaseCategoryFromHint(value = '') {
+  return normalizeShopShowcaseCategory(value) || 'Furniture';
 }
 
 function isCartStyleUrl(url) {
@@ -4267,6 +4582,31 @@ function App() {
   }, [location.search, navigate]);
 
   function HomePage() {
+    function handleHighlightCardClick(action) {
+      if (action === 'shop') {
+        openShopFlow({ audience: 'personal', directTo: 'purchase' });
+        return;
+      }
+
+      if (action === 'ship') {
+        navigate('/ship');
+        return;
+      }
+
+      if (action === 'clear-buy') {
+        navigate('/clear-buy');
+        return;
+      }
+
+      if (action === 'business') {
+        navigate('/business');
+      }
+    }
+
+    function handleCategoryTileClick(category) {
+      navigate(`/shop?category=${encodeURIComponent(category)}`);
+    }
+
     function handleInstantQuoteChange(event) {
       const { name, value } = event.target;
       setInstantQuoteForm((prev) => ({ ...prev, [name]: value }));
@@ -4328,316 +4668,153 @@ function App() {
 
     return (
       <>
-        <section className="card home-hero-card">
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Shop, Ship, and Build with Clear</h2>
-          <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#555', maxWidth: '600px', margin: '0 auto 2rem' }}>
-            From personal imports to business sourcing, Clear helps you get products delivered to Jamaica with total-cost visibility.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btn--solid"
-              onClick={() => navigate('/ship')}
-              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
-            >
-              Ship with Clear
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => openShopFlow({ audience: 'personal', directTo: 'purchase' })}
-              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
-            >
-              Clear Buy
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => navigate('/sell-on-clear')}
-              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
-            >
-              Sell on Clear
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => openQuoteFlow({ audience: 'business', notes: 'Business sourcing and logistics request' })}
-              style={{ fontSize: '1.02rem', padding: '0.9rem 1.8rem' }}
-            >
-              Clear Business
-            </button>
-          </div>
-        </section>
-
-        <section className="card">
-          <h3 style={{ marginBottom: '0.5rem' }}>Start With What You Need</h3>
-          <p className="section-intro" style={{ marginBottom: '0.85rem' }}>
-            Choose a category, then request landed pricing or checkout through Clear.
-          </p>
-          <div className="stores-grid">
-            {SHOP_CATEGORY_CARDS.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className="store-card"
-                style={{ textAlign: 'left' }}
-                onClick={() => openShopFlow({ category, audience: 'personal', directTo: 'purchase' })}
-              >
-                <div className="store-card__head">
-                  <span className="store-card__icon" aria-hidden="true"><span>CL</span></span>
-                  <h3>{category}</h3>
-                </div>
-                <p>Request landed price and checkout</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Instant Quote Card */}
-        <section className="card home-instant-quote">
-          <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Get an Instant Quote</h3>
-          <form onSubmit={handleInstantQuoteSubmit} className="instant-quote-form">
-            <div className="instant-quote-row">
-              <div className="instant-quote-field">
-                <label htmlFor="quote-origin">Pickup Location</label>
-                <select id="quote-origin" className="instant-quote-control" name="origin" value={instantQuoteForm.origin} onChange={handleInstantQuoteChange}>
-                  <option>Miami, FL</option>
-                  <option>Jacksonville, FL</option>
-                  <option>Atlanta, GA</option>
-                  <option>New York, NY</option>
-                  <option>Los Angeles, CA</option>
-                </select>
-              </div>
-              <div className="instant-quote-field">
-                <label htmlFor="quote-destination">Destination</label>
-                <select id="quote-destination" className="instant-quote-control" name="destination" value={instantQuoteForm.destination} onChange={handleInstantQuoteChange}>
-                  <option>Kingston, Jamaica</option>
-                  <option>Montego Bay, Jamaica</option>
-                  <option>Other Jamaica Location</option>
-                </select>
-              </div>
-              <div className="instant-quote-field">
-                <label htmlFor="quote-cargo">What Type?</label>
-                <select id="quote-cargo" className="instant-quote-control" name="cargoType" value={instantQuoteForm.cargoType} onChange={handleInstantQuoteChange}>
-                  <option>Box</option>
-                  <option>Barrel</option>
-                  <option>Furniture</option>
-                  <option>Appliance</option>
-                  <option>Vehicle</option>
-                </select>
-              </div>
-              <div className="instant-quote-field">
-                <label htmlFor="quote-handoff">Handoff</label>
-                <select id="quote-handoff" className="instant-quote-control" name="handoffType" value={instantQuoteForm.handoffType} onChange={handleInstantQuoteChange}>
-                  <option value="pickup">We pick up</option>
-                  <option value="dropoff">I will drop off</option>
-                </select>
-              </div>
-              <div className="instant-quote-field">
-                <label htmlFor="quote-weight">
-                  {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' ? 'Barrel Quantity' : 'Weight (lbs)'}
-                </label>
-                {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' ? (
-                  <input
-                    id="quote-weight"
-                    className="instant-quote-control"
-                    type="number"
-                    name="barrelQuantity"
-                    value={instantQuoteForm.barrelQuantity}
-                    onChange={handleInstantQuoteChange}
-                    placeholder="e.g., 2"
-                    min="1"
-                  />
-                ) : (
-                  <input
-                    id="quote-weight"
-                    className="instant-quote-control"
-                    type="number"
-                    name="weight"
-                    value={instantQuoteForm.weight}
-                    onChange={handleInstantQuoteChange}
-                    placeholder="e.g., 25"
-                    min="0.01"
-                    step="0.01"
-                  />
-                )}
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn--solid" style={{ width: '100%', marginTop: '1rem' }}>
-              Calculate My Total Cost
-            </button>
-
-            {instantQuoteResult && !instantQuoteResult.error && (
-              <div className="instant-quote-result">
-                <div className="result-item">
-                  <span>Estimated Cost (USD):</span>
-                  <strong>${Number(instantQuoteResult.costUsd || 0).toFixed(2)}</strong>
-                </div>
-                <div className="result-item">
-                  <span>Estimated Cost (JMD):</span>
-                  <strong>JMD ${Number(instantQuoteResult.costJmd || 0).toLocaleString()}</strong>
-                </div>
-                <div className="result-item">
-                  <span>Transit Time:</span>
-                  <strong>{instantQuoteResult.transit} days</strong>
-                </div>
-                <p className="section-intro" style={{ marginTop: '0.35rem', marginBottom: 0 }}>
-                  Quoted pricing includes freight and customs clearance.
-                </p>
-                {String(instantQuoteForm.cargoType || '').toLowerCase() === 'barrel' && (
-                  <div className="result-item">
-                    <span>Barrel Discount:</span>
-                    <strong>3% off each barrel after the first</strong>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="btn btn--solid"
-                  onClick={() => navigate('/ship')}
-                  style={{ width: '100%', marginTop: '1rem' }}
-                >
-                  Book This Shipment Now
+        <section className="home-hero" aria-label="Clear Logistics homepage">
+          <div className="home-hero__frame">
+            <div className="home-hero__copy">
+              <p className="home-section__eyebrow">Clear Logistics & Freight Services</p>
+              <span className="home-hero__badge"><HomeSymbol kind="global" /> Premium shopping, shipping, and sourcing</span>
+              <h1>Global Shopping & Shipping to Jamaica</h1>
+              <p className="home-hero__lede">
+                Crisp product discovery, transparent pricing, and Jamaica delivery support without the blurry placeholder experience.
+              </p>
+              <div className="home-hero__actions">
+                <button type="button" className="btn btn--solid home-hero__primary" onClick={() => openShopFlow({ audience: 'personal', directTo: 'purchase' })}>
+                  Shop Now
+                </button>
+                <button type="button" className="btn btn--ghost home-hero__secondary" onClick={() => navigate('/pricing')}>
+                  Get a Shipping Quote
                 </button>
               </div>
-            )}
+            </div>
 
-            {instantQuoteResult?.error && (
-              <p style={{ color: '#d32f2f', marginTop: '1rem', textAlign: 'center' }}>{instantQuoteResult.error}</p>
-            )}
-          </form>
+            <div className="home-hero__visual" aria-hidden="true">
+              <div className="home-hero__image-shell">
+                <div className="home-hero__showcase home-hero__showcase--primary">
+                  <img src="/catalog/section_pages/cat1-p082-i5.jpeg" alt="" className="home-hero__image" />
+                </div>
+                <div className="home-hero__showcase home-hero__showcase--secondary">
+                  <img src="/catalog/section_pages/cat1-p046-i1.jpeg" alt="" className="home-hero__image" />
+                </div>
+                <div className="home-hero__showcase home-hero__showcase--tertiary">
+                  <img src="/catalog/section_pages/orig-p019-i2.jpeg" alt="" className="home-hero__image" />
+                </div>
+              </div>
+
+              <div className="home-hero__floating-card home-hero__floating-card--top">
+                <strong>Premium clarity</strong>
+                <span>Live UI, real logo fit, and crisp catalog imagery.</span>
+              </div>
+              <div className="home-hero__floating-card home-hero__floating-card--bottom">
+                <strong>Category-accurate products</strong>
+                <span>Furniture categories now map directly to the product cards, images, and visible prices.</span>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* How It Works - 5 Step Pipeline */}
-        <section className="card" style={{ background: '#f9f9f9' }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>How It Works</h2>
-          <div className="how-it-works-pipeline">
-            {HOW_IT_WORKS.map((step, idx) => (
-              <div key={step.key} className="pipeline-step">
-                <div className="step-icon">{step.icon}</div>
-                <h3>{step.title}</h3>
-                <p>{step.summary}</p>
-                {idx < HOW_IT_WORKS.length - 1 && <div className="step-arrow">↓</div>}
-              </div>
+        <section className="home-highlight-strip" aria-label="Core service paths">
+          {HOME_HIGHLIGHT_STRIP.map((item) => (
+            <button
+              key={item.title}
+              type="button"
+              className="home-highlight-strip__item"
+              onClick={() => handleHighlightCardClick(item.action)}
+            >
+              <span className="home-highlight-strip__icon" aria-hidden="true"><HomeSymbol kind={item.icon} /></span>
+              <h3>{item.title}</h3>
+              <p>{item.summary}</p>
+              <span className="home-highlight-strip__arrow" aria-hidden="true">→</span>
+            </button>
+          ))}
+        </section>
+
+        <section className="home-section" aria-labelledby="home-categories-heading">
+          <div className="home-section__heading">
+            <div>
+              <p className="home-section__eyebrow">Verified categories</p>
+              <h2 id="home-categories-heading">Browse Real Catalog Categories</h2>
+            </div>
+            <button type="button" className="btn btn--ghost home-section__link" onClick={() => navigate('/shop')}>
+              View All
+            </button>
+          </div>
+
+          <div className="home-category-grid">
+            {HOME_CATEGORY_TILES.map((tile) => (
+              <button
+                key={tile.category}
+                type="button"
+                className="home-category-card"
+                onClick={() => handleCategoryTileClick(tile.category)}
+              >
+                <div className="home-category-card__media">
+                  <img src={tile.image} alt={tile.title} loading="lazy" />
+                </div>
+                <div className="home-category-card__body">
+                  <h3>{tile.title}</h3>
+                  <p>{tile.description}</p>
+                  <strong>{tile.priceLabel}</strong>
+                </div>
+              </button>
             ))}
           </div>
         </section>
 
-        <section className="card pickup-offer-card" aria-label="Clear Doorstep Pickup offer">
-          <div className="pickup-offer-card__header">
-            <div>
-              <p className="pickup-offer-card__eyebrow">New Pickup Option</p>
-              <h2 style={{ marginBottom: '0.4rem' }}>Clear Doorstep Pickup™</h2>
-              <p className="section-intro" style={{ marginBottom: 0 }}>
-                We come to you, collect your barrels, prepare them for export, and move them into our Jamaica shipping network.
-              </p>
-            </div>
-            <div className="pickup-offer-card__price-chip">Daily Deals Available</div>
-          </div>
-
-          <div className="pickup-offer-card__actions">
-            <button
-              type="button"
-              className="btn btn--solid"
-              onClick={() => navigate('/ship')}
-            >
-              Reserve My Pickup Window
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={openDealsWhatsApp}>
-              Chat on WhatsApp for Today&apos;s Deals
-            </button>
-          </div>
-
-          <details className="pickup-offer-card__details">
-            <summary>View daily deals</summary>
-            <div className="pickup-offer-card__details-body">
-              <p style={{ marginBottom: '0.45rem' }}><strong>Pickup includes:</strong></p>
-              <ul className="type-list" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
-                <li>Scheduled home pickup</li>
-                <li>Driver dispatch and coordination</li>
-                <li>Safe barrel handling</li>
-                <li>Pickup confirmation</li>
-                <li>Shipment preparation</li>
-                <li>Transfer to consolidation facility</li>
-              </ul>
-
-              <p className="section-intro" style={{ marginBottom: 0 }}>
-                For today&apos;s pickup deals and custom offers, chat with our team on WhatsApp.
-              </p>
-              <button type="button" className="btn btn--ghost" style={{ marginTop: '0.7rem' }} onClick={openDealsWhatsApp}>
-                Open WhatsApp Deals Chat
+        <section className="home-tracking-panel" aria-labelledby="home-track-heading">
+          <div className="home-tracking-panel__copy">
+            <p className="home-section__eyebrow">Track With Confidence</p>
+            <h2 id="home-track-heading">Move From Order To Delivery With Clear Updates</h2>
+            <p>
+              Track shipments, request quotes, and move from product discovery to payment without leaving the platform.
+            </p>
+            <div className="home-hero__actions">
+              <button type="button" className="btn btn--solid home-tracking-panel__button" onClick={() => navigate('/track')}>
+                Track Now
+              </button>
+              <button type="button" className="btn btn--ghost home-tracking-panel__button" onClick={() => navigate('/ship')}>
+                Book Shipment
               </button>
             </div>
-          </details>
-        </section>
-
-        {/* Trust Badges */}
-        <section className="card trust-badges-section">
-          <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Why Choose Clear Logistics?</h3>
-          <div className="trust-badges-grid">
-            <div className="trust-badge">✔ Door-to-Door Service</div>
-            <div className="trust-badge">✔ Real-Time Tracking</div>
-            <div className="trust-badge">✔ Secure Payments</div>
-            <div className="trust-badge">✔ Professional Support</div>
-            <div className="trust-badge">✔ USA Pickup</div>
-            <div className="trust-badge">✔ Jamaica Delivery</div>
-          </div>
-        </section>
-
-        <section className="card card--split home-story-card">
-          <div>
-            <p className="home-story-card__eyebrow">Who We Are</p>
-            <h2>Your freight partner for the USA to Jamaica lane</h2>
-            <p className="section-intro">
-              Clear Logistics & Freight Services helps families, shoppers, and businesses move packages with simple booking,
-              clear pricing, and shipment visibility from pickup to delivery.
-            </p>
           </div>
 
-          <div className="home-story-card__facts">
-            <div className="home-story-card__fact">
-              <strong>Built for real customers</strong>
-              <span>Families, e-commerce shoppers, and recurring freight accounts.</span>
-            </div>
-            <div className="home-story-card__fact">
-              <strong>Jamaica-focused</strong>
-              <span>Direct delivery coverage across all 14 parishes.</span>
-            </div>
-            <div className="home-story-card__fact">
-              <strong>Support-first</strong>
-              <span>FAQ, WhatsApp, and AI chat are always within reach.</span>
+          <div className="tracking-visual-card" aria-hidden="true">
+            <div className="tracking-visual-card__map" />
+            <div className="tracking-visual-card__route tracking-visual-card__route--us" />
+            <div className="tracking-visual-card__route-line" />
+            <div className="tracking-visual-card__route tracking-visual-card__route--jm" />
+            <div className="tracking-visual-card__box"><span className="tracking-visual-card__box-mark" /></div>
+            <div className="tracking-visual-card__phone">
+              <div className="tracking-visual-card__phone-top" />
+              <div className="tracking-visual-card__status">
+                <strong>Shipment CL-12345</strong>
+                <span>Loaded on vessel</span>
+              </div>
+              <ul className="tracking-visual-card__timeline">
+                <li>Order received</li>
+                <li>Pickup scheduled</li>
+                <li>Freight received</li>
+                <li>Loaded on vessel</li>
+              </ul>
             </div>
           </div>
         </section>
 
-        <section className="card" style={{ textAlign: 'center', padding: '2rem', background: '#f0f7f6' }}>
-          <h2>Ready to Ship?</h2>
-          <p style={{ marginBottom: '1.5rem' }}>Track an existing shipment or start a new one today.</p>
-          <button
-            type="button"
-            className="btn btn--solid"
-            onClick={() => navigate('/ship')}
-            style={{ fontSize: '1rem', padding: '0.8rem 2.5rem', marginRight: '1rem' }}
-          >
-            Book My Package Now
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => navigate('/track')}
-            style={{ fontSize: '1rem', padding: '0.8rem 2.1rem' }}
-          >
-            Check Status
-          </button>
-        </section>
-
-        <section className="card" style={{ display: 'none' }}>
-          <h2>Platform Roadmap Structure</h2>
-          <ul className="sitemap-list">
-            {SITE_MAP.map((item) => (
-              <li key={item}>{item}</li>
+        <section className="home-section home-section--advantages" aria-labelledby="home-advantages-heading">
+          <div className="home-section__heading home-section__heading--stacked">
+            <p className="home-section__eyebrow">Why customers use Clear</p>
+            <h2 id="home-advantages-heading">Premium Experience, Clear Data, Reliable Delivery</h2>
+          </div>
+          <div className="home-advantage-grid">
+            {HOME_ADVANTAGE_CARDS.map((item) => (
+              <article key={item.title} className="home-advantage-card">
+                <span className="home-advantage-card__icon" aria-hidden="true"><HomeSymbol kind={item.icon} /></span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.summary}</p>
+                </div>
+              </article>
             ))}
-          </ul>
+          </div>
         </section>
       </>
     );
@@ -6078,6 +6255,10 @@ function App() {
   function ShopPage() {
     const assignedReference = String(customerProfile.customerReference || currentUser?.customerReference || '').trim();
     const assignedUsAddress = String(customerProfile.usReceivingAddress || currentUser?.usReceivingAddress || '').trim();
+    const categoryParam = String(new URLSearchParams(location.search).get('category') || '').trim();
+    const sizeColorCategoryMatch = String(purchaseForm.sizeColorSpecs || '').match(/Category:\s*([^\n]+)/i);
+    const selectedShowcaseCategory = resolveShopShowcaseCategoryFromHint(categoryParam || sizeColorCategoryMatch?.[1] || 'Furniture');
+    const selectedShowcase = SHOP_CATEGORY_SHOWCASE_MAP[selectedShowcaseCategory.toLowerCase()] || SHOP_CATEGORY_SHOWCASE_MAP.furniture;
     const estimatedLandedJmdFor = (supplierPriceUsd) => {
       const landedUsd = Number(supplierPriceUsd || 0) * 1.36;
       return Math.round(landedUsd * JMD_PER_USD);
@@ -6100,9 +6281,23 @@ function App() {
           <p className="section-intro">See something you like? We will get it to Jamaica.</p>
 
           <div className="booking-summary" style={{ marginBottom: '0.9rem' }}>
-            <h3 style={{ marginBottom: '0.45rem' }}>Featured Products</h3>
+            <p className="home-section__eyebrow" style={{ marginBottom: '0.35rem' }}>Curated category</p>
+            <h3 style={{ marginBottom: '0.3rem' }}>Featured {selectedShowcase.title}</h3>
+            <p className="section-intro" style={{ marginBottom: '0.75rem' }}>{selectedShowcase.description}</p>
+            <div className="shop-showcase-filter" style={{ marginBottom: '0.85rem' }}>
+              {SHOP_CATEGORY_SHOWCASES.map((showcase) => (
+                <button
+                  key={showcase.category}
+                  type="button"
+                  className={selectedShowcaseCategory === showcase.category ? 'shop-showcase-chip shop-showcase-chip--active' : 'shop-showcase-chip'}
+                  onClick={() => navigate(`/shop?category=${encodeURIComponent(showcase.category)}`)}
+                >
+                  {showcase.title}
+                </button>
+              ))}
+            </div>
             <div className="stores-grid">
-              {SHOP_CURATED_PRODUCTS.map((item) => (
+              {selectedShowcase.items.map((item) => (
                 <article key={item.name} className="store-card" style={{ textAlign: 'left' }}>
                   {(() => {
                     const breakdown = estimatedBreakdownFor(item.supplierPriceUsd);
@@ -9704,22 +9899,37 @@ function App() {
 
   function Footer() {
     return (
-      <footer className="footer">
-        <div className="footer-content">
-          <div className="footer-branding" style={{ textAlign: 'center' }}>
+      <footer className="site-footer">
+        <div className="site-footer__feature-row">
+          {FOOTER_VALUE_PROPS.map((item) => (
+            <article key={item.title} className="site-footer__feature-card">
+              <span className="site-footer__feature-icon" aria-hidden="true"><HomeSymbol kind={item.icon} /></span>
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.summary}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="site-footer__main">
+          <div className="site-footer__brand">
             <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="footer__logo" />
-            <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>Reliable USA-Jamaica Shipping</p>
-            <div className="footer-links">
-              <button type="button" className="footer-link" onClick={() => navigate('/')}>Home</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/about')}>About Us</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/shipping-information')}>Shipping Information</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/service-policy')}>Service Policy</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/faq')}>FAQ</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/privacy')}>Privacy Policy</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/terms')}>Terms of Service</button>
-              <button type="button" className="footer-link" onClick={() => navigate('/support')}>Contact Support</button>
-            </div>
-            <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>© 2026 Clear Logistics & Freight Services. All rights reserved.</p>
+            <p>Reliable shopping, shipping, and logistics support for Jamaica-bound deliveries.</p>
+          </div>
+
+          <div className="site-footer__links">
+            <button type="button" className="footer-link" onClick={() => navigate('/')}>Home</button>
+            <button type="button" className="footer-link" onClick={() => navigate('/shop')}>Shop</button>
+            <button type="button" className="footer-link" onClick={() => navigate('/ship')}>Ship with Clear</button>
+            <button type="button" className="footer-link" onClick={() => navigate('/business')}>Business</button>
+            <button type="button" className="footer-link" onClick={() => navigate('/track')}>Track</button>
+            <button type="button" className="footer-link" onClick={() => navigate('/support')}>Contact Support</button>
+          </div>
+
+          <div className="site-footer__meta">
+            <p>© 2026 Clear Logistics & Freight Services</p>
+            <p>All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -9728,42 +9938,14 @@ function App() {
 
   return (
     <div className={`page-shell ${isCatalogRoute ? 'page-shell--catalog' : ''}`.trim()}>
-      <header className="hero">
-        <div className="hero__brand">
-          <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="hero__logo" />
-          <p className="hero__badge">Clear Verified Marketplace</p>
-        </div>
-        <div className="hero__panel">
-          <div className="hero__copy">
-            <h1>Global Shopping and Shipping to Jamaica</h1>
-            <p>
-              One place to shop products, ship to Jamaica, and track every delivery from pickup to final drop-off.
-            </p>
-            <div className="hero__actions">
-              <button type="button" className="nav-pill nav-pill--primary" onClick={() => navigate('/ship')}>
-                Ship with Clear
-              </button>
-              <button type="button" className="nav-pill" onClick={() => navigate('/shop')}>
-                Shop
-              </button>
-              <button type="button" className="nav-pill" onClick={() => navigate('/sell-on-clear')}>
-                Sell on Clear
-              </button>
-            </div>
-          </div>
+      <header className="site-header">
+        <div className="site-header__inner">
+          <button type="button" className="site-header__brand" onClick={() => navigate('/')} aria-label="Go to Clear Logistics home">
+            <img src={BRAND_LOGO_PATH} alt="Clear Logistics & Freight Services" className="site-header__logo" />
+          </button>
 
-          <div className="hero__proofs" aria-label="Clear highlights">
-            <div className="hero-proof-card">
-              <strong>Clear Verified Marketplace</strong>
-              <span>Accurate listing images, transparent landed estimates, and Jamaica-ready fulfillment.</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <nav className="portal-nav" aria-label="Primary portal navigation">
-        <div className="portal-nav__primary">
-          {NAV_ITEMS.map((item) => {
+          <nav className="site-header__nav" aria-label="Primary portal navigation">
+          {NAV_ITEMS.filter((item) => HEADER_NAV_KEYS.has(item.key)).map((item) => {
             const targetPath = item.targetPath;
             const isActive = item.activePaths.includes(currentPath);
 
@@ -9771,13 +9953,7 @@ function App() {
               <button
                 type="button"
                 key={item.key}
-                className={
-                  item.isPrimary
-                    ? `nav-pill ${isActive ? 'nav-pill--primary nav-pill--active' : 'nav-pill--primary-inactive pulse'}`
-                    : isActive
-                      ? 'nav-pill nav-pill--active'
-                      : 'nav-pill'
-                }
+                className={isActive ? 'site-nav-link site-nav-link--active' : 'site-nav-link'}
                 onClick={() => {
                   if (location.pathname !== targetPath) {
                     navigate(targetPath);
@@ -9788,9 +9964,9 @@ function App() {
               </button>
             );
           })}
-        </div>
+          </nav>
 
-        <div className="portal-nav__auth">
+          <div className="site-header__actions">
           {driverAuthToken ? (
             <>
               <div className="nav-badge" aria-label="Signed in driver">
@@ -9821,17 +9997,13 @@ function App() {
               </button>
             </>
           ) : (
-            <>
-              <button type="button" className={currentPath === 'login' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/login')}>
-                Log In
-              </button>
-              <button type="button" className={currentPath === 'account' ? 'nav-pill nav-pill--active' : 'nav-pill'} onClick={() => navigate('/account')}>
-                My Clear
-              </button>
-            </>
+            <button type="button" className={currentPath === 'account' ? 'site-header__account site-header__account--active' : 'site-header__account'} onClick={() => navigate('/account')}>
+              My Clear
+            </button>
           )}
+          </div>
         </div>
-      </nav>
+      </header>
 
       <main className="layout">
         <Routes>
