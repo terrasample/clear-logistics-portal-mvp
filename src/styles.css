@@ -26,6 +26,10 @@ body {
   background: var(--bg);
 }
 
+.page-shell--home-reference {
+  background: #ffffff;
+}
+
 .site-header {
   position: relative;
   z-index: 20;
@@ -202,6 +206,40 @@ body {
   max-width: 1260px;
   margin: 0 auto;
   padding: 1rem 1.5rem 0;
+}
+
+.layout--home-reference {
+  max-width: none;
+  padding: 0;
+}
+
+.home-reference {
+  width: 100%;
+  background: #ffffff;
+}
+
+.home-reference__frame {
+  position: relative;
+  width: min(100%, 1024px);
+  margin: 0 auto;
+}
+
+.home-reference__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home-reference__hotspots {
+  position: absolute;
+  inset: 0;
+}
+
+.home-reference__hotspot {
+  position: absolute;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .home-hero {

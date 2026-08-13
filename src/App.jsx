@@ -878,6 +878,33 @@ const FOOTER_VALUE_PROPS = [
   },
 ];
 
+const HOME_REFERENCE_HOTSPOTS = [
+  { key: 'nav-home', left: 22.0, top: 2.0, width: 6.2, height: 2.7, action: 'home', label: 'Home' },
+  { key: 'nav-shop', left: 29.1, top: 2.0, width: 6.2, height: 2.7, action: 'shop', label: 'Shop' },
+  { key: 'nav-sell', left: 35.9, top: 2.0, width: 13.7, height: 2.7, action: 'sell-on-clear', label: 'Sell on Clear' },
+  { key: 'nav-ship', left: 50.1, top: 2.0, width: 15.2, height: 2.7, action: 'ship', label: 'Ship with Clear' },
+  { key: 'nav-business', left: 66.0, top: 2.0, width: 9.8, height: 2.7, action: 'business', label: 'Business' },
+  { key: 'nav-track', left: 76.6, top: 2.0, width: 7.0, height: 2.7, action: 'track', label: 'Track' },
+  { key: 'nav-pricing', left: 84.2, top: 2.0, width: 8.2, height: 2.7, action: 'pricing', label: 'Pricing' },
+  { key: 'nav-account', left: 91.8, top: 0.8, width: 8.2, height: 4.4, action: 'account', label: 'My Clear' },
+  { key: 'cta-shop', left: 4.7, top: 45.2, width: 16.2, height: 4.4, action: 'shop', label: 'Shop Now' },
+  { key: 'cta-pricing', left: 22.2, top: 45.2, width: 20.0, height: 4.4, action: 'pricing', label: 'Get a Shipping Quote' },
+  { key: 'strip-shop', left: 2.0, top: 53.5, width: 22.8, height: 13.9, action: 'shop', label: 'Shop service' },
+  { key: 'strip-ship', left: 24.9, top: 53.5, width: 22.8, height: 13.9, action: 'ship', label: 'Ship service' },
+  { key: 'strip-clear-buy', left: 47.8, top: 53.5, width: 22.8, height: 13.9, action: 'clear-buy', label: 'Clear Buy service' },
+  { key: 'strip-business', left: 70.7, top: 53.5, width: 27.3, height: 13.9, action: 'business', label: 'Business service' },
+  { key: 'cat-furniture', left: 1.8, top: 73.3, width: 15.3, height: 11.7, action: 'category:Furniture', label: 'Furniture' },
+  { key: 'cat-outdoor', left: 17.3, top: 73.3, width: 15.3, height: 11.7, action: 'category:Outdoor Kitchens', label: 'Outdoor Kitchens' },
+  { key: 'cat-appliances', left: 32.9, top: 73.3, width: 15.3, height: 11.7, action: 'category:Appliances', label: 'Appliances' },
+  { key: 'cat-restaurant', left: 48.4, top: 73.3, width: 15.3, height: 11.7, action: 'category:Restaurant Equipment', label: 'Restaurant Equipment' },
+  { key: 'cat-building', left: 64.0, top: 73.3, width: 15.3, height: 11.7, action: 'category:Building Materials', label: 'Building Materials' },
+  { key: 'cat-auto', left: 79.5, top: 73.3, width: 18.5, height: 11.7, action: 'category:Auto & Parts', label: 'Auto & Parts' },
+  { key: 'view-all-categories', left: 37.0, top: 86.0, width: 26.0, height: 2.9, action: 'shop', label: 'View All Categories' },
+  { key: 'track-input', left: 3.0, top: 96.0, width: 26.5, height: 3.8, action: 'track', label: 'Track shipment input' },
+  { key: 'track-now', left: 30.0, top: 96.0, width: 14.5, height: 3.8, action: 'track', label: 'Track Now' },
+  { key: 'footer-help', left: 88.0, top: 95.5, width: 10.5, height: 5.0, action: 'support', label: 'Need help' },
+];
+
 function HomeSymbol({ kind }) {
   const common = {
     width: 24,
@@ -1713,6 +1740,7 @@ function App() {
   const { stepKey } = useParams();
   const currentPath = location.pathname.replace(/^\/+/, '') || 'home';
   const isCatalogRoute = currentPath.startsWith('catalog');
+  const isHomeRoute = currentPath === 'home';
 
   const [accountForm, setAccountForm] = useState({
     fullName: '',
@@ -4644,6 +4672,63 @@ function App() {
   }, [location.search, navigate]);
 
   function HomePage() {
+    function handleReferenceAction(action) {
+      if (action === 'home') {
+        navigate('/');
+        return;
+      }
+
+      if (action === 'shop') {
+        openShopFlow({ audience: 'personal', directTo: 'purchase' });
+        return;
+      }
+
+      if (action === 'sell-on-clear') {
+        navigate('/sell-on-clear');
+        return;
+      }
+
+      if (action === 'ship') {
+        navigate('/ship');
+        return;
+      }
+
+      if (action === 'business') {
+        navigate('/business');
+        return;
+      }
+
+      if (action === 'track') {
+        navigate('/track');
+        return;
+      }
+
+      if (action === 'pricing') {
+        navigate('/pricing');
+        return;
+      }
+
+      if (action === 'clear-buy') {
+        navigate('/clear-buy');
+        return;
+      }
+
+      if (action === 'account') {
+        navigate('/account');
+        return;
+      }
+
+      if (action === 'support') {
+        navigate('/support');
+        return;
+      }
+
+      if (action.startsWith('category:')) {
+        const category = action.slice('category:'.length);
+        navigate(`/shop?category=${encodeURIComponent(category)}`);
+      }
+    }
+
     function handleHighlightCardClick(action) {
       if (action === 'shop') {
         openShopFlow({ audience: 'personal', directTo: 'purchase' });
@@ -4729,143 +4814,28 @@ function App() {
     }
 
     return (
-      <>
-        <section className="home-hero" aria-label="Clear Logistics homepage">
-          <div className="home-hero__frame">
-            <div className="home-hero__copy">
-              <p className="home-section__eyebrow">Clear Logistics & Freight Services</p>
-              <span className="home-hero__badge"><HomeSymbol kind="global" /> Premium shopping, shipping, and sourcing</span>
-              <h1>Global Shopping & Shipping to Jamaica</h1>
-              <p className="home-hero__lede">
-                Crisp product discovery, transparent pricing, and Jamaica delivery support without the blurry placeholder experience.
-              </p>
-              <div className="home-hero__actions">
-                <button type="button" className="btn btn--solid home-hero__primary" onClick={() => openShopFlow({ audience: 'personal', directTo: 'purchase' })}>
-                  Shop Now
-                </button>
-                <button type="button" className="btn btn--ghost home-hero__secondary" onClick={() => navigate('/pricing')}>
-                  Get a Shipping Quote
-                </button>
-              </div>
-            </div>
-
-            <div className="home-hero__visual" aria-hidden="true">
-              <div className="home-hero__image-shell">
-                <div className="home-hero__showcase home-hero__showcase--primary">
-                  <img src="/catalog/prepare_package_international_shipping.png" alt="" className="home-hero__image" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="home-highlight-strip" aria-label="Core service paths">
-          {HOME_HIGHLIGHT_STRIP.map((item) => (
-            <button
-              key={item.title}
-              type="button"
-              className="home-highlight-strip__item"
-              onClick={() => handleHighlightCardClick(item.action)}
-            >
-              <span className="home-highlight-strip__icon" aria-hidden="true"><HomeSymbol kind={item.icon} /></span>
-              <h3>{item.title}</h3>
-              <p>{item.summary}</p>
-              <span className="home-highlight-strip__arrow" aria-hidden="true">→</span>
-            </button>
-          ))}
-        </section>
-
-        <section className="home-section" aria-labelledby="home-categories-heading">
-          <div className="home-section__heading">
-            <div>
-              <p className="home-section__eyebrow">Verified categories</p>
-              <h2 id="home-categories-heading">Browse Real Catalog Categories</h2>
-            </div>
-            <button type="button" className="btn btn--ghost home-section__link" onClick={() => navigate('/shop')}>
-              View All
-            </button>
-          </div>
-
-          <div className="home-category-grid">
-            {HOME_CATEGORY_TILES.map((tile) => (
+      <section className="home-reference" aria-label="Clear Logistics homepage">
+        <div className="home-reference__frame">
+          <img src="/reference-homepage.png" alt="Clear Logistics homepage" className="home-reference__image" />
+          <div className="home-reference__hotspots" aria-hidden="true">
+            {HOME_REFERENCE_HOTSPOTS.map((hotspot) => (
               <button
-                key={tile.category}
+                key={hotspot.key}
                 type="button"
-                className="home-category-card"
-                onClick={() => handleCategoryTileClick(tile.category)}
-              >
-                <div className={tile.iconKind ? 'home-category-card__media home-category-card__media--icon' : 'home-category-card__media'}>
-                  {tile.iconKind
-                    ? <span className="home-category-card__icon-wrap" aria-hidden="true"><HomeSymbol kind={tile.iconKind} /></span>
-                    : <img src={tile.image} alt={tile.title} loading="lazy" />}
-                </div>
-                <div className="home-category-card__body">
-                  <h3>{tile.title}</h3>
-                  <p>{tile.description}</p>
-                  <strong>{tile.priceLabel}</strong>
-                </div>
-              </button>
+                className="home-reference__hotspot"
+                aria-label={hotspot.label}
+                style={{
+                  left: `${hotspot.left}%`,
+                  top: `${hotspot.top}%`,
+                  width: `${hotspot.width}%`,
+                  height: `${hotspot.height}%`,
+                }}
+                onClick={() => handleReferenceAction(hotspot.action)}
+              />
             ))}
           </div>
-        </section>
-
-        <section className="home-tracking-panel" aria-labelledby="home-track-heading">
-          <div className="home-tracking-panel__copy">
-            <p className="home-section__eyebrow">Track With Confidence</p>
-            <h2 id="home-track-heading">Move From Order To Delivery With Clear Updates</h2>
-            <p>
-              Track shipments, request quotes, and move from product discovery to payment without leaving the platform.
-            </p>
-            <div className="home-hero__actions">
-              <button type="button" className="btn btn--solid home-tracking-panel__button" onClick={() => navigate('/track')}>
-                Track Now
-              </button>
-              <button type="button" className="btn btn--ghost home-tracking-panel__button" onClick={() => navigate('/ship')}>
-                Book Shipment
-              </button>
-            </div>
-          </div>
-
-          <div className="tracking-visual-card" aria-hidden="true">
-            <div className="tracking-visual-card__map" />
-            <div className="tracking-visual-card__route tracking-visual-card__route--us" />
-            <div className="tracking-visual-card__route-line" />
-            <div className="tracking-visual-card__route tracking-visual-card__route--jm" />
-            <div className="tracking-visual-card__box"><span className="tracking-visual-card__box-mark" /></div>
-            <div className="tracking-visual-card__phone">
-              <div className="tracking-visual-card__phone-top" />
-              <div className="tracking-visual-card__status">
-                <strong>Shipment CL-12345</strong>
-                <span>Loaded on vessel</span>
-              </div>
-              <ul className="tracking-visual-card__timeline">
-                <li>Order received</li>
-                <li>Pickup scheduled</li>
-                <li>Freight received</li>
-                <li>Loaded on vessel</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="home-section home-section--advantages" aria-labelledby="home-advantages-heading">
-          <div className="home-section__heading home-section__heading--stacked">
-            <p className="home-section__eyebrow">Why customers use Clear</p>
-            <h2 id="home-advantages-heading">Premium Experience, Clear Data, Reliable Delivery</h2>
-          </div>
-          <div className="home-advantage-grid">
-            {HOME_ADVANTAGE_CARDS.map((item) => (
-              <article key={item.title} className="home-advantage-card">
-                <span className="home-advantage-card__icon" aria-hidden="true"><HomeSymbol kind={item.icon} /></span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      </>
+        </div>
+      </section>
     );
   }
 
@@ -9988,7 +9958,8 @@ function App() {
   }
 
   return (
-    <div className={`page-shell ${isCatalogRoute ? 'page-shell--catalog' : ''}`.trim()}>
+    <div className={`page-shell ${isCatalogRoute ? 'page-shell--catalog' : ''} ${isHomeRoute ? 'page-shell--home-reference' : ''}`.trim()}>
+      {!isHomeRoute && (
       <header className="site-header">
         <div className="site-header__inner">
           <button type="button" className="site-header__brand" onClick={() => navigate('/')} aria-label="Go to Clear Logistics home">
@@ -10055,8 +10026,9 @@ function App() {
           </div>
         </div>
       </header>
+      )}
 
-      <main className="layout">
+      <main className={isHomeRoute ? 'layout layout--home-reference' : 'layout'}>
         <Routes>
           <Route path="/" element={HomePage()} />
           <Route path="/ship" element={BookingPage()} />
@@ -10112,7 +10084,7 @@ function App() {
         </Routes>
         {statusMessage && <p className="status-banner">{statusMessage}</p>}
       </main>
-      <Footer />
+      {!isHomeRoute && <Footer />}
     </div>
   );
 }
