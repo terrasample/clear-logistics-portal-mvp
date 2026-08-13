@@ -4752,23 +4752,8 @@ function App() {
             <div className="home-hero__visual" aria-hidden="true">
               <div className="home-hero__image-shell">
                 <div className="home-hero__showcase home-hero__showcase--primary">
-                  <img src="/catalog/section_pages/cat1-p082-i5.jpeg" alt="" className="home-hero__image" />
+                  <img src="/catalog/prepare_package_international_shipping.png" alt="" className="home-hero__image" />
                 </div>
-                <div className="home-hero__showcase home-hero__showcase--secondary">
-                  <img src="/catalog/section_pages/cat1-p046-i1.jpeg" alt="" className="home-hero__image" />
-                </div>
-                <div className="home-hero__showcase home-hero__showcase--tertiary">
-                  <img src="/catalog/section_pages/orig-p019-i2.jpeg" alt="" className="home-hero__image" />
-                </div>
-              </div>
-
-              <div className="home-hero__floating-card home-hero__floating-card--top">
-                <strong>Verified Suppliers</strong>
-                <span>Sourced from trusted US wholesalers with real market pricing.</span>
-              </div>
-              <div className="home-hero__floating-card home-hero__floating-card--bottom">
-                <strong>Delivered to Jamaica</strong>
-                <span>We handle shipping, customs clearance, and last-mile delivery to your door.</span>
               </div>
             </div>
           </div>
