@@ -589,6 +589,15 @@ body {
   opacity: 0.85;
 }
 
+.featured-product-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  display: block;
+  margin-bottom: 0.55rem;
+}
+
 .home-section__cta-row {
   display: flex;
   justify-content: center;

@@ -361,6 +361,90 @@ const SHOP_CATEGORY_SHOWCASES = [
       },
     ],
   },
+  {
+    category: 'Outdoor Kitchens',
+    title: 'Outdoor Kitchens',
+    description: 'Outdoor kitchen units, grills, and patio cooking stations sourced and shipped to Jamaica.',
+    items: [
+      {
+        name: 'Built-In Outdoor Grill Station',
+        category: 'Outdoor Kitchens',
+        supplierPriceUsd: 1850,
+        image: '/catalog/section_pages/orig-p024-i5.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Stainless Steel Outdoor Kitchen Island',
+        category: 'Outdoor Kitchens',
+        supplierPriceUsd: 2400,
+        image: '/catalog/section_pages/orig-p080-i1.jpeg',
+        productUrl: 'https://www.homedepot.com/',
+      },
+      {
+        name: 'Patio Bar & Prep Station',
+        category: 'Outdoor Kitchens',
+        supplierPriceUsd: 1120,
+        image: '/catalog/section_pages/orig-p081-i1.jpeg',
+        productUrl: 'https://www.wayfair.com/',
+      },
+    ],
+  },
+  {
+    category: 'Restaurant Equipment',
+    title: 'Restaurant Equipment',
+    description: 'Commercial-grade kitchen and dining equipment for restaurants and food service in Jamaica.',
+    items: [
+      {
+        name: 'Commercial 6-Burner Gas Range',
+        category: 'Restaurant Equipment',
+        supplierPriceUsd: 2200,
+        image: '/catalog/section_pages/orig-p094-i1.jpeg',
+        productUrl: 'https://www.webstaurantstore.com/',
+      },
+      {
+        name: 'Stainless Steel Prep Table (72")',
+        category: 'Restaurant Equipment',
+        supplierPriceUsd: 680,
+        image: '/catalog/section_pages/orig-p095-i1.jpeg',
+        productUrl: 'https://www.amazon.com/',
+      },
+      {
+        name: 'Commercial Chest Freezer',
+        category: 'Restaurant Equipment',
+        supplierPriceUsd: 950,
+        image: '/catalog/section_pages/orig-p096-i1.jpeg',
+        productUrl: 'https://www.homedepot.com/',
+      },
+    ],
+  },
+  {
+    category: 'Building Materials',
+    title: 'Building Materials',
+    description: 'Construction and finishing materials sourced from U.S. suppliers and shipped to Jamaica.',
+    items: [
+      {
+        name: 'Porcelain Floor Tile (per box)',
+        category: 'Building Materials',
+        supplierPriceUsd: 220,
+        image: '/catalog/section_pages/orig-p009-i2.jpeg',
+        productUrl: 'https://www.homedepot.com/',
+      },
+      {
+        name: 'Premium PVC Decking Boards',
+        category: 'Building Materials',
+        supplierPriceUsd: 480,
+        image: '/catalog/section_pages/orig-p097-i1.jpeg',
+        productUrl: 'https://www.lowes.com/',
+      },
+      {
+        name: 'Exterior Steel Security Door',
+        category: 'Building Materials',
+        supplierPriceUsd: 760,
+        image: '/catalog/section_pages/orig-p098-i1.jpeg',
+        productUrl: 'https://www.homedepot.com/',
+      },
+    ],
+  },
 ];
 
 const SHOP_CATEGORY_SHOWCASE_MAP = Object.fromEntries(
